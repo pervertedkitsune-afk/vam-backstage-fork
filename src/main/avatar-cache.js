@@ -6,8 +6,11 @@ function getCacheDir() {
   return join(app.getPath('userData'), 'avatar-cache')
 }
 
-function avatarFile(userId, avatarDate) {
-  return `${userId}_${avatarDate}.jpg`
+// userId/avatarDate come from the Hub API (untrusted); sanitize to a single path
+// segment so they can't traverse out of the cache dir.
+export function avatarFile(userId, avatarDate) {
+  const safe = (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, '_')
+  return `${safe(userId)}_${safe(avatarDate)}.jpg`
 }
 
 // In-memory index: userId (string) → { avatarDate }
