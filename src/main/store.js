@@ -1320,6 +1320,14 @@ export function patchTypeOverride(filename, typeOverride) {
   if (pkg) pkg.type_override = typeOverride ?? null
 }
 
+/** Fast-path patch after `markPackageRecent` — avoids a full `buildFromDb()`. */
+export function patchMarkRecent(filename, fileMtime) {
+  const pkg = packageIndex.get(filename)
+  if (!pkg) return
+  pkg.first_seen_at = Math.floor(fileMtime)
+  pkg.file_mtime = fileMtime
+}
+
 /**
  * Fast-path patch of `storage_state` (+ optionally `library_dir_id` / `subpath`) on
  * `packageIndex` rows so a toggle/move doesn't pay for a full `buildFromDb()`

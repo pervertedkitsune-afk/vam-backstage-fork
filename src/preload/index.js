@@ -65,6 +65,7 @@ const api = {
       typeof filenameOrPayload === 'object' && filenameOrPayload !== null && 'filenames' in filenameOrPayload
         ? invoke('packages:set-type-override', filenameOrPayload)
         : invoke('packages:set-type-override', { filename: filenameOrPayload, typeOverride }),
+    markRecent: (filenameOrFilenames) => invoke('packages:mark-recent', filenameOrFilenames),
     fileList: (filename) => invoke('packages:file-list', filename),
     redownload: (filename) => invoke('packages:redownload', filename),
     setHubResource: (filename, id) => invoke('packages:setHubResource', filename, id),

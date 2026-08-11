@@ -720,8 +720,24 @@ export function setPackageDirect(filename, isDirect) {
   stmt('UPDATE packages SET is_direct = ? WHERE filename = ?').run(isDirect ? 1 : 0, filename)
 }
 
-export function touchPackageFirstSeen(filename) {
-  stmt('UPDATE packages SET first_seen_at = unixepoch() WHERE filename = ?').run(filename)
+/** Stamp `first_seen_at` (promote / install-from-archive). Same clock source as `markPackageRecent`. */
+export function touchPackageFirstSeen(filename, at = Math.floor(Date.now() / 1000)) {
+  stmt('UPDATE packages SET first_seen_at = ? WHERE filename = ?').run(at, filename)
+  return at
+}
+
+/**
+ * After a disk `utimes` for "Mark as recent": bump both sort keys from the
+ * post-touch `stat().mtimeMs / 1000`. Storing that exact value is what lets the
+ * scanner/watcher mtime+size gate cache-hit; `first_seen_at` is the same instant
+ * floored to integer seconds.
+ */
+export function markPackageRecent(filename, fileMtime) {
+  stmt('UPDATE packages SET first_seen_at = ?, file_mtime = ? WHERE filename = ?').run(
+    Math.floor(fileMtime),
+    fileMtime,
+    filename,
+  )
 }
 
 /** @param {string | null} typeOverride — null clears override (use scanned / Hub type) */

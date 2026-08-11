@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import {
   ArrowUpCircle,
   Boxes,
+  Clock,
   Compass,
   Download,
   Eye,
@@ -127,6 +128,16 @@ async function runSetTypeOverride(filenames, typeOverride) {
     await useLibraryStore.getState().refreshDetail()
   } catch (err) {
     toast(`Failed to update package type: ${err.message}`)
+  }
+}
+
+async function runMarkRecent(filenames) {
+  if (!filenames.length) return
+  try {
+    await window.api.packages.markRecent(filenames)
+    await useLibraryStore.getState().fetchPackages()
+  } catch (err) {
+    toast(`Failed to mark as recent: ${err.message}`)
   }
 }
 
@@ -515,6 +526,13 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                       <TypeOverrideMenuItems filenames={selection} bulk />
                     </ContextMenuSubContent>
                   </ContextMenuSub>
+                  <ContextMenuItem
+                    title="Makes them show up as recent in VaM and Recently installed"
+                    onSelect={() => void runMarkRecent(selection)}
+                  >
+                    <Clock size={12} className="shrink-0" />
+                    Mark as recent
+                  </ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem
                     variant="destructive"
@@ -547,6 +565,13 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                       <TypeOverrideMenuItems filenames={selection} bulk />
                     </ContextMenuSubContent>
                   </ContextMenuSub>
+                  <ContextMenuItem
+                    title="Makes them show up as recent in VaM and Recently installed"
+                    onSelect={() => void runMarkRecent(selection)}
+                  >
+                    <Clock size={12} className="shrink-0" />
+                    Mark as recent
+                  </ContextMenuItem>
                   <ContextMenuItem
                     onSelect={() =>
                       void runLibraryBulkExtract({
@@ -787,6 +812,13 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                   />
                 </ContextMenuSubContent>
               </ContextMenuSub>
+              <ContextMenuItem
+                title="Makes it show up as recent in VaM and Recently installed"
+                onSelect={() => void runMarkRecent([pkg.filename])}
+              >
+                <Clock size={12} className="shrink-0" />
+                Mark as recent
+              </ContextMenuItem>
               {isArchived ? (
                 <>
                   <ContextMenuSeparator />

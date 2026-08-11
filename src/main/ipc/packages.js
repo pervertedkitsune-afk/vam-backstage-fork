@@ -1,10 +1,11 @@
 import { createWriteStream } from 'fs'
 import { ipcMain, net } from 'electron'
-import { access, rename, unlink, writeFile } from 'fs/promises'
+import { access, rename, unlink, writeFile, utimes, stat } from 'fs/promises'
 import { dirname, join } from 'path'
 import {
   setPackageDirect,
   touchPackageFirstSeen,
+  markPackageRecent,
   deletePackage,
   getSetting,
   setPackageTypeOverride,
@@ -32,6 +33,7 @@ import {
   setPrefsMap,
   buildFromDb,
   patchTypeOverride,
+  patchMarkRecent,
   getFilteredContents,
   getReplaceableSet,
   rebuildReplaceableSet,
@@ -899,6 +901,30 @@ export function registerPackageHandlers() {
     }
     notify('packages:updated')
     return { ok: true, count: filenames.length }
+  })
+
+  // Touch the .var mtime (VaM sorts) and restamp first_seen_at (our Recently
+  // installed). Mirror post-utimes file_mtime into the DB so the watcher/scanner
+  // mtime+size gate cache-hits; withBulkWindow + recordOwnedPath drops our FS events.
+  ipcMain.handle('packages:mark-recent', async (_, filenameOrFilenames) => {
+    const filenames = normalizeFilenameArgs(filenameOrFilenames)
+    if (filenames.length === 0) throw new Error('Package not found')
+    const now = new Date()
+    return withBulkWindow(async () => {
+      for (const fn of filenames) {
+        const pkg = getPackageIndex().get(fn)
+        if (!pkg) throw new Error(`Package not found: ${fn}`)
+        const varPath = await resolveContentPath(pkg)
+        if (!varPath) throw new Error(`Package path not found: ${fn}`)
+        recordOwnedPath(varPath)
+        await utimes(varPath, now, now)
+        const fileMtime = (await stat(varPath)).mtimeMs / 1000
+        markPackageRecent(fn, fileMtime)
+        patchMarkRecent(fn, fileMtime)
+      }
+      notify('packages:updated')
+      return { ok: true, count: filenames.length }
+    })
   })
 
   ipcMain.handle('packages:toggle-enabled', async (_, filenameOrFilenames) => {
