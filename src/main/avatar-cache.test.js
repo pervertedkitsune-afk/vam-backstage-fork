@@ -13,9 +13,7 @@ describe('avatarFile', () => {
     expect(avatarFile('129900', '0')).toBe('129900_0.jpg')
     expect(avatarFile(129900, 1776817697)).toBe('129900_1776817697.jpg')
     expect(avatarFile('user-abc', 'v2')).toBe('user-abc_v2.jpg')
-    expect(avatarFile('550e8400-e29b-41d4-a716-446655440000', '0')).toBe(
-      '550e8400-e29b-41d4-a716-446655440000_0.jpg',
-    )
+    expect(avatarFile('550e8400-e29b-41d4-a716-446655440000', '0')).toBe('550e8400-e29b-41d4-a716-446655440000_0.jpg')
   })
 
   it('replaces non-whitelisted chars (collisions on garbage input are acceptable)', () => {
