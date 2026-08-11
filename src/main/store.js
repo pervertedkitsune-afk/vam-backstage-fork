@@ -838,6 +838,30 @@ export function packageHasNoLookPresetTag(filename) {
   return effectivePackageType(pkg) === 'Looks' && (lookItemCountByPackage.get(filename) || 0) === 0
 }
 
+/**
+ * Older direct packages are shadowed when a higher-version direct+enabled sibling
+ * exists — VaM's gallery prefers that newer copy. Deps never count (exact refs /
+ * auto-hide). Returns the highest qualifying sibling, or null.
+ */
+function shadowedBySibling(pkg) {
+  if (!pkg.is_direct) return null
+  const selfVer = parseInt(pkg.version, 10)
+  if (isNaN(selfVer)) return null
+  let best = null
+  let bestVer = selfVer
+  for (const fn of groupIndex.get(pkg.package_name) || []) {
+    if (fn === pkg.filename) continue
+    const sibling = packageIndex.get(fn)
+    if (!sibling?.is_direct || sibling.storage_state !== 'enabled') continue
+    const v = parseInt(sibling.version, 10)
+    if (!isNaN(v) && v > bestVer) {
+      bestVer = v
+      best = sibling
+    }
+  }
+  return best
+}
+
 function enrichPackageSummary(pkg) {
   const depCount = transitiveDepsCountMap.get(pkg.filename) || 0
   const missingDeps = transitiveMissingMap.get(pkg.filename) || 0
@@ -862,6 +886,7 @@ function enrichPackageSummary(pkg) {
   const lookItemCount = lookItemCountByPackage.get(pkg.filename) || 0
   const noLookPresetTag = effectiveType === 'Looks' && lookItemCount === 0
   const hasExtractedAppearancePreset = noLookPresetTag && packageHasExtractedAppearance(pkg.filename)
+  const shadowedBy = shadowedBySibling(pkg)
   return {
     filename: pkg.filename,
     creator: pkg.creator,
@@ -900,6 +925,9 @@ function enrichPackageSummary(pkg) {
     isHubReplaceable: replaceableSet.has(pkg.filename),
     noLookPresetTag,
     hasExtractedAppearancePreset,
+    isShadowed: !!shadowedBy,
+    shadowedByFilename: shadowedBy?.filename ?? null,
+    shadowedByVersion: shadowedBy?.version ?? null,
     labelIds: packageLabelIds(pkg.filename),
   }
 }

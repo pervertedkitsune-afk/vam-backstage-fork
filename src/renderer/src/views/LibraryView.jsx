@@ -2028,6 +2028,14 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
                 {!pkg.isDirect && (
                   <span className={cn(THUMB_OVERLAY_CHIP, 'bg-accent-blue/20 text-accent-blue')}>DEP</span>
                 )}
+                {pkg.isShadowed && (
+                  <span
+                    className={cn(THUMB_OVERLAY_CHIP, 'bg-warning/20 text-warning')}
+                    title={`VaM's gallery shows the newer version (${(pkg.shadowedByFilename || '').replace(/\.var$/i, '') || `v${pkg.shadowedByVersion}`})`}
+                  >
+                    OLD
+                  </span>
+                )}
                 <StorageStateChip storageState={pkg.storageState ?? 'enabled'} />
                 {pkg.isCorrupted && <span className={cn(THUMB_OVERLAY_CHIP, 'bg-error/20 text-error')}>CORRUPTED</span>}
                 {pkg.isLocalOnly && (

@@ -53,16 +53,24 @@ import { MONO_DENSE, CLARIFY_DENSE, META_DENSE, META_COMPACT } from '@/lib/typog
 /**
  * Derive the "inactive package" visual state (`disabled` or `offloaded`) and
  * whether the user wants those cards dimmed (corner icon) vs full-color (chip).
+ * Shadowed-by-newer directs also dim under the same setting (chip only — no Power/Archive icon).
  */
 function useInactiveStyle(pkg) {
   const dimInactive = useLibraryStore((s) => s.dimInactive)
   const isOffloaded = pkg.storageState === 'offloaded'
   const isDisabled = pkg.storageState === 'disabled'
   const inactive = isOffloaded || isDisabled
-  return { isOffloaded, isDisabled, inactive, dim: inactive && dimInactive }
+  const dim = (inactive || !!pkg.isShadowed) && dimInactive
+  return { isOffloaded, isDisabled, inactive, dim }
 }
 
 const inactiveTitle = (isOffloaded) => (isOffloaded ? 'Package offloaded' : 'Package disabled')
+
+function shadowedByTitle(pkg) {
+  if (!pkg.isShadowed) return undefined
+  const stem = (pkg.shadowedByFilename || '').replace(/\.var$/i, '') || `v${pkg.shadowedByVersion}`
+  return `VaM's gallery shows the newer version (${stem})`
+}
 
 /**
  * Describe a package's dependency problems (missing and/or disabled+offloaded)
@@ -648,7 +656,12 @@ export function LibraryCard({
         {thumbUrl && <div className="absolute inset-0 bg-elevated" />}
         {thumbUrl && <img src={thumbUrl} className="thumb absolute inset-0 w-full h-full object-cover" alt="" />}
         <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
-        {(!hideType || !pkg.isDirect || pkg.isLocalOnly || pkg.noLookPresetTag || (minimal && !!depIssue)) && (
+        {(!hideType ||
+          !pkg.isDirect ||
+          pkg.isLocalOnly ||
+          pkg.isShadowed ||
+          pkg.noLookPresetTag ||
+          (minimal && !!depIssue)) && (
           <div className="absolute top-2 left-2 z-2 flex max-w-[calc(100%-2.75rem)] items-center gap-1 overflow-x-auto scrollbar-hide flex-nowrap">
             {!hideType && (
               <div
@@ -677,6 +690,14 @@ export function LibraryCard({
                 title="Installed only as a dependency of another package, not directly"
               >
                 DEP
+              </div>
+            )}
+            {pkg.isShadowed && (
+              <div
+                className={`${THUMB_OVERLAY_CHIP} bg-warning/20 text-warning backdrop-blur-sm`}
+                title={shadowedByTitle(pkg)}
+              >
+                OLD
               </div>
             )}
             {pkg.isLocalOnly && (
@@ -903,6 +924,11 @@ export function LibraryTableRow({
             title="Installed only as a dependency of another package, not directly"
           >
             Dep
+          </span>
+        )}
+        {pkg.isShadowed && (
+          <span className="whitespace-nowrap text-warning" title={shadowedByTitle(pkg)}>
+            {' · Old'}
           </span>
         )}
         {pkg.isLocalOnly && (
