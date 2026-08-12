@@ -8,33 +8,35 @@ describe('libraryFlags', () => {
         noLookPresetTag: true,
         hasExtractedAppearancePreset: false,
       }),
-    ).toEqual(['nopreset'])
+    ).toEqual(['dep', 'nopreset'])
     expect(
       libraryFlags({
         noLookPresetTag: true,
         hasExtractedAppearancePreset: true,
       }),
-    ).toEqual(['extracted'])
+    ).toEqual(['dep', 'extracted'])
   })
 
   it('includes corrupted / broken / wishlist / favorite when set', () => {
-    expect(libraryFlags({ isCorrupted: true })).toEqual(['corrupted'])
-    expect(libraryFlags({ broken: true })).toEqual(['broken'])
-    expect(libraryFlags({ wishlisted: true })).toEqual(['wishlist'])
-    expect(libraryFlags({ favoriteContentCount: 1 })).toEqual(['favorite'])
-    expect(libraryFlags({ favoriteContentCount: 0 })).toEqual([])
+    expect(libraryFlags({ isCorrupted: true })).toEqual(['dep', 'corrupted'])
+    expect(libraryFlags({ broken: true })).toEqual(['dep', 'broken'])
+    expect(libraryFlags({ wishlisted: true })).toEqual(['dep', 'wishlist'])
+    expect(libraryFlags({ favoriteContentCount: 1 })).toEqual(['dep', 'favorite'])
+    expect(libraryFlags({ favoriteContentCount: 0 })).toEqual(['dep'])
   })
 
   it('includes storage and status flags', () => {
-    expect(libraryFlags({ storageState: 'disabled' })).toEqual(['disabled'])
-    expect(libraryFlags({ storageState: 'offloaded' })).toEqual(['offloaded'])
-    expect(libraryFlags({ storageState: 'archived' })).toEqual(['archived'])
-    expect(libraryFlags({ isOrphan: true })).toEqual(['orphan'])
-    expect(libraryFlags({ isLocalOnly: true })).toEqual(['local'])
+    expect(libraryFlags({ isDirect: true, storageState: 'disabled' })).toEqual(['direct', 'disabled'])
+    expect(libraryFlags({ isDirect: true, storageState: 'offloaded' })).toEqual(['direct', 'offloaded'])
+    expect(libraryFlags({ isDirect: false, storageState: 'archived' })).toEqual(['dep', 'archived'])
+    expect(libraryFlags({ isDirect: false, isOrphan: true })).toEqual(['dep', 'orphan'])
+    expect(libraryFlags({ isDirect: true, isLocalOnly: true })).toEqual(['direct', 'local'])
   })
 
-  it('returns nothing for an ordinary package', () => {
-    expect(libraryFlags({})).toEqual([])
+  it('always tags direct vs dep from isDirect', () => {
+    expect(libraryFlags({ isDirect: true })).toEqual(['direct'])
+    expect(libraryFlags({ isDirect: false })).toEqual(['dep'])
+    expect(libraryFlags({})).toEqual(['dep'])
   })
 })
 

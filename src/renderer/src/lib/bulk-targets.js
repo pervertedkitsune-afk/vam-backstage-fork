@@ -90,6 +90,18 @@ export async function runLibraryBulkPromote(items = resolveLibraryBulkPackages()
   }
 }
 
+export async function runLibraryBulkDemote(items = resolveLibraryBulkPackages()) {
+  const fnames = items.filter((p) => p.isDirect).map((p) => p.filename)
+  if (!fnames.length) return
+  try {
+    await window.api.packages.demote(fnames.length === 1 ? fnames[0] : fnames)
+    useLibraryStore.getState().clearSelection()
+    await useLibraryStore.getState().fetchPackages()
+  } catch (err) {
+    toast(`Failed: ${err.message}`)
+  }
+}
+
 export async function runLibraryBulkInstallFromArchive(items = resolveLibraryBulkPackages()) {
   const fnames = items.filter((p) => isPackageArchived(p.storageState)).map((p) => p.filename)
   if (!fnames.length) return

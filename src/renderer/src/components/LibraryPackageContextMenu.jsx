@@ -13,6 +13,7 @@ import {
   Link2,
   MousePointerClick,
   Plus,
+  Minus,
   Shapes,
   Tag,
   Trash2,
@@ -61,6 +62,7 @@ import {
   resolveLibraryBulkPackages,
   runLibraryBulkInstallFromArchive,
   runLibraryBulkPromote,
+  runLibraryBulkDemote,
   runLibraryBulkRemove,
   runLibraryBulkRemoveFromArchive,
   runLibraryBulkToggleEnabled,
@@ -272,6 +274,13 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
       toast(`Failed to promote package: ${err.message}`)
     }
   }
+  const handleDemote = async () => {
+    try {
+      await window.api.packages.demote(p.filename)
+    } catch (err) {
+      toast(`Failed to demote package: ${err.message}`)
+    }
+  }
   const handleUninstall = async () => {
     try {
       const res = await window.api.packages.uninstall(p.filename)
@@ -326,6 +335,7 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
     [showBulk, selection, packageByFilename],
   )
   const bulkDepCount = bulkPackages.filter((x) => !x.isDirect).length
+  const bulkDirectCount = bulkPackages.filter((x) => x.isDirect).length
 
   const labelTargetFilenames = useMemo(
     () => (showBulk ? selection : [pkg.filename]),
@@ -508,6 +518,24 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                     <Download size={12} className="shrink-0 text-accent-blue" />
                     Install from archive
                   </ContextMenuItem>
+                  {bulkDepCount > 0 && (
+                    <ContextMenuItem
+                      onSelect={() => void runLibraryBulkPromote(bulkPackages)}
+                      title="Mark as direct without installing — stays in the archive"
+                    >
+                      <Plus size={12} className="shrink-0 text-accent-blue" />
+                      Mark as direct
+                    </ContextMenuItem>
+                  )}
+                  {bulkDirectCount > 0 && (
+                    <ContextMenuItem
+                      onSelect={() => void runLibraryBulkDemote(bulkPackages)}
+                      title="Mark as dependency without deleting — stays in the archive"
+                    >
+                      <Minus size={12} className="shrink-0" />
+                      Mark as dependency
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuSub>
                     <ContextMenuSubTrigger>
                       <Tag size={12} className="shrink-0" />
@@ -822,6 +850,23 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
               {isArchived ? (
                 <>
                   <ContextMenuSeparator />
+                  {p.isDirect ? (
+                    <ContextMenuItem
+                      onSelect={() => void handleDemote()}
+                      title="Mark as dependency without deleting — stays in the archive"
+                    >
+                      <Minus size={12} className="shrink-0" />
+                      Mark as dependency
+                    </ContextMenuItem>
+                  ) : (
+                    <ContextMenuItem
+                      onSelect={() => void handlePromote()}
+                      title="Mark as direct without installing — stays in the archive"
+                    >
+                      <Plus size={12} className="shrink-0 text-accent-blue" />
+                      Mark as direct
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuItem
                     variant="destructive"
                     onSelect={() => openConfirm(setForceRemoveOpen)}

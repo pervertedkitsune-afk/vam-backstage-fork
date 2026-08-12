@@ -57,6 +57,7 @@ const api = {
     installFromArchive: (filenames) => invoke('packages:install-from-archive', filenames),
     installFromArchivePreview: (filenames) => invoke('packages:install-from-archive-preview', filenames),
     promote: (filename, hubResourceId) => invoke('packages:promote', filename, hubResourceId),
+    demote: (filename) => invoke('packages:demote', filename),
     forceRemove: (filename) => invoke('packages:force-remove', filename),
     toggleEnabled: (filename) => invoke('packages:toggle-enabled', filename),
     setEnabled: (filenames, enabled) => invoke('packages:set-enabled', { filenames, enabled }),

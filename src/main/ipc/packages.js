@@ -486,9 +486,18 @@ export function registerPackageHandlers() {
     if (!vamDir) throw new Error('VaM directory not configured')
 
     const filenames = normalizeFilenameArgs(filenameOrFilenames)
-    // Promoting implies the user wants the package usable — enable disabled/offloaded
-    // targets first (cascade-enables inactive deps, same path as packages:set-enabled).
+    // Archive-internal promote only flips is_direct (hoard classification). Enabling
+    // would pull the package out of the archive — that's Install-from-archive's job.
+    const stayArchived = new Set(
+      filenames.filter((fn) => {
+        const pkg = getPackageIndex().get(fn)
+        return pkg && isPackageArchived(pkg.storage_state)
+      }),
+    )
+    // Promoting a live package implies the user wants it usable — enable
+    // disabled/offloaded targets first (cascade-enables inactive deps).
     const toEnable = filenames.filter((fn) => {
+      if (stayArchived.has(fn)) return false
       const pkg = getPackageIndex().get(fn)
       return pkg && !isPackageActive(pkg.storage_state)
     })
@@ -498,7 +507,8 @@ export function registerPackageHandlers() {
 
     for (const filename of filenames) {
       setPackageDirect(filename, true)
-      touchPackageFirstSeen(filename)
+      // Don't restamp first_seen for archive-only classification — nothing was installed.
+      if (!stayArchived.has(filename)) touchPackageFirstSeen(filename)
       await syncAutoHideAfterDirectChange(vamDir, filename, true)
     }
     const prefs = await readAllPrefs(vamDir)
@@ -512,6 +522,29 @@ export function registerPackageHandlers() {
         notify('avatars:updated')
       } catch {}
     }
+
+    notify('packages:updated')
+    notify('contents:updated')
+    return filenames.length === 1 ? { ok: true } : { ok: true, count: filenames.length }
+  })
+
+  // Flip direct → dep without uninstalling. Used for archive-hoard classification
+  // (and anywhere else the UI exposes "Mark as dependency"). Sticky is_direct only;
+  // storage_state / location are untouched.
+  ipcMain.handle('packages:demote', async (_, filenameOrFilenames) => {
+    const vamDir = getSetting('vam_dir')
+    if (!vamDir) throw new Error('VaM directory not configured')
+
+    const filenames = normalizeFilenameArgs(filenameOrFilenames)
+    for (const filename of filenames) {
+      const pkg = getPackageIndex().get(filename)
+      if (!pkg) throw new Error(`Package not found: ${filename}`)
+      setPackageDirect(filename, false)
+      await syncAutoHideAfterDirectChange(vamDir, filename, false)
+    }
+    const prefs = await readAllPrefs(vamDir)
+    setPrefsMap(prefs)
+    buildFromDb({ skipGraph: true })
 
     notify('packages:updated')
     notify('contents:updated')

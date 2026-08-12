@@ -16,6 +16,8 @@ export function haystacksMatchAllTerms(haystacks, termsLower) {
 
 /** Autocomplete values for Library `is:` flags. */
 export const LIBRARY_IS_FLAGS = [
+  'direct',
+  'dep',
   'favorite',
   'wishlist',
   'extracted',
@@ -32,9 +34,12 @@ export const LIBRARY_IS_FLAGS = [
 /**
  * Lowercased `is:` flags for a library package.
  * Caller may set `broken` / `wishlisted` (computed outside).
+ * `direct` / `dep` follow sticky `isDirect` (works in archive too — pair with `is:archived`).
  */
 export function libraryFlags(p) {
   const flags = []
+  if (p.isDirect) flags.push('direct')
+  else flags.push('dep')
   if (p.favoriteContentCount > 0) flags.push('favorite')
   if (p.wishlisted) flags.push('wishlist')
   if (p.hasExtractedAppearancePreset) flags.push('extracted')
