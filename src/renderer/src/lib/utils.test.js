@@ -177,6 +177,17 @@ describe('displayName', () => {
     expect(displayName({ packageName: 'Author.CoolScene', filename: 'Author.CoolScene.1.var' })).toBe('CoolScene')
   })
 
+  it('replaces underscores with spaces', () => {
+    expect(displayName({ packageName: 'Author.My_Cool_Scene', filename: 'Author.My_Cool_Scene.1.var' })).toBe(
+      'My Cool Scene',
+    )
+  })
+
+  it('replaces underscores in title and hubDisplayName', () => {
+    expect(displayName({ title: 'Cool_Scene' })).toBe('Cool Scene')
+    expect(displayName({ hubDisplayName: 'Hub_Title' })).toBe('Hub Title')
+  })
+
   it('falls back to filename when no packageName', () => {
     expect(displayName({ filename: 'Author.Thing.2.var' })).toBe('Thing.2.var')
   })

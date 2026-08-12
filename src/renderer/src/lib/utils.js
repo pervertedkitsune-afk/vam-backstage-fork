@@ -168,11 +168,11 @@ export async function openExternalLink(url) {
 
 export function displayName(pkg) {
   if (isLocalPackage(pkg.filename)) return LOCAL_PACKAGE_DISPLAY_NAME
-  if (pkg.hubDisplayName) return pkg.hubDisplayName
-  if (pkg.title) return pkg.title
+  if (pkg.hubDisplayName) return pkg.hubDisplayName.replaceAll('_', ' ')
+  if (pkg.title) return pkg.title.replaceAll('_', ' ')
   const name = pkg.packageName || pkg.filename
   const dotIdx = name.indexOf('.')
-  return dotIdx > 0 ? name.slice(dotIdx + 1) : name
+  return (dotIdx > 0 ? name.slice(dotIdx + 1) : name).replaceAll('_', ' ')
 }
 
 /**
