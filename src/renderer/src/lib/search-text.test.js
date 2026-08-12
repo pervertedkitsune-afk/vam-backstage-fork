@@ -73,8 +73,9 @@ describe('wishlistFlags', () => {
   })
 
   it('includes installed only for direct library installs', () => {
-    expect(wishlistFlags({ _installed: true, _isDirect: true })).toEqual(['installed'])
-    expect(wishlistFlags({ _installed: true, _isDirect: false })).toEqual([])
-    expect(wishlistFlags({ _installed: false, _isDirect: false })).toEqual([])
+    expect(wishlistFlags({ _storageState: 'enabled', _isDirect: true })).toEqual(['installed'])
+    expect(wishlistFlags({ _storageState: 'enabled', _isDirect: false })).toEqual([])
+    expect(wishlistFlags({ _storageState: null, _isDirect: false })).toEqual([])
+    expect(wishlistFlags({ _storageState: 'archived', _isDirect: true })).toEqual(['installed'])
   })
 })

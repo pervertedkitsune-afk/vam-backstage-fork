@@ -471,8 +471,13 @@ export default function HubView({ onNavigate }) {
         ids.map((id) => {
           const local = snapshot[String(id)]
           return local
-            ? { hubResourceId: id, installed: true, isDirect: local.is_direct, filename: local.filename }
-            : { hubResourceId: id, installed: false, isDirect: false, filename: null }
+            ? {
+                hubResourceId: id,
+                storageState: local.storage_state ?? 'enabled',
+                isDirect: local.is_direct,
+                filename: local.filename,
+              }
+            : { hubResourceId: id, storageState: null, isDirect: false, filename: null }
         }),
       )
 
@@ -483,12 +488,22 @@ export default function HubView({ onNavigate }) {
         const local = snapshot[id]
         let next = r
         if (local) {
-          next = { ...r, _installed: true, _isDirect: local.is_direct, _localFilename: local.filename }
-        } else if (r._installed || r._localFilename != null) {
-          next = { ...r, _installed: false, _isDirect: false, _localFilename: undefined }
+          next = {
+            ...r,
+            _storageState: local.storage_state ?? 'enabled',
+            _isDirect: local.is_direct,
+            _localFilename: local.filename,
+          }
+        } else if (r._storageState != null || r._localFilename != null) {
+          next = {
+            ...r,
+            _storageState: null,
+            _isDirect: false,
+            _localFilename: undefined,
+          }
         }
         if (
-          next._installed !== r._installed ||
+          next._storageState !== r._storageState ||
           next._isDirect !== r._isDirect ||
           next._localFilename !== r._localFilename
         ) {

@@ -21,6 +21,7 @@ import {
   Plus,
   Pin,
   X,
+  Boxes,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -1019,6 +1020,19 @@ export default function HubDetail({
                 <div className="w-full py-2 rounded-lg text-xs border border-border text-text-tertiary flex items-center justify-center gap-1.5">
                   <Clock size={14} /> Queuing…
                 </div>
+              ) : installState === 'archived' ? (
+                <Button
+                  variant="gradient"
+                  size="lg"
+                  disabled={!installStatus.filename}
+                  onClick={() => {
+                    if (!installStatus.filename) return
+                    void useHubStore.getState().installFromArchiveResource(installStatus.filename, resourceId)
+                  }}
+                  className="w-full text-xs"
+                >
+                  <Boxes size={14} /> Unarchive
+                </Button>
               ) : installState === 'installed' ? (
                 <Button
                   variant="outline"

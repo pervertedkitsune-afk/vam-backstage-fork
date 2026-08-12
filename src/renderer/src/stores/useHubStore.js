@@ -2,8 +2,10 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { toast } from '@/components/Toast'
 import { useInstalledStore } from './useInstalledStore'
+import { useDownloadStore } from './useDownloadStore'
 import { persistViewState, oneOf, asArray, asPolarityList, asString, asCardWidth } from './persistViewState'
 import { HUB_PER_PAGE } from '@shared/hub-http.js'
+import { isPackageArchived } from '@shared/storage-state-predicates.js'
 
 /** Gallery data sources. Extend this (and the toolbar segmented control) to add future modes. */
 export const GALLERY_MODES = ['hub', 'wishlist', 'offline']
@@ -89,7 +91,7 @@ function syncInstalledFromResources(resources) {
   useInstalledStore.getState().applyBatch(
     resources.map((r) => ({
       hubResourceId: r.resource_id,
-      installed: r._installed,
+      storageState: r._storageState ?? null,
       isDirect: r._isDirect,
       filename: r._localFilename,
     })),
@@ -98,7 +100,9 @@ function syncInstalledFromResources(resources) {
 
 function syncInstalledFromDetail(detail) {
   if (!detail?.resource_id) return
-  useInstalledStore.getState().update(detail.resource_id, detail._installed, detail._isDirect, detail._localFilename)
+  useInstalledStore
+    .getState()
+    .update(detail.resource_id, detail._storageState ?? null, detail._isDirect, detail._localFilename)
 }
 
 // Renderer-side detail cache (insertion-order LRU). The main process already
@@ -164,6 +168,17 @@ function patchResourcesById(byIndex, rid, patch) {
     }
   }
   return changed ? next : byIndex
+}
+
+/** Optimistic Hub local install annotation: installed store + gallery row + open detail. */
+function optimisticLocalInstall(set, rid, filename, storageState, isDirect = true) {
+  useInstalledStore.getState().update(rid, storageState, isDirect, filename)
+  const patch = { _isDirect: isDirect, _storageState: storageState }
+  set((s) => ({
+    resourcesByIndex: patchResourcesById(s.resourcesByIndex, rid, patch),
+    detailData:
+      s.detailData && String(s.detailData.resource_id) === rid ? { ...s.detailData, ...patch } : s.detailData,
+  }))
 }
 
 export const useHubStore = create(
@@ -543,14 +558,20 @@ export const useHubStore = create(
       promoteResource: (filename, resourceId) => {
         window.api.packages.promote(filename, resourceId)
         const rid = String(resourceId)
-        useInstalledStore.getState().update(rid, true, true, filename)
-        set((s) => ({
-          resourcesByIndex: patchResourcesById(s.resourcesByIndex, rid, { _isDirect: true }),
-          detailData:
-            s.detailData && String(s.detailData.resource_id) === rid
-              ? { ...s.detailData, _isDirect: true }
-              : s.detailData,
-        }))
+        // Promote enables disabled/offloaded; archived stays archived (Install-from-archive).
+        const prev = useInstalledStore.getState().byHubResourceId.get(rid)
+        const storageState = isPackageArchived(prev?.storageState) ? prev.storageState : 'enabled'
+        optimisticLocalInstall(set, rid, filename, storageState)
+      },
+
+      /**
+       * Hub Install-from-archive: optimistic enable+direct (matches main), then queue deps.
+       * Gallery card + detail both call this; Library keeps the download-store / IPC path.
+       */
+      installFromArchiveResource: (filename, resourceId) => {
+        if (!filename) return Promise.resolve()
+        optimisticLocalInstall(set, String(resourceId), filename, 'enabled')
+        return useDownloadStore.getState().installFromArchive(filename)
       },
 
       /** Warm the detail cache for a resource without touching visible state. */

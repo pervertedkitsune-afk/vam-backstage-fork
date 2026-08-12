@@ -218,6 +218,23 @@ export const useDownloadStore = create((set, get) => ({
     }
   },
 
+  /** Activate archived package(s): enable + promote selected + queue missing Hub deps. */
+  installFromArchive: async (filenames) => {
+    const list = Array.isArray(filenames) ? filenames.filter(Boolean) : filenames ? [filenames] : []
+    if (!list.length) return
+    try {
+      const res = await window.api.packages.installFromArchive(list)
+      if (res?.queued > 0)
+        toast(`Installing: ${res.queued} dependenc${res.queued === 1 ? 'y' : 'ies'} queued`, 'success')
+      return res
+    } catch (err) {
+      toast(`Install failed: ${err.message}`)
+      throw err
+    } finally {
+      await get().fetchItems()
+    }
+  },
+
   installMissing: async (filename) => {
     try {
       const result = await window.api.packages.installMissing(filename)

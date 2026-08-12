@@ -1285,42 +1285,51 @@ export function findLocalByHubResourceId(resourceId) {
 }
 
 /**
- * filename/is_direct for hub-linked local packages. Pass `resourceIds` to filter;
- * omit/null for the full map (Offline catalog refresh — library-sized, not catalog-sized).
+ * filename/is_direct/storage_state for hub-linked local packages. Pass `resourceIds`
+ * to filter; omit/null for the full map (Offline catalog refresh — library-sized,
+ * not catalog-sized).
  */
+function hubInstallSnapshotEntry(pkg) {
+  return {
+    storage_state: pkg.storage_state ?? 'enabled',
+    is_direct: !!pkg.is_direct,
+    filename: pkg.filename,
+  }
+}
+
 export function hubInstallSnapshot(resourceIds) {
   const byRid = hubResourceInstallIndex()
   const out = {}
   if (resourceIds == null) {
-    for (const [rid, pkg] of byRid) {
-      out[rid] = { filename: pkg.filename, is_direct: !!pkg.is_direct }
-    }
+    for (const [rid, pkg] of byRid) out[rid] = hubInstallSnapshotEntry(pkg)
     return out
   }
   for (const id of resourceIds) {
     const pkg = byRid.get(String(id))
-    if (pkg) out[String(id)] = { filename: pkg.filename, is_direct: !!pkg.is_direct }
+    if (pkg) out[String(id)] = hubInstallSnapshotEntry(pkg)
   }
   return out
 }
 
 function applyInstallAnnotation(target, local) {
   if (local) {
-    target._installed = true
+    // DB rows always have a state; null is only the Hub "not on disk" sentinel.
+    target._storageState = local.storage_state ?? 'enabled'
     target._isDirect = !!local.is_direct
     target._localFilename = local.filename
   } else {
-    target._installed = false
+    target._storageState = null
     target._isDirect = false
+    target._localFilename = undefined
   }
 }
 
 /**
  * Tag a hub resource / wishlist snapshot with local install state
- * (`_installed` / `_isDirect` / `_localFilename`). Matched by resource id, so it's
- * version-agnostic. Returns the matched local package row (or null) for callers
- * that need it. NOTE: the `hub:detail` handler does its own richer resolution
- * (hubFiles-first, then id fallback) and deliberately doesn't use this.
+ * (`_storageState` / `_isDirect` / `_localFilename`). Matched by resource id,
+ * so it's version-agnostic. Returns the matched local package row (or null) for
+ * callers that need it. NOTE: the `hub:detail` handler does its own richer
+ * resolution (hubFiles-first, then id fallback) and deliberately doesn't use this.
  */
 export function annotateInstallState(target, resourceId = target?.resource_id) {
   const local = findLocalByHubResourceId(resourceId)

@@ -1,5 +1,16 @@
 import { create } from 'zustand'
 
+/** Normalize Hub install-status entry. `storageState` null ⇒ not on disk. */
+function normalizeEntry(storageState, isDirect, filename) {
+  const st = storageState ?? null
+  return {
+    storageState: st,
+    isDirect: !!st && !!isDirect,
+    filename: st ? filename || null : null,
+  }
+}
+
+/** Hub-side local presence for a resource. `storageState` null ⇒ not on disk. */
 export const useInstalledStore = create((set, get) => ({
   byHubResourceId: new Map(),
 
@@ -8,27 +19,37 @@ export const useInstalledStore = create((set, get) => ({
     let next
     for (const e of entries) {
       const key = String(e.hubResourceId)
-      const installed = !!e.installed
-      const isDirect = !!e.isDirect
-      const filename = e.filename || null
+      const entry = normalizeEntry(e.storageState, e.isDirect, e.filename)
       const old = prev.get(key)
-      if (old && old.installed === installed && old.isDirect === isDirect && old.filename === filename) continue
+      if (
+        old &&
+        old.storageState === entry.storageState &&
+        old.isDirect === entry.isDirect &&
+        old.filename === entry.filename
+      ) {
+        continue
+      }
       if (!next) next = new Map(prev)
-      next.set(key, { installed, isDirect, filename })
+      next.set(key, entry)
     }
     if (next) set({ byHubResourceId: next })
   },
 
-  update: (hubResourceId, installed, isDirect, filename) => {
+  update: (hubResourceId, storageState, isDirect, filename) => {
     const prev = get().byHubResourceId
     const key = String(hubResourceId)
-    const inst = !!installed
-    const dir = !!isDirect
-    const fn = filename || null
+    const entry = normalizeEntry(storageState, isDirect, filename)
     const old = prev.get(key)
-    if (old && old.installed === inst && old.isDirect === dir && old.filename === fn) return
+    if (
+      old &&
+      old.storageState === entry.storageState &&
+      old.isDirect === entry.isDirect &&
+      old.filename === entry.filename
+    ) {
+      return
+    }
     const next = new Map(prev)
-    next.set(key, { installed: inst, isDirect: dir, filename: fn })
+    next.set(key, entry)
     set({ byHubResourceId: next })
   },
 }))

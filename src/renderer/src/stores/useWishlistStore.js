@@ -7,7 +7,7 @@ function syncInstalledFromItems(items) {
   useInstalledStore.getState().applyBatch(
     items.map((r) => ({
       hubResourceId: r.resource_id,
-      installed: r._installed,
+      storageState: r._storageState ?? null,
       isDirect: r._isDirect,
       filename: r._localFilename,
     })),

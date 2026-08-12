@@ -7,7 +7,7 @@ import { collectHubListResourceIds, persistHubListToWishlist } from '../hub/wish
 
 /**
  * Parse a stored snapshot and re-attach runtime annotations: shared install
- * state (`_installed` / `_isDirect` / `_localFilename`, via annotateInstallState),
+ * state (`_storageState` / `_isDirect` / `_localFilename`, via annotateInstallState),
  * plus wishlist-only metadata (`_wishlistedAt`, `_unavailable`). Matching is by
  * resource id, so the installed badge is version-agnostic by construction.
  */

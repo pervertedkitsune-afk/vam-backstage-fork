@@ -206,7 +206,7 @@ export function registerHubHandlers() {
 
     // Detail payloads are cached in memory and re-enriched each call; clear injected
     // fields so local DB changes (e.g. promote → is_direct) are not stuck stale.
-    delete detail._installed
+    delete detail._storageState
     delete detail._isDirect
     delete detail._localFilename
 
@@ -230,8 +230,8 @@ export function registerHubHandlers() {
         const local = findLocalByFilename(file.filename)
         file._installed = !!local
         if (local) {
-          if (!detail._installed) {
-            detail._installed = true
+          if (detail._storageState == null) {
+            detail._storageState = local.storage_state ?? 'enabled'
             detail._isDirect = !!local.is_direct
             detail._localFilename = local.filename
           }
@@ -267,10 +267,10 @@ export function registerHubHandlers() {
 
     // Fallback: user may have an older version installed that's linked by hub_resource_id
     // but whose filename doesn't match any current hubFile.
-    if (!detail._installed && detail.resource_id) {
+    if (detail._storageState == null && detail.resource_id) {
       const local = findLocalByHubResourceId(detail.resource_id)
       if (local) {
-        detail._installed = true
+        detail._storageState = local.storage_state ?? 'enabled'
         detail._isDirect = !!local.is_direct
         detail._localFilename = local.filename
         if (detail.title && !local.hub_display_name) {

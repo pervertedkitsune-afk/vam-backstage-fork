@@ -7,7 +7,7 @@ function syncInstalledFromItems(items) {
   useInstalledStore.getState().applyBatch(
     items.map((r) => ({
       hubResourceId: r.resource_id,
-      installed: r._installed,
+      storageState: r._storageState ?? null,
       isDirect: r._isDirect,
       filename: r._localFilename,
     })),
@@ -102,7 +102,7 @@ export const useCatalogStore = create((set, get) => ({
   },
 
   /**
-   * Reconcile `_installed` / `_isDirect` after library changes (no disk re-read).
+   * Reconcile local install annotation after library changes (no disk re-read).
    * Uses a library-sized hub snapshot, not one IPC id per catalog row.
    */
   refreshInstallState: async () => {
@@ -118,13 +118,25 @@ export const useCatalogStore = create((set, get) => ({
     const next = items.map((r) => {
       const local = snapshot[String(r.resource_id)]
       if (local) {
-        if (r._installed && r._isDirect === !!local.is_direct && r._localFilename === local.filename) return r
+        const storageState = local.storage_state ?? 'enabled'
+        if (
+          r._storageState === storageState &&
+          r._isDirect === !!local.is_direct &&
+          r._localFilename === local.filename
+        ) {
+          return r
+        }
         changed = true
-        return { ...r, _installed: true, _isDirect: !!local.is_direct, _localFilename: local.filename }
+        return {
+          ...r,
+          _storageState: storageState,
+          _isDirect: !!local.is_direct,
+          _localFilename: local.filename,
+        }
       }
-      if (r._installed || r._localFilename != null) {
+      if (r._storageState != null || r._localFilename != null) {
         changed = true
-        return { ...r, _installed: false, _isDirect: false, _localFilename: undefined }
+        return { ...r, _storageState: null, _isDirect: false, _localFilename: undefined }
       }
       return r
     })

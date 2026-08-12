@@ -44,6 +44,7 @@ import { TruncateWithTooltip } from './TruncateWithTooltip'
 import { useThumbnail, useAvatar } from '@/hooks/createBlobCacheHook'
 import { useHubInstallState } from '@/hooks/useHubInstallState'
 import { lookupDownloadByRef, useDownloadStore } from '@/stores/useDownloadStore'
+import { useHubStore } from '@/stores/useHubStore'
 import { useLibraryStore } from '@/stores/useLibraryStore'
 import { useWishlistStore } from '@/stores/useWishlistStore'
 import { LabelDots } from '@/components/labels/LabelDots'
@@ -337,6 +338,27 @@ export function HubCard({
       >
         <Clock size={minimal ? 10 : 11} /> Queued…
       </div>
+    )
+  } else if (installState === 'archived') {
+    actionBtn = (
+      <Button
+        variant="gradient"
+        onClick={(e) => {
+          e.stopPropagation()
+          if (installStatus.filename) {
+            void useHubStore.getState().installFromArchiveResource(installStatus.filename, resource.resource_id)
+          }
+        }}
+        disabled={!installStatus.filename}
+        className={
+          minimal
+            ? `px-2 py-1 h-auto rounded text-[10px] gap-1 ${THUMB_ACTION_BTN_POP}`
+            : 'w-full py-1.5 h-auto rounded text-[10px] gap-1.5 tracking-wide whitespace-nowrap'
+        }
+      >
+        <Boxes size={minimal ? 10 : 11} className="@max-[129px]:hidden shrink-0" />
+        Unarchive
+      </Button>
     )
   } else if (installState === 'installed') {
     actionBtn = (

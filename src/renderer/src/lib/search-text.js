@@ -1,3 +1,5 @@
+import { isPackageInstalled } from '@shared/storage-state-predicates.js'
+
 /** Whitespace-separated query tokens for AND-style matching (each must match somewhere). */
 export function searchAndTerms(search) {
   return String(search || '')
@@ -71,7 +73,7 @@ export function contentFlags(c) {
   return flags
 }
 
-/** Autocomplete values for Hub wishlist `is:` flags. */
+/** Autocomplete values for Wishlist `is:` flags. */
 export const WISHLIST_IS_FLAGS = ['unavailable', 'installed']
 
 /** Autocomplete values for Offline catalog `is:` flags (no wishlist-only `unavailable`). */
@@ -82,6 +84,6 @@ export function wishlistFlags(r) {
   const flags = []
   if (r._unavailable) flags.push('unavailable')
   // Direct library install ("View in Library") — deps alone don't count.
-  if (r._installed && r._isDirect) flags.push('installed')
+  if (isPackageInstalled(r._storageState) && r._isDirect) flags.push('installed')
   return flags
 }
