@@ -277,12 +277,7 @@ describe('integrateScannedPackage — is_direct reconciliation', () => {
     const fullPath = await placeRoleVar()
     await integrate(fullPath, false)
 
-    const hidePath = join(
-      tmp.vamDir,
-      ADDON_PACKAGES_FILE_PREFS,
-      FN.replace(/\.var$/i, ''),
-      SCENE + '.hide',
-    )
+    const hidePath = join(tmp.vamDir, ADDON_PACKAGES_FILE_PREFS, FN.replace(/\.var$/i, ''), SCENE + '.hide')
     expect(existsSync(hidePath)).toBe(true)
   })
 })

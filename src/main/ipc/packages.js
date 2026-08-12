@@ -66,9 +66,11 @@ import {
   pkgVarPath,
   resolveContentPath,
   getMainLibraryDirPath,
+  getLibraryDirPath,
   isArchiveLibraryDir,
   getArchiveLibraryDirs,
 } from '../library-dirs.js'
+import { buildHomeSubpathMapForIndex, buildHomeSubpathMapFor } from '../home-subpath.js'
 import {
   enqueueInstall,
   enqueueInstallMissing,
@@ -111,6 +113,33 @@ const ALLOWED_PACKAGE_TYPE_OVERRIDES = new Set([...VISIBLE_CATEGORIES, 'Other'])
 
 function normalizeFilenameArgs(arg) {
   return Array.isArray(arg) ? arg : [arg]
+}
+
+/**
+ * Per-bulk-op cache of home-subpath maps, one walk per distinct aux target dir.
+ * Co-location targets aux dirs only: main never co-locates, so it short-circuits
+ * without a walk (matches `applyStorageState`).
+ *
+ * Pass `candidateFilenames` (the exact set that will move) when it's known upfront
+ * so the walk is bounded to those — it terminates early and only stats the movers.
+ * Omit it when movers are dynamic (a toggle's cascade closure) to fall back to the
+ * whole-index map; a filename absent from the map just co-locates to nothing.
+ */
+function createHomeMapCache(candidateFilenames = null) {
+  const candidates = candidateFilenames ? [...candidateFilenames] : null
+  const cache = new Map()
+  return async function homeSubpathFor(filename, libraryDirId) {
+    if (libraryDirId == null) return ''
+    let map = cache.get(libraryDirId)
+    if (!map) {
+      const dir = getLibraryDirPath(libraryDirId)
+      if (!dir) map = new Map()
+      else if (candidates) map = await buildHomeSubpathMapFor(dir, candidates, getPackageIndex())
+      else map = await buildHomeSubpathMapForIndex(dir, getPackageIndex())
+      cache.set(libraryDirId, map)
+    }
+    return map.get(filename) || ''
+  }
 }
 
 /**
@@ -215,11 +244,13 @@ async function resettleDeps(candidates, { vamDir, prune = true }) {
     prune,
   })
 
+  const homeSubpathFor = createHomeMapCache(decisions.keys())
   let relocatedToArchive = 0
   let settledDown = 0
   for (const [fn, target] of decisions) {
     try {
-      await applyStorageState(fn, target)
+      const homeSubpath = await homeSubpathFor(fn, target.libraryDirId)
+      await applyStorageState(fn, target, { homeSubpath })
       if (target.storageState === 'archived') relocatedToArchive++
       else settledDown++
     } catch (err) {
@@ -293,6 +324,7 @@ async function applyStorageStateChange(filenames, intentFn) {
     // track so we recomputeDemandAggregates instead of the cheap inactive-only path.
     let clearedArchive = false
     let lastProgressEmit = 0
+    const homeSubpathFor = createHomeMapCache()
     const emitProgressIfDue = () => {
       if (filenames.length <= 1) return
       const now = Date.now()
@@ -327,7 +359,8 @@ async function applyStorageStateChange(filenames, intentFn) {
 
       if (isPackageArchived(pkg.storage_state)) clearedArchive = true
       try {
-        await applyStorageState(filename, target)
+        const homeSubpath = await homeSubpathFor(filename, target.libraryDirId)
+        await applyStorageState(filename, target, { homeSubpath })
         affectedForExtracted.add(filename)
       } catch (err) {
         out.push({ ok: false, filename, error: err.message })
@@ -344,7 +377,8 @@ async function applyStorageStateChange(filenames, intentFn) {
             if (!depTarget) return
             if (isPackageArchived(depPkg.storage_state)) clearedArchive = true
             try {
-              await applyStorageState(depFilename, depTarget)
+              const homeSubpath = await homeSubpathFor(depFilename, depTarget.libraryDirId)
+              await applyStorageState(depFilename, depTarget, { homeSubpath })
               affectedForExtracted.add(depFilename)
             } catch (err) {
               console.warn(`Cascade ${intent} failed for ${depFilename}:`, err.message)
@@ -784,13 +818,15 @@ export function registerPackageHandlers() {
 
     return withBulkWindow(async () => {
       // 1. Move the selected packages into the archive (skip already-archived).
+      const homeSubpathFor = createHomeMapCache(filenames)
       const archived = []
       for (const filename of filenames) {
         const pkg = getPackageIndex().get(filename)
         if (!pkg) throw new Error(`Package not found: ${filename}`)
         if (isPackageArchived(pkg.storage_state)) continue
         try {
-          await applyStorageState(filename, { storageState: 'archived', libraryDirId: dirId })
+          const homeSubpath = await homeSubpathFor(filename, dirId)
+          await applyStorageState(filename, { storageState: 'archived', libraryDirId: dirId }, { homeSubpath })
           archived.push(filename)
         } catch (err) {
           console.warn(`Archive move failed for ${filename}:`, err.message)

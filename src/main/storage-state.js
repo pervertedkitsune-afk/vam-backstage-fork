@@ -35,6 +35,7 @@ import {
   isArchiveLibraryDir,
 } from './library-dirs.js'
 import { writeSidecar, readSidecarSubpath, removeSidecar } from './browser-assist-sidecar.js'
+import { findHomeSubpathInDir } from './home-subpath.js'
 import { isLocalPackage } from '@shared/local-package.js'
 import { STORAGE_STATES } from '@shared/storage-state-predicates.js'
 
@@ -71,6 +72,17 @@ async function guardedRename(from, to) {
         `Refusing to move ${from} → ${to}: a different file already exists at the destination ` +
           `(${toStat.size} bytes vs source ${fromStat.size} bytes)`,
       )
+    }
+    // A byte-identical copy of this immutable `.var` already sits at the target
+    // (e.g. a size-matched home-subpath shadow): drop the source instead of
+    // rewriting — skips a redundant write and sidesteps a cross-filesystem EXDEV
+    // rename (no copy fallback exists).
+    if (toStat.size === fromStat.size) {
+      // Only `from` is mutated (unlinked); `to` is untouched, so it emits no
+      // watcher event and needs no ownership record.
+      recordOwnedPath(from)
+      await unlink(from)
+      return
     }
   }
   recordOwnedPath(from)
@@ -145,9 +157,12 @@ async function resolveCurrentContentPath(pkg, mainBare) {
 /**
  * @param {string} filename canonical .var filename (PK)
  * @param {{ storageState: 'enabled'|'disabled'|'offloaded'|'archived', libraryDirId: number|null }} target
+ * @param {{ homeSubpath?: string }} [opts] optional precomputed home from a bulk
+ *   scan (`buildHomeSubpathMap`). When omitted, co-location looks up lazily.
+ *   Pass `homeSubpath: ''` to skip lookup (bulk already scanned; no home).
  * @returns {Promise<{ ok: boolean, fromPath: string|null, toPath: string|null, changed: boolean }>}
  */
-export async function applyStorageState(filename, target) {
+export async function applyStorageState(filename, target, opts = {}) {
   // `__local__` is a synthetic sentinel package owning loose Saves/Custom content.
   // It has no `.var` file on disk, so any op here would ENOENT. Treat as a no-op.
   // Filter at the chokepoint so neither toggle/set-enabled nor download paths can
@@ -213,10 +228,30 @@ export async function applyStorageState(filename, target) {
     if (restoreSubpath != null) originalFolder = restoreSubpath
   }
 
+  // Home-subpath co-location: if the target dir already holds a size-matched copy
+  // at a structured (non-root) subpath, land there instead of mirroring source /
+  // flattening to root. Never-degrade: empty home leaves originalFolder alone.
+  //
+  // Aux targets only — main never co-locates: in the one-row model a real aux→main
+  // move finds no home, so it would only pay a full main-tree walk on every toggle.
+  // Applies to BA dirs too: a matched home there is one we mirrored (BA's own
+  // layout is flat-root, ignored by the empty-home check), and `originalFolder`
+  // flowing into the restore sidecar means the package restores to its co-located
+  // home — the same intended "restore follows structure" as the non-BA mirror.
+  if (target.libraryDirId != null) {
+    let homeSubpath = opts.homeSubpath
+    if (homeSubpath === undefined) {
+      const sizeBytes = pkg.size_bytes
+      homeSubpath = sizeBytes != null ? await findHomeSubpathInDir(targetDir, filename, sizeBytes) : ''
+    }
+    if (homeSubpath) originalFolder = homeSubpath
+  }
+
   // Preserve the subfolder across the move: a `.var` organized under
   // `<lib>/<subpath>/` stays there when enabled/disabled in place, and is mirrored
   // into (or restored from) another library dir at the same relative folder — so
   // toggles never silently flatten a curated layout and a round-trip is lossless.
+  // A non-empty homeSubpath (above) wins over the source mirror.
   const withOrig = (dir) => (originalFolder ? join(dir, originalFolder) : dir)
   const mainMarker = join(withOrig(mainDir), filename) + '.disabled'
   // Content always lands at the bare name in the target dir — we never rename to
@@ -225,6 +260,8 @@ export async function applyStorageState(filename, target) {
   const toPath = join(withOrig(targetDir), filename)
 
   // 1. Move the bytes to the target's bare name if they aren't already there.
+  // `guardedRename` drops the source when the target already holds a size-matched
+  // copy (a home-subpath shadow), so co-location dedups instead of duplicating.
   let moved = false
   if (fromPath !== toPath) {
     await guardedRename(fromPath, toPath)

@@ -713,6 +713,110 @@ describe('applyStorageState — nested .var preserves its subfolder', () => {
   })
 })
 
+describe('applyStorageState — home-subpath co-location', () => {
+  async function seedBareMain(name = 'Home.Pkg', creator = 'Home') {
+    const filename = `${name}.1.var`
+    const buf = await buildVar({
+      meta: { packageName: name, creator },
+      files: { 'Saves/scene/s.json': '{"atoms":[]}' },
+    })
+    await placeVar(tmp.addonPackages, filename, buf)
+    return { filename, buf }
+  }
+
+  it('bare main install co-locates into an existing structured archive home', async () => {
+    const { filename, buf } = await seedBareMain()
+    const arch = await mkAuxDir(tmp.vamDir)
+    const archId = insertLibraryDir(arch, true)
+    refreshLibraryDirs()
+
+    // Shadow copy already structured in the archive (not indexed — main wins).
+    const homeDir = join(arch, 'Creator', 'Looks')
+    await mkdir(homeDir, { recursive: true })
+    await placeVar(homeDir, filename, buf)
+
+    await runScan(tmp.vamDir)
+    buildFromDb()
+    expect(getPackageIndex().get(filename).subpath).toBe('')
+
+    await applyStorageState(filename, { storageState: 'archived', libraryDirId: archId })
+
+    const row = getAllPackages().find((r) => r.filename === filename)
+    expect(row.storage_state).toBe('archived')
+    expect(row.library_dir_id).toBe(archId)
+    expect(row.subpath).toBe('Creator/Looks')
+    expect(await readdir(homeDir)).toContain(filename)
+    expect(await readdir(tmp.addonPackages)).not.toContain(filename)
+    // Shadow-bytes reuse: only one copy remains (source unlinked, home kept).
+    expect(await readdir(arch)).not.toContain(filename)
+  })
+
+  it('never flattens a structured source when the target has no home', async () => {
+    const sub = join(tmp.addonPackages, 'Creator', 'Bundle')
+    await mkdir(sub, { recursive: true })
+    const buf = await buildVar({
+      meta: { packageName: 'Keep.Struct', creator: 'Keep' },
+      files: { 'Saves/scene/s.json': '{"atoms":[]}' },
+    })
+    await placeVar(sub, 'Keep.Struct.1.var', buf)
+    await runScan(tmp.vamDir)
+    buildFromDb()
+
+    const aux = await mkAuxDir(tmp.vamDir)
+    const auxId = insertLibraryDir(aux)
+    refreshLibraryDirs()
+
+    await applyStorageState('Keep.Struct.1.var', { storageState: 'offloaded', libraryDirId: auxId })
+
+    const row = getAllPackages().find((r) => r.filename === 'Keep.Struct.1.var')
+    expect(row.subpath).toBe('Creator/Bundle')
+    expect(await readdir(join(aux, 'Creator', 'Bundle'))).toContain('Keep.Struct.1.var')
+  })
+
+  it('ignores a size-mismatched copy at a structured path (lands via source mirror)', async () => {
+    const { filename } = await seedBareMain('Mismatch.Pkg', 'Mismatch')
+    const arch = await mkAuxDir(tmp.vamDir)
+    const archId = insertLibraryDir(arch, true)
+    refreshLibraryDirs()
+
+    const homeDir = join(arch, 'Creator', 'Looks')
+    await mkdir(homeDir, { recursive: true })
+    await writeFile(join(homeDir, filename), 'not-the-same-bytes')
+
+    await runScan(tmp.vamDir)
+    buildFromDb()
+
+    await applyStorageState(filename, { storageState: 'archived', libraryDirId: archId })
+
+    const row = getAllPackages().find((r) => r.filename === filename)
+    expect(row.subpath).toBe('')
+    expect(await readdir(arch)).toContain(filename)
+    expect(await readFile(join(homeDir, filename), 'utf8')).toBe('not-the-same-bytes')
+  })
+
+  it('offload co-locates into a structured offload home', async () => {
+    const { filename, buf } = await seedBareMain('Off.Home', 'Off')
+    const aux = await mkAuxDir(tmp.vamDir)
+    const auxId = insertLibraryDir(aux)
+    refreshLibraryDirs()
+
+    const homeDir = join(aux, 'Sorted', 'Scenes')
+    await mkdir(homeDir, { recursive: true })
+    await placeVar(homeDir, filename, buf)
+
+    await runScan(tmp.vamDir)
+    buildFromDb()
+
+    await applyStorageState(filename, { storageState: 'offloaded', libraryDirId: auxId })
+
+    const row = getAllPackages().find((r) => r.filename === filename)
+    expect(row.storage_state).toBe('offloaded')
+    expect(row.subpath).toBe('Sorted/Scenes')
+    expect(await readdir(homeDir)).toContain(filename)
+    expect(await readdir(tmp.addonPackages)).not.toContain(filename)
+  })
+})
+
 describe('applyStorageState — BrowserAssist sidecar mode on an aux dir', () => {
   async function seedNestedMain() {
     const sub = join(tmp.addonPackages, 'Creator', 'Bundle')

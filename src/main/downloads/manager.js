@@ -1072,11 +1072,10 @@ export async function integrateScannedPackage({ filename, fullPath, isDirect, hu
     // reason it came back). A live present row (e.g. archived) is never demoted
     // here: it only ratchets up on explicit direct intent, never down — this
     // guards the archive keeper case even if such a row ever reaches this path.
-    if (isRebornOrNew) {
-      setPackageDirect(filename, isDirect ? 1 : 0)
-    } else if (isDirect) {
-      setPackageDirect(filename, 1)
-    }
+    if (isDirect)
+      setPackageDirect(filename, 1) // direct intent always promotes (ratchet up)
+    else if (isRebornOrNew) setPackageDirect(filename, 0) // dep intent classifies a new/reborn row
+    // else: live present row + dep intent — leave sticky (never demote here)
     if (isDirect) touchPackageFirstSeen(filename)
 
     if (hubDisplayName) setHubDisplayName(filename, hubDisplayName)
