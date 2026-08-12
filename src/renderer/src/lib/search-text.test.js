@@ -31,6 +31,8 @@ describe('libraryFlags', () => {
     expect(libraryFlags({ isDirect: false, storageState: 'archived' })).toEqual(['dep', 'archived'])
     expect(libraryFlags({ isDirect: false, isOrphan: true })).toEqual(['dep', 'orphan'])
     expect(libraryFlags({ isDirect: true, isLocalOnly: true })).toEqual(['direct', 'local'])
+    expect(libraryFlags({ isDirect: true, hubResourceId: '42' })).toEqual(['direct', 'hub'])
+    expect(libraryFlags({ isDirect: true, hubResourceId: null })).toEqual(['direct'])
   })
 
   it('always tags direct vs dep from isDirect', () => {

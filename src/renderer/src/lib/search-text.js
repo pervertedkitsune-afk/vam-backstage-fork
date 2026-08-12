@@ -25,6 +25,7 @@ export const LIBRARY_IS_FLAGS = [
   'broken',
   'orphan',
   'local',
+  'hub',
   'disabled',
   'offloaded',
   'archived',
@@ -35,6 +36,7 @@ export const LIBRARY_IS_FLAGS = [
  * Lowercased `is:` flags for a library package.
  * Caller may set `broken` / `wishlisted` (computed outside).
  * `direct` / `dep` follow sticky `isDirect` (works in archive too — pair with `is:archived`).
+ * `hub` is set when the package is linked to a Hub resource (`hubResourceId`).
  */
 export function libraryFlags(p) {
   const flags = []
@@ -47,6 +49,7 @@ export function libraryFlags(p) {
   if (p.broken) flags.push('broken')
   if (p.isOrphan) flags.push('orphan')
   if (p.isLocalOnly) flags.push('local')
+  if (p.hubResourceId) flags.push('hub')
   if (p.storageState === 'disabled') flags.push('disabled')
   if (p.storageState === 'offloaded') flags.push('offloaded')
   if (p.storageState === 'archived') flags.push('archived')
