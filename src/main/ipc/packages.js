@@ -34,7 +34,6 @@ import {
   buildFromDb,
   patchTypeOverride,
   patchMarkRecent,
-  getFilteredContents,
   getReplaceableSet,
   rebuildReplaceableSet,
   resolveHubDownloadUrl,
@@ -47,8 +46,7 @@ import {
 import { isPackageActive, isPackageArchived } from '@shared/storage-state-predicates.js'
 import { extractedDeletePaths, extractedHasSurvivor } from '../scenes/extracted-lifecycle.js'
 import { reconcileExtractedLifecycleAndResync, extractedItemsFor } from '../scenes/extracted-reconcile.js'
-import { hidePackageContent, unhidePackageContent, readAllPrefs } from '../vam-prefs.js'
-import { computeAutoHidePathsForNewPackage } from '../scanner/index.js'
+import { readAllPrefs } from '../vam-prefs.js'
 import {
   computeRemovableDeps,
   computeCascadeDisable,
@@ -56,6 +54,7 @@ import {
   getTransitiveDeps,
 } from '../scanner/graph.js'
 import { LOCAL_PACKAGE_FILENAME } from '@shared/local-package.js'
+import { syncAutoHideAfterDirectChange } from '../auto-hide-sync.js'
 import {
   applyStorageState,
   parseDisableBehavior,
@@ -138,42 +137,6 @@ async function unlinkPackagePhysicalAndAliases(pkg, filename) {
       await unlink(p)
     } catch {}
   }
-}
-
-/**
- * After promote/demote, align `.hide` sidecars with active auto-hide rules for
- * both in-var content and extracted presets owned by the package. Extracted
- * presets are shared across versions, so the deps rule uses "any candidate
- * still direct" rather than only the package that just flipped.
- */
-async function syncAutoHideAfterDirectChange(vamDir, filename, isDirect) {
-  const pkg = getPackageIndex().get(filename)
-  if (!pkg) return
-  const effectiveType = effectivePackageType(pkg)
-
-  const contents = getFilteredContents({ packageFilename: filename })
-  const pkgItems = contents.map((c) => ({ internalPath: c.internalPath, type: c.type }))
-  const hidePkg = new Set(computeAutoHidePathsForNewPackage(filename, effectiveType, isDirect, pkgItems))
-  const pkgPaths = contents.map((c) => c.internalPath)
-  const pkgHide = pkgPaths.filter((p) => hidePkg.has(p))
-  const pkgUnhide = pkgPaths.filter((p) => !hidePkg.has(p))
-  if (pkgHide.length) await hidePackageContent(vamDir, filename, pkgHide)
-  if (pkgUnhide.length) await unhidePackageContent(vamDir, filename, pkgUnhide)
-
-  const pkgIndex = getPackageIndex()
-  const candidateIsDirect = (cf) => (cf === filename ? isDirect : !!pkgIndex.get(cf)?.is_direct)
-  const toHide = []
-  const toUnhide = []
-  for (const item of extractedItemsFor([filename])) {
-    const anyDirect = extractedHasSurvivor(item.extractedCandidates, candidateIsDirect)
-    const hide = computeAutoHidePathsForNewPackage(filename, effectiveType, anyDirect, [
-      { internalPath: item.internal_path, type: item.type },
-    ])
-    if (hide.length > 0) toHide.push(item.internal_path)
-    else toUnhide.push(item.internal_path)
-  }
-  if (toHide.length) await hidePackageContent(vamDir, LOCAL_PACKAGE_FILENAME, toHide)
-  if (toUnhide.length) await unhidePackageContent(vamDir, LOCAL_PACKAGE_FILENAME, toUnhide)
 }
 
 /**

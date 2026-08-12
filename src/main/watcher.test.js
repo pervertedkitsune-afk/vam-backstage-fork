@@ -605,6 +605,43 @@ describe('watcher.processBatch — tombstone lifecycle', () => {
     const raw = getDb().prepare('SELECT missing_since FROM packages WHERE filename = ?').get('BA.Round.1.var')
     expect(raw.missing_since).toBeNull()
   })
+
+  it('re-drop of a tombstoned dep keeps is_direct sticky (no mass-promote)', async () => {
+    const buf = await buildVar({
+      meta: { packageName: 'Panic.Dep', creator: 'Panic' },
+      files: { 'Saves/scene/p.json': '{"atoms":[]}' },
+    })
+    const mainPath = await placeVar(tmp.addonPackages, 'Panic.Dep.1.var', buf)
+    await runScan(tmp.vamDir)
+    // Simulate "mark as dep" after a messy pack drop, then panic-yank.
+    getDb().prepare(`UPDATE packages SET is_direct = 0 WHERE filename = ?`).run('Panic.Dep.1.var')
+
+    await rename(mainPath, join(tmp.addonPackages, 'Panic.Dep.1.var.yanked'))
+    refreshLibraryDirs()
+    __setProcessBatchStateForTests({
+      vamDir: tmp.vamDir,
+      packageEvents: [[mainPath, { type: 'unlink', libraryDirId: null }]],
+    })
+    await __processBatchForTests()
+    expect(getAllPackages().find((r) => r.filename === 'Panic.Dep.1.var')).toBeUndefined()
+    expect(
+      getDb().prepare('SELECT is_direct, missing_since FROM packages WHERE filename = ?').get('Panic.Dep.1.var')
+        .is_direct,
+    ).toBe(0)
+
+    // User drops the folder back — watcher re-add must not promote.
+    await rename(join(tmp.addonPackages, 'Panic.Dep.1.var.yanked'), mainPath)
+    refreshLibraryDirs()
+    __setProcessBatchStateForTests({
+      vamDir: tmp.vamDir,
+      packageEvents: [[mainPath, { type: 'add', libraryDirId: null }]],
+    })
+    await __processBatchForTests()
+
+    const row = getAllPackages().find((r) => r.filename === 'Panic.Dep.1.var')
+    expect(row).toBeDefined()
+    expect(row.is_direct).toBe(0)
+  })
 })
 
 describe('applyStorageState — nested .var preserves its subfolder', () => {

@@ -24,11 +24,13 @@ import {
   setHubResourceId,
   setHubUserId,
   setPackageHubMeta,
+  setPackageDirect,
+  touchPackageFirstSeen,
+  getPackageReconcileInfo,
 } from '../db.js'
 import { getResourceDetail, getResourceDetailByName, getCachedDetail, findPackages } from '../hub/client.js'
 import { notify, notifyToast } from '../notify.js'
 import { scanAndUpsert } from '../scanner/ingest.js'
-import { computeAutoHidePathsForNewPackage } from '../scanner/index.js'
 import { inheritFromOlderVersion } from '../scanner/inherit.js'
 import { refreshExtractedPresetsForUpdates } from '../scenes/extract-refresh.js'
 import { computeCascadeEnable, parseDepRef, isFlexibleRef, resolveRef } from '../scanner/graph.js'
@@ -46,7 +48,8 @@ import {
   resolveHubDownloadUrl,
   packageHasNoLookPresetTag,
 } from '../store.js'
-import { readAllPrefs, hidePackageContent } from '../vam-prefs.js'
+import { readAllPrefs } from '../vam-prefs.js'
+import { syncAutoHideAfterDirectChange } from '../auto-hide-sync.js'
 import { recordOwnedPath } from '../watcher.js'
 import { resolvePackageThumbnails } from '../thumb-resolver.js'
 import { applyStorageState, computeInstallTarget, parseDisableBehavior } from '../storage-state.js'
@@ -1031,15 +1034,25 @@ export function onNetworkOnline() {
 }
 
 /**
- * Per-file scan/upsert + Hub metadata + inherit/auto-hide. Returns an entry for
+ * Per-file scan/upsert + Hub metadata + inherit. Returns an entry for
  * `integrateGraphPhase`, or null if scan failed. Does not rebuild the graph or
- * notify — callers batch those via the graph phase.
+ * notify — callers batch those via the graph phase. Auto-hide sidecar sync runs
+ * in the graph phase (needs packageIndex) so promote/ratchet can unhide stale
+ * `.hide` files declaratively.
  */
 export async function integrateScannedPackage({ filename, fullPath, isDirect, hubResourceId }) {
   try {
     const cached = hubResourceId ? getCachedDetail(hubResourceId) : null
     const hubType = cached?.type?.trim() || null
     const hubDisplayName = cached?.title?.trim() || null
+
+    // Snapshot the prior row BEFORE scanAndUpsert clears missing_since, so we can
+    // tell a resurrected tombstone from a live present row. In practice a live
+    // present package short-circuits at findLocalByFilename and never reaches
+    // this path — so `prior` is either undefined (brand-new) or a tombstone.
+    const prior = getPackageReconcileInfo(filename)
+    const wasTombstone = prior?.missing_since != null
+    const isRebornOrNew = !prior || wasTombstone
 
     const result = await scanAndUpsert(fullPath, {
       isDirect: isDirect ? 1 : 0,
@@ -1049,6 +1062,22 @@ export async function integrateScannedPackage({ filename, fullPath, isDirect, hu
     })
     if (!result) return null
     const { contentItems, pkgType, packageName } = result
+
+    // Role classification on the install/import path. Stickiness (upsertPackage
+    // omits is_direct on conflict) exists to protect *live rescans*; it does not
+    // apply here because this path only ever sees a brand-new row or a
+    // resurrected tombstone. A reborn/new package is classified authoritatively
+    // by install intent — an explicit direct install ratchets up, a dep install
+    // resurrects a tombstone AS a dependency (a gone package is reborn as the
+    // reason it came back). A live present row (e.g. archived) is never demoted
+    // here: it only ratchets up on explicit direct intent, never down — this
+    // guards the archive keeper case even if such a row ever reaches this path.
+    if (isRebornOrNew) {
+      setPackageDirect(filename, isDirect ? 1 : 0)
+    } else if (isDirect) {
+      setPackageDirect(filename, 1)
+    }
+    if (isDirect) touchPackageFirstSeen(filename)
 
     if (hubDisplayName) setHubDisplayName(filename, hubDisplayName)
     if (hubResourceId) setHubResourceId(filename, String(hubResourceId))
@@ -1061,23 +1090,13 @@ export async function integrateScannedPackage({ filename, fullPath, isDirect, hu
     // category) from the most recent existing version of this package — see
     // `inheritFromOlderVersion`. When a donor is found we skip auto-hide
     // entirely: the donor's per-item state is the source of truth and
-    // overrides the default rules. Otherwise apply every active auto-hide
-    // rule. `computeAutoHidePathsForNewPackage` walks the rule table once
-    // and returns the union of paths matched by any enabled rule.
-    // `hidePackageContent` and the inherit helper both wrap themselves in
-    // `withBulkWindow` and `recordOwnedPath` their writes, so the watcher
-    // sees no event flood; we rebuild the prefs map from disk once in the
-    // graph phase as the source of truth.
+    // overrides the default rules. Otherwise the graph phase runs
+    // `syncAutoHideAfterDirectChange` (hide + unhide). Both inherit and that
+    // sync wrap writes in `withBulkWindow` / `recordOwnedPath`; prefs are
+    // rebuilt from disk in the graph phase as the source of truth.
     const vamDir = getSetting('vam_dir')
     const inherited = await inheritFromOlderVersion({ filename, packageName, contentItems, vamDir })
-    let sidecarsTouched = inherited != null
-    if (!inherited && vamDir) {
-      const paths = computeAutoHidePathsForNewPackage(filename, pkgType, isDirect, contentItems)
-      if (paths.length > 0) {
-        await hidePackageContent(vamDir, filename, paths)
-        sidecarsTouched = true
-      }
-    }
+    const sidecarsTouched = inherited != null
 
     return {
       filename,
@@ -1116,6 +1135,22 @@ export async function integrateGraphPhase(entries, { autoQueueDeps = false } = {
     // for cascade-enable, target-state lookup, and auto-queue-deps; full aggregates come at the end.
     buildGraphOnly()
 
+    // Declarative auto-hide for non-inherit entries: uses sticky/ratcheted
+    // is_direct from the index (not entry.isDirect), so a dep-intent install of
+    // a previously-direct row keeps direct hide rules. Pass scan-time
+    // contentItems because contentItemsDeduped is only rebuilt in buildFromDb.
+    if (vamDir) {
+      let synced = false
+      for (const entry of entries) {
+        if (entry.inherited) continue
+        const pkg = getPackageIndex().get(entry.filename)
+        if (!pkg) continue
+        await syncAutoHideAfterDirectChange(vamDir, entry.filename, !!pkg.is_direct, entry.contentItems)
+        synced = true
+      }
+      if (synced) setPrefsMap(await readAllPrefs(vamDir))
+    }
+
     for (const entry of entries) {
       const { filename } = entry
 
@@ -1123,13 +1158,15 @@ export async function integrateGraphPhase(entries, { autoQueueDeps = false } = {
       // installed dependents. The file is currently 'enabled' in main; relocate iff a
       // less-active state satisfies all dependents.
       //
-      // Direct entries are exempt: the user asked for this package by name (Hub install,
-      // drop-import), so it stays enabled in main however inactive the packages that
-      // happen to reference it are — otherwise an install could vanish straight into an
-      // offload or archive dir. Same rule the re-settle pass follows (`planResettle`
-      // never touches `is_direct` rows): direct packages are user-owned, never settled.
+      // Direct packages are exempt: either this install was explicitly direct, or the
+      // sticky row is already direct (tombstone/archive resurrection of a keeper
+      // pulled in as a dep). Same rule as `planResettle` — never settle `is_direct`
+      // rows; otherwise an important archived look could vanish into an offload dir
+      // when a Hub parent re-pulls it as a dependency.
       let landingState = 'enabled'
-      if (!entry.isDirect) {
+      const pkgRow = getPackageIndex().get(filename)
+      const treatAsDirect = entry.isDirect || !!pkgRow?.is_direct
+      if (!treatAsDirect) {
         try {
           const dependents = getReverseDeps().get(filename) || null
           const parsed = parseDisableBehavior(getSetting('disable_behavior'))
