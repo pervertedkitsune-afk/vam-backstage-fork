@@ -123,6 +123,10 @@ import {
   uninstallOutcomeMessage,
 } from '@/components/package-action-dialogs'
 import { ArchiveDialogContent, InstallFromArchiveDialogContent } from '@/components/ArchiveActionDialogs'
+import {
+  installFromArchiveNeedsConfirmation,
+  prepareArchiveDecision,
+} from '@/lib/archive-action-confirm'
 import { packageNeedsDisableConfirmation } from '@/lib/package-disable-confirm'
 import {
   isUpdateUnavailable,
@@ -782,6 +786,7 @@ export default function LibraryView({ onNavigate, navContext }) {
 
   const [bulkRemoveOpen, setBulkRemoveOpen] = useState(false)
   const [bulkArchiveDeleteOpen, setBulkArchiveDeleteOpen] = useState(false)
+  const [bulkInstallArchiveOpen, setBulkInstallArchiveOpen] = useState(false)
 
   const runBulkToggleEnabled = useCallback(
     () => void runLibraryBulkToggleEnabled(bulkSelectedPackages),
@@ -795,10 +800,18 @@ export default function LibraryView({ onNavigate, navContext }) {
     await runLibraryBulkRemove(bulkSelectedPackages)
   }, [bulkSelectedPackages])
 
-  const runBulkInstallFromArchive = useCallback(
-    () => void runLibraryBulkInstallFromArchive(bulkSelectedPackages),
-    [bulkSelectedPackages],
-  )
+  const runBulkInstallFromArchive = useCallback(async () => {
+    setBulkInstallArchiveOpen(false)
+    await runLibraryBulkInstallFromArchive(bulkSelectedPackages)
+  }, [bulkSelectedPackages])
+
+  const requestBulkInstallFromArchive = useCallback(() => {
+    if (installFromArchiveNeedsConfirmation(bulkSelectedPackages)) {
+      setBulkInstallArchiveOpen(true)
+      return
+    }
+    void runBulkInstallFromArchive()
+  }, [bulkSelectedPackages, runBulkInstallFromArchive])
 
   const runBulkRemoveFromArchive = useCallback(async () => {
     setBulkArchiveDeleteOpen(false)
@@ -901,7 +914,7 @@ export default function LibraryView({ onNavigate, navContext }) {
               <>
                 <button
                   type="button"
-                  onClick={() => void runBulkInstallFromArchive()}
+                  onClick={requestBulkInstallFromArchive}
                   className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-accent-blue/40 text-accent-blue hover:bg-accent-blue/10 text-[11px]"
                 >
                   <Download size={16} className="shrink-0" />
@@ -1269,6 +1282,15 @@ export default function LibraryView({ onNavigate, navContext }) {
           <BulkForceRemoveDialogContent
             packages={bulkSelectedPackages.filter((p) => isPackageArchived(p.storageState))}
             onConfirm={() => void runBulkRemoveFromArchive()}
+          />
+        ) : null}
+      </AlertDialog>
+
+      <AlertDialog open={bulkInstallArchiveOpen} onOpenChange={setBulkInstallArchiveOpen}>
+        {bulkInstallArchiveOpen ? (
+          <InstallFromArchiveDialogContent
+            pkgs={bulkSelectedPackages.filter((p) => isPackageArchived(p.storageState))}
+            onConfirm={() => void runBulkInstallFromArchive()}
           />
         ) : null}
       </AlertDialog>
@@ -1880,6 +1902,8 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
   const hasPinning = pinningDeps.length > 0
   const suppressDisablePackageWarning = useLibraryStore((s) => s.suppressDisablePackageWarning)
   const showDisableDialog = packageNeedsDisableConfirmation(pkg, suppressDisablePackageWarning)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [installArchiveOpen, setInstallArchiveOpen] = useState(false)
   const contentCount = pkg.contents?.length ?? 0
   const hasContent = contentCount > 0
   const hiddenContentCount = (pkg.contents || []).filter((c) => c.hidden).length
@@ -1969,6 +1993,7 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
   const hasArchiveDirs = detailArchiveDirs.length > 0
   const isArchived = isPackageArchived(pkg.storageState)
   const handleArchive = async (archiveDirId, depMode) => {
+    setArchiveOpen(false)
     try {
       const res = await window.api.packages.archive([pkg.filename], archiveDirId, depMode)
       const parts = []
@@ -1979,7 +2004,16 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
       toast(`Archive failed: ${err.message}`)
     }
   }
+  const requestArchive = async () => {
+    const { needsConfirm, archiveDirId } = await prepareArchiveDecision([pkg.filename], detailArchiveDirs)
+    if (!needsConfirm) {
+      await handleArchive(archiveDirId, 'store')
+      return
+    }
+    setArchiveOpen(true)
+  }
   const handleInstallFromArchive = async () => {
+    setInstallArchiveOpen(false)
     try {
       const res = await window.api.packages.installFromArchive([pkg.filename])
       if (res?.queued > 0)
@@ -1988,6 +2022,13 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
     } catch (err) {
       toast(`Install failed: ${err.message}`)
     }
+  }
+  const requestInstallFromArchive = () => {
+    if (installFromArchiveNeedsConfirmation(pkg)) {
+      setInstallArchiveOpen(true)
+      return
+    }
+    void handleInstallFromArchive()
   }
 
   return (
@@ -2120,13 +2161,13 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
             )}
             {isArchived ? (
               <div className="space-y-1.5">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="gradient" className="w-full text-[11px]">
-                      <Download size={12} /> Install from archive
-                    </Button>
-                  </AlertDialogTrigger>
-                  <InstallFromArchiveDialogContent pkgs={pkg} onConfirm={handleInstallFromArchive} />
+                <Button variant="gradient" onClick={requestInstallFromArchive} className="w-full text-[11px]">
+                  <Download size={12} /> Install from archive
+                </Button>
+                <AlertDialog open={installArchiveOpen} onOpenChange={setInstallArchiveOpen}>
+                  {installArchiveOpen ? (
+                    <InstallFromArchiveDialogContent pkgs={pkg} onConfirm={handleInstallFromArchive} />
+                  ) : null}
                 </AlertDialog>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -2188,22 +2229,25 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
                     </Button>
                   )}
                   {hasArchiveDirs && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          title="Archive…"
-                          className="shrink-0 px-2 border-text-secondary/25 text-text-primary"
-                        >
-                          <Boxes size={12} />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <ArchiveDialogContent
-                        filenames={[pkg.filename]}
-                        archiveDirs={detailArchiveDirs}
-                        onConfirm={handleArchive}
-                      />
-                    </AlertDialog>
+                    <>
+                      <Button
+                        variant="outline"
+                        title="Archive"
+                        onClick={() => void requestArchive()}
+                        className="shrink-0 px-2 border-text-secondary/25 text-text-primary"
+                      >
+                        <Boxes size={12} />
+                      </Button>
+                      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+                        {archiveOpen ? (
+                          <ArchiveDialogContent
+                            filenames={[pkg.filename]}
+                            archiveDirs={detailArchiveDirs}
+                            onConfirm={handleArchive}
+                          />
+                        ) : null}
+                      </AlertDialog>
+                    </>
                   )}
                 </div>
                 {/* The pinning case explains why "Remove" won't actually delete, so it has to read.
@@ -2294,23 +2338,26 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
                     </Button>
                   )}
                   {hasArchiveDirs && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title="Archive…"
-                          className="shrink-0 px-2 border-text-secondary/33 text-text-primary"
-                        >
-                          <Boxes size={12} />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <ArchiveDialogContent
-                        filenames={[pkg.filename]}
-                        archiveDirs={detailArchiveDirs}
-                        onConfirm={handleArchive}
-                      />
-                    </AlertDialog>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title="Archive"
+                        onClick={() => void requestArchive()}
+                        className="shrink-0 px-2 border-text-secondary/33 text-text-primary"
+                      >
+                        <Boxes size={12} />
+                      </Button>
+                      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+                        {archiveOpen ? (
+                          <ArchiveDialogContent
+                            filenames={[pkg.filename]}
+                            archiveDirs={detailArchiveDirs}
+                            onConfirm={handleArchive}
+                          />
+                        ) : null}
+                      </AlertDialog>
+                    </>
                   )}
                 </div>
               </div>

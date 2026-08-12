@@ -55,6 +55,10 @@ import {
 } from '@/lib/utils'
 import { toastIfSingleToggleFailed } from '@/lib/packageStorageToggleResults'
 import { packageNeedsDisableConfirmation } from '@/lib/package-disable-confirm'
+import {
+  installFromArchiveNeedsConfirmation,
+  prepareArchiveDecision,
+} from '@/lib/archive-action-confirm'
 import { isUpdateUnavailable, isUpdateCheckFailed, isUpdateChecking, updateTargetVersion } from '@/lib/hub-availability'
 import { isPackageActive, isPackageArchived } from '@shared/storage-state-predicates.js'
 import {
@@ -193,6 +197,7 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
   const [bulkLibraryRemovePackages, setBulkLibraryRemovePackages] = useState([])
   const [archiveOpen, setArchiveOpen] = useState(false)
   const [installArchiveOpen, setInstallArchiveOpen] = useState(false)
+  const [bulkInstallArchiveOpen, setBulkInstallArchiveOpen] = useState(false)
   const auxDirs = useLibraryDirsStore((s) => s.aux)
   const archiveDirs = useMemo(() => auxDirs.filter((d) => d.archive), [auxDirs])
   const hasArchiveDirs = archiveDirs.length > 0
@@ -306,6 +311,7 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
     }
   }
   const handleArchive = async (archiveDirId, depMode) => {
+    setArchiveOpen(false)
     try {
       const res = await window.api.packages.archive(archiveTargetFilenames, archiveDirId, depMode)
       const parts = []
@@ -317,7 +323,17 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
       toast(`Archive failed: ${err.message}`)
     }
   }
+  const requestArchive = async () => {
+    if (!archiveTargetFilenames.length) return
+    const { needsConfirm, archiveDirId } = await prepareArchiveDecision(archiveTargetFilenames, archiveDirs)
+    if (!needsConfirm) {
+      await handleArchive(archiveDirId, 'store')
+      return
+    }
+    setArchiveOpen(true)
+  }
   const handleInstallFromArchive = async () => {
+    setInstallArchiveOpen(false)
     try {
       const res = await window.api.packages.installFromArchive([p.filename])
       if (res?.queued > 0)
@@ -326,6 +342,24 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
     } catch (err) {
       toast(`Install failed: ${err.message}`)
     }
+  }
+  const requestInstallFromArchive = () => {
+    if (installFromArchiveNeedsConfirmation(p)) {
+      openConfirm(setInstallArchiveOpen)
+      return
+    }
+    void handleInstallFromArchive()
+  }
+  const handleBulkInstallFromArchive = async () => {
+    setBulkInstallArchiveOpen(false)
+    await runLibraryBulkInstallFromArchive(bulkPackages)
+  }
+  const requestBulkInstallFromArchive = () => {
+    if (installFromArchiveNeedsConfirmation(bulkPackages)) {
+      setBulkInstallArchiveOpen(true)
+      return
+    }
+    void handleBulkInstallFromArchive()
   }
   const isArchived = isPackageArchived(p.storageState)
 
@@ -514,7 +548,7 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
               <ContextMenuSeparator />
               {bulkAllArchived ? (
                 <>
-                  <ContextMenuItem onSelect={() => void runLibraryBulkInstallFromArchive(bulkPackages)}>
+                  <ContextMenuItem onSelect={() => void requestBulkInstallFromArchive()}>
                     <Download size={12} className="shrink-0 text-accent-blue" />
                     Install from archive
                   </ContextMenuItem>
@@ -660,7 +694,7 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                     {bulkEnableUi.label}
                   </ContextMenuItem>
                   {hasArchiveDirs && bulkNonArchivedFilenames.length > 0 && (
-                    <ContextMenuItem onSelect={() => setArchiveOpen(true)}>
+                    <ContextMenuItem onSelect={() => void requestArchive()}>
                       <Boxes size={12} className="shrink-0" />
                       Archive…
                     </ContextMenuItem>
@@ -690,9 +724,12 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                 </>
               )}
               {isArchived ? (
-                <ContextMenuItem onSelect={() => openConfirm(setInstallArchiveOpen)} disabled={!detail}>
+                <ContextMenuItem
+                  onSelect={() => requestInstallFromArchive()}
+                  disabled={!detail && installFromArchiveNeedsConfirmation(p)}
+                >
                   <Download size={12} className="shrink-0 text-accent-blue" />
-                  Install from archive…
+                  Install from archive
                 </ContextMenuItem>
               ) : (
                 <>
@@ -904,7 +941,7 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                     </ContextMenuItem>
                   )}
                   {hasArchiveDirs && (
-                    <ContextMenuItem onSelect={() => openConfirm(setArchiveOpen)} disabled={!detail}>
+                    <ContextMenuItem onSelect={() => void requestArchive()}>
                       <Boxes size={12} className="shrink-0" />
                       Archive…
                     </ContextMenuItem>
@@ -1015,6 +1052,15 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
       <AlertDialog open={installArchiveOpen} onOpenChange={closeConfirm(setInstallArchiveOpen)}>
         {installArchiveOpen && confirmDetail ? (
           <InstallFromArchiveDialogContent pkgs={confirmDetail} onConfirm={handleInstallFromArchive} />
+        ) : null}
+      </AlertDialog>
+
+      <AlertDialog open={bulkInstallArchiveOpen} onOpenChange={setBulkInstallArchiveOpen}>
+        {bulkInstallArchiveOpen && bulkPackages.length > 0 ? (
+          <InstallFromArchiveDialogContent
+            pkgs={bulkPackages.filter((x) => isPackageArchived(x.storageState))}
+            onConfirm={() => void handleBulkInstallFromArchive()}
+          />
         ) : null}
       </AlertDialog>
     </>
