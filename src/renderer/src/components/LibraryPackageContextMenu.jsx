@@ -55,10 +55,7 @@ import {
 } from '@/lib/utils'
 import { toastIfSingleToggleFailed } from '@/lib/packageStorageToggleResults'
 import { packageNeedsDisableConfirmation } from '@/lib/package-disable-confirm'
-import {
-  installFromArchiveNeedsConfirmation,
-  prepareArchiveDecision,
-} from '@/lib/archive-action-confirm'
+import { installFromArchiveNeedsConfirmation, prepareArchiveDecision } from '@/lib/archive-action-confirm'
 import { isUpdateUnavailable, isUpdateCheckFailed, isUpdateChecking, updateTargetVersion } from '@/lib/hub-availability'
 import { isPackageActive, isPackageArchived } from '@shared/storage-state-predicates.js'
 import {

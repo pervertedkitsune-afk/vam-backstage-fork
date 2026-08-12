@@ -123,10 +123,7 @@ import {
   uninstallOutcomeMessage,
 } from '@/components/package-action-dialogs'
 import { ArchiveDialogContent, InstallFromArchiveDialogContent } from '@/components/ArchiveActionDialogs'
-import {
-  installFromArchiveNeedsConfirmation,
-  prepareArchiveDecision,
-} from '@/lib/archive-action-confirm'
+import { installFromArchiveNeedsConfirmation, prepareArchiveDecision } from '@/lib/archive-action-confirm'
 import { packageNeedsDisableConfirmation } from '@/lib/package-disable-confirm'
 import {
   isUpdateUnavailable,
@@ -138,7 +135,7 @@ import {
 } from '@/lib/hub-availability'
 import { useViewStore } from '@/stores/useViewStore'
 
-const SORT_OPTIONS = ['Recently installed', 'Type', 'Name', 'Size', 'Content', 'Deps', 'Morphs']
+const SORT_OPTIONS = ['Recently installed', 'Type', 'Name', 'Author', 'Size', 'Content', 'Deps', 'Morphs']
 
 const getPackageId = (p) => p.filename
 
@@ -474,6 +471,9 @@ export default function LibraryView({ onNavigate, navContext }) {
       'Recently installed': (a, b) =>
         (b.firstSeenAt || 0) - (a.firstSeenAt || 0) || (b.fileMtime || 0) - (a.fileMtime || 0),
       Name: (a, b) => displayName(a).localeCompare(displayName(b)),
+      Author: (a, b) =>
+        (authorCounts[b.creator] || 0) - (authorCounts[a.creator] || 0) ||
+        String(a.creator || '').localeCompare(String(b.creator || '')),
       Type: (a, b) => compareLibraryPackageTypes(a.type, b.type),
       Size: (a, b) => b.sizeBytes + (b.removableSize || 0) - (a.sizeBytes + (a.removableSize || 0)),
       Content: (a, b) => b.contentCount - a.contentCount,
@@ -494,6 +494,7 @@ export default function LibraryView({ onNavigate, navContext }) {
     primarySort,
     secondarySort,
     updateCheckResults,
+    authorCounts,
   ])
 
   const sections = useMemo(

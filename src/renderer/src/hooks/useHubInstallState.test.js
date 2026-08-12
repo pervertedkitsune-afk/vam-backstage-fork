@@ -29,9 +29,7 @@ describe('resolveHubInstallState', () => {
 
   it('falls through to external / failed / install when absent', () => {
     expect(resolveHubInstallState({ storageState: null, isDirect: false, isExternal: true })).toBe('external')
-    expect(
-      resolveHubInstallState({ storageState: null, isDirect: false, mainDlStatus: 'failed' }),
-    ).toBe('failed')
+    expect(resolveHubInstallState({ storageState: null, isDirect: false, mainDlStatus: 'failed' })).toBe('failed')
     expect(resolveHubInstallState({ storageState: null, isDirect: false })).toBe('install')
   })
 })

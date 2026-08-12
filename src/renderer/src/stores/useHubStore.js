@@ -176,8 +176,7 @@ function optimisticLocalInstall(set, rid, filename, storageState, isDirect = tru
   const patch = { _isDirect: isDirect, _storageState: storageState }
   set((s) => ({
     resourcesByIndex: patchResourcesById(s.resourcesByIndex, rid, patch),
-    detailData:
-      s.detailData && String(s.detailData.resource_id) === rid ? { ...s.detailData, ...patch } : s.detailData,
+    detailData: s.detailData && String(s.detailData.resource_id) === rid ? { ...s.detailData, ...patch } : s.detailData,
   }))
 }
 

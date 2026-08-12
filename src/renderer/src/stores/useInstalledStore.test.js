@@ -34,9 +34,9 @@ describe('useInstalledStore', () => {
     expect(map.get('2')).toEqual({ storageState: null, isDirect: false, filename: null })
 
     const before = useInstalledStore.getState().byHubResourceId
-    useInstalledStore.getState().applyBatch([
-      { hubResourceId: '1', storageState: 'enabled', isDirect: true, filename: 'A.B.1.var' },
-    ])
+    useInstalledStore
+      .getState()
+      .applyBatch([{ hubResourceId: '1', storageState: 'enabled', isDirect: true, filename: 'A.B.1.var' }])
     expect(useInstalledStore.getState().byHubResourceId).toBe(before)
   })
 })
