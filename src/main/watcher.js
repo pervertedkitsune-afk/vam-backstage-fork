@@ -856,28 +856,27 @@ async function runBatch() {
 
       const allDirs = getAllLibraryDirs()
 
-      // Unlinks: before deleting any row, find the canonical's current home on disk —
-      // it may have moved (cross-dir, or into/out of a subfolder) rather than been
-      // removed. Resolve every unlinked canonical in a single recursive walk per
-      // library dir (`locateVars`) instead of one walk per file. A surviving copy
-      // anywhere under a library root keeps the row (and its label/setting FKs) alive
-      // via setStorageState; only a truly-gone file is deleted. When the batch also has
-      // the matching add (move within one batch), the add is then a no-op because
-      // scanSingleVar's cache check matches mtime+size against the now-current row.
-      // No in-mem patch needed here — the trailing buildFromDb() reloads packageIndex
-      // from DB whenever packagesChanged is set.
-      const unlinkedCanonicals = new Set()
-      for (const [canonical, events] of byCanonical) {
-        if (events.some((e) => e.type === 'unlink')) unlinkedCanonicals.add(canonical)
-      }
-      const relocated = unlinkedCanonicals.size > 0 ? await locateVars(allDirs, unlinkedCanonicals) : new Map()
+      // Resolve each touched canonical's winning on-disk home once per batch
+      // (`locateVars`: main > older aux; deeper within a dir — same policy as the
+      // full scan). Used for both:
+      //   - Unlinks: a surviving copy elsewhere keeps the row alive via
+      //     setStorageState; only a truly-gone file is tombstoned.
+      //   - Adds/changes: don't trust the event path — a shadowed duplicate
+      //     (same name in another dir/subpath) must not steal the indexed
+      //     location (e.g. an aux add while main still holds the package would
+      //     otherwise flip the row to `offloaded`).
+      // When the batch also has the matching add (move within one batch), the
+      // add is then a no-op because scanSingleVar's cache check matches
+      // mtime+size against the now-current row. No in-mem patch needed here —
+      // the trailing buildFromDb() reloads packageIndex whenever packagesChanged.
+      const located = await locateVars(allDirs, new Set(byCanonical.keys()))
 
       for (const [canonical, events] of byCanonical) {
         const adds = events.filter((e) => e.type !== 'unlink')
         const unlinks = events.filter((e) => e.type === 'unlink')
 
         if (unlinks.length > 0) {
-          const altLocation = relocated.get(canonical)
+          const altLocation = located.get(canonical)
           if (altLocation) {
             setStorageState(canonical, altLocation.storageState, altLocation.libraryDirId, altLocation.subpath)
             packagesChanged = true
@@ -897,22 +896,25 @@ async function runBatch() {
           }
         }
 
-        // Adds/changes: resolve the canonical's on-disk footprint, then (re)scan or
-        // reconcile state via scanSingleVar. For main we classify bare + `.disabled`
-        // sizes so a marker add flips state without re-reading the archive, and a
-        // legacy suffix file is read from its `.disabled` path. Multiple add events
-        // for one canonical (bare + its marker) collapse to a single resolution.
+        // Adds/changes: index the *winning* on-disk location (not the event path).
+        // For main we classify bare + `.disabled` so a marker add flips state
+        // without re-reading the archive, and a legacy suffix file is read from
+        // its `.disabled` path. Multiple add events for one canonical (bare +
+        // its marker) collapse to a single resolution.
         if (adds.length > 0) {
-          const { libraryDirId } = adds[0]
           try {
+            const loc = located.get(canonical)
+            if (!loc) continue // event path already gone; nothing to index
+            const root = getLibraryDirPath(loc.libraryDirId)
+            if (!root) continue
+            const nominal = loc.subpath ? join(root, ...loc.subpath.split('/'), canonical) : join(root, canonical)
             let contentPath, storageState
-            if (libraryDirId != null) {
-              // Aux adds were already normalized to bare. Location implies state:
-              // an archive-role dir yields `archived`, else `offloaded`.
-              contentPath = adds[0].fullPath
-              storageState = isArchiveLibraryDir(libraryDirId) ? 'archived' : 'offloaded'
+            if (loc.libraryDirId != null) {
+              // Aux is always bare. Location implies state (already on `loc`).
+              contentPath = nominal
+              storageState = loc.storageState
             } else {
-              const cls = await classifyMainVarOnDisk(join(dirname(adds[0].fullPath), canonical))
+              const cls = await classifyMainVarOnDisk(nominal)
               if (!cls.present) contentPath = null
               else {
                 contentPath = cls.contentPath
@@ -920,7 +922,7 @@ async function runBatch() {
               }
             }
             if (contentPath) {
-              const result = await scanSingleVar(contentPath, storageState, libraryDirId)
+              const result = await scanSingleVar(contentPath, storageState, loc.libraryDirId)
               if (result) {
                 packagesChanged = true
                 if (storageState === 'enabled') newlyScannedEnabled.push(canonical)
@@ -1147,12 +1149,14 @@ export async function __localPrefsEventSyncForTests(fullPath) {
  * subfolder under a library root). One recursive walk per dir, short-circuiting
  * as soon as every wanted canonical is found.
  *
- * Dir precedence follows `dirs` order (main first), and within the tree a
- * shallower / earlier match wins. Aux dirs accept only the suffix-less name (we
- * normalize away the disabled spelling in aux); main classifies bare + disabled-
- * sibling sizes (`classifyMainVar`) to distinguish enabled / marker-disabled /
- * suffix-disabled (the sibling may be a VaM `.var.disabled` or a Qvaro `.DISABLED`
- * rename), and treats a lone empty marker as "not found".
+ * Dir precedence follows `dirs` order (main first, then aux by `created_at`),
+ * and within a tree a **deeper** match wins (DFS children-before-parent, matching
+ * the scanner's `collectVarCandidates` / first-seen dedup). Aux dirs accept only
+ * the suffix-less name (we normalize away the disabled spelling in aux); main
+ * classifies bare + disabled-sibling sizes (`classifyMainVar`) to distinguish
+ * enabled / marker-disabled / suffix-disabled (the sibling may be a VaM
+ * `.var.disabled` or a Qvaro `.DISABLED` rename), and treats a lone empty marker
+ * as "not found".
  *
  * @returns {Promise<Map<string, { libraryDirId: number|null, storageState: string, subpath: string }>>}
  */
@@ -1182,6 +1186,13 @@ async function locateWalk(root, dir, libraryDirId, remaining, out) {
     if (entry.isDirectory()) subdirs.push(entry.name)
     else if (entry.isFile()) files.add(entry.name)
   }
+  // Deeper first — same order as scanner `collectVarCandidates` (recurse, then
+  // claim this folder). First claim wins, so a nested copy beats a shallower one.
+  for (const name of subdirs) {
+    if (remaining.size === 0) return
+    await locateWalk(root, join(dir, name), libraryDirId, remaining, out)
+  }
+  if (remaining.size === 0) return
   const rel = relative(root, dir) // dir's own subpath relative to the library root ('' at root)
   const subpath = rel ? rel.split(sep).join('/') : ''
   for (const canonical of [...remaining]) {
@@ -1208,10 +1219,6 @@ async function locateWalk(root, dir, libraryDirId, remaining, out) {
       subpath,
     })
     remaining.delete(canonical)
-  }
-  for (const name of subdirs) {
-    if (remaining.size === 0) return
-    await locateWalk(root, join(dir, name), libraryDirId, remaining, out)
   }
 }
 

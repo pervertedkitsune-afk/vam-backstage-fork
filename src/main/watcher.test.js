@@ -172,6 +172,90 @@ describe('watcher.processBatch — cross-dir move (single batch)', () => {
   })
 })
 
+describe('watcher.processBatch — same-name collision policy', () => {
+  it('aux add while main still has the package does not flip row to offloaded', async () => {
+    const aux = await mkAuxDir(tmp.vamDir)
+    const auxId = insertLibraryDir(aux)
+    const buf = await buildVar({
+      meta: { packageName: 'Shadow.Main', creator: 'S' },
+      files: { 'Saves/scene/s.json': '{"atoms":[]}' },
+    })
+    await placeVar(tmp.addonPackages, 'Shadow.Main.1.var', buf)
+    await runScan(tmp.vamDir)
+    expect(getAllPackages().find((r) => r.filename === 'Shadow.Main.1.var')?.storage_state).toBe('enabled')
+
+    // Leftover duplicate appears in an offload dir (same name = same package).
+    const auxPath = await placeVar(aux, 'Shadow.Main.1.var', buf)
+    refreshLibraryDirs()
+    __setProcessBatchStateForTests({
+      vamDir: tmp.vamDir,
+      packageEvents: [[auxPath, { type: 'add', libraryDirId: auxId }]],
+    })
+    await __processBatchForTests()
+
+    const row = getAllPackages().find((r) => r.filename === 'Shadow.Main.1.var')
+    expect(row?.storage_state).toBe('enabled')
+    expect(row?.library_dir_id).toBeNull()
+  })
+
+  it('unlink of shallower copy relocates to deeper sibling (deeper wins)', async () => {
+    const buf = await buildVar({
+      meta: { packageName: 'Deep.Win', creator: 'D' },
+      files: { 'Saves/scene/d.json': '{"atoms":[]}' },
+    })
+    const shallow = await placeVar(tmp.addonPackages, 'Deep.Win.1.var', buf)
+    const nestedDir = join(tmp.addonPackages, 'Nested')
+    await mkdir(nestedDir, { recursive: true })
+    await placeVar(nestedDir, 'Deep.Win.1.var', buf)
+    await runScan(tmp.vamDir)
+    // Full scan prefers deeper — row should already be Nested.
+    expect(getAllPackages().find((r) => r.filename === 'Deep.Win.1.var')?.subpath).toBe('Nested')
+
+    // Point the row at the shallow copy (as if an older locate preferred shallower),
+    // then unlink shallow while deeper remains — locate must pick Nested.
+    setStorageState('Deep.Win.1.var', 'enabled', null, '')
+    buildFromDb()
+
+    __setProcessBatchStateForTests({
+      vamDir: tmp.vamDir,
+      packageEvents: [[shallow, { type: 'unlink', libraryDirId: null }]],
+    })
+    await __processBatchForTests()
+
+    const row = getAllPackages().find((r) => r.filename === 'Deep.Win.1.var')
+    expect(row?.storage_state).toBe('enabled')
+    expect(row?.subpath).toBe('Nested')
+    expect(row?.library_dir_id).toBeNull()
+  })
+
+  it('newer aux add does not steal from an older aux that still holds the package', async () => {
+    const auxA = await mkAuxDir(tmp.vamDir)
+    const idA = insertLibraryDir(auxA)
+    const buf = await buildVar({
+      meta: { packageName: 'Shadow.Aux', creator: 'S' },
+      files: { 'Saves/scene/a.json': '{"atoms":[]}' },
+    })
+    await placeVar(auxA, 'Shadow.Aux.1.var', buf)
+    await runScan(tmp.vamDir)
+    expect(getAllPackages().find((r) => r.filename === 'Shadow.Aux.1.var')?.library_dir_id).toBe(idA)
+
+    const auxB = await mkAuxDir(tmp.vamDir)
+    const idB = insertLibraryDir(auxB)
+    refreshLibraryDirs()
+    const pathB = await placeVar(auxB, 'Shadow.Aux.1.var', buf)
+
+    __setProcessBatchStateForTests({
+      vamDir: tmp.vamDir,
+      packageEvents: [[pathB, { type: 'add', libraryDirId: idB }]],
+    })
+    await __processBatchForTests()
+
+    const row = getAllPackages().find((r) => r.filename === 'Shadow.Aux.1.var')
+    expect(row?.storage_state).toBe('offloaded')
+    expect(row?.library_dir_id).toBe(idA)
+  })
+})
+
 describe('watcher.processBatch — nested .var move recovery', () => {
   it('move into a different main subfolder (unlink only) keeps the row and updates subpath', async () => {
     const fromDir = join(tmp.addonPackages, 'A')
