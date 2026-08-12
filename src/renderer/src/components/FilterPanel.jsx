@@ -115,6 +115,7 @@ export default function FilterPanel({
                 types={smartSearch.types}
                 pkgTypes={smartSearch.pkgTypes}
                 flags={smartSearch.flags}
+                path={smartSearch.path}
                 placeholder={smartSearch.placeholder}
               />
             ) : (

@@ -904,6 +904,7 @@ function enrichPackageSummary(pkg) {
     isDirect: !!pkg.is_direct,
     storageState: pkg.storage_state,
     libraryDirId: pkg.library_dir_id ?? null,
+    subpath: pkg.subpath || '',
     hubResourceId: pkg.hub_resource_id,
     hubUserId: pkg.hub_user_id,
     hubTags: pkg.hub_tags || null,

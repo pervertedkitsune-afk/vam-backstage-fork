@@ -47,6 +47,16 @@ describe('parseSmartQuery', () => {
     })
   })
 
+  it('parses path: as a substring field', () => {
+    expect(parseSmartQuery('path:Scenes -path:Archive')).toEqual({
+      tokens: [
+        { field: 'path', value: 'scenes', negate: false },
+        { field: 'path', value: 'archive', negate: true },
+      ],
+      hasSyntax: true,
+    })
+  })
+
   it('falls back to text for unknown keys and bare colons in names', () => {
     expect(parseSmartQuery('http://x Author.Thing:2')).toEqual({
       tokens: [
@@ -209,6 +219,7 @@ describe('matchesSmartQuery', () => {
     types: () => ['Scenes'],
     pkgTypes: () => ['Looks'],
     flags: () => ['broken', 'wishlist'],
+    path: () => 'SomeCreator/Looks',
   }
 
   it('ANDs positive tokens across fields', () => {
@@ -219,6 +230,17 @@ describe('matchesSmartQuery', () => {
   it('matches key: long forms the same as sigils', () => {
     expect(matchesSmartQuery(parseSmartQuery('type:scenes author:mac').tokens, item)).toBe(true)
     expect(matchesSmartQuery(parseSmartQuery('pkg:looks').tokens, item)).toBe(true)
+  })
+
+  it('matches path: as a substring of subpath', () => {
+    expect(matchesSmartQuery(parseSmartQuery('path:Looks').tokens, item)).toBe(true)
+    expect(matchesSmartQuery(parseSmartQuery('path:somecreator').tokens, item)).toBe(true)
+    expect(matchesSmartQuery(parseSmartQuery('path:Scenes').tokens, item)).toBe(false)
+  })
+
+  it('negates path:', () => {
+    expect(matchesSmartQuery(parseSmartQuery('-path:Looks').tokens, item)).toBe(false)
+    expect(matchesSmartQuery(parseSmartQuery('-path:Scenes').tokens, item)).toBe(true)
   })
 
   it('rejects when an include misses', () => {

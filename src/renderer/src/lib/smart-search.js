@@ -9,6 +9,7 @@ export const FIELDS = [
   { key: 'type', sigil: '^', match: 'exact' },
   { key: 'pkg', match: 'exact' },
   { key: 'is', match: 'flag' },
+  { key: 'path', match: 'substring' },
 ]
 
 /** Sigil → field key (derived). */
@@ -178,6 +179,7 @@ export function highlightSegments(text) {
  *   types()    → string[] type labels (any case)
  *   pkgTypes() → string[] package-type labels (any case)
  *   flags()    → string[] already-lowercased flag names
+ *   path()     → string POSIX subpath within the library dir
  */
 export function matchesSmartQuery(tokens, get) {
   if (!tokens?.length) return true
@@ -198,6 +200,8 @@ export function matchesSmartQuery(tokens, get) {
       hit = (get.pkgTypes?.() || []).some((t) => (t || '').toLowerCase() === value)
     } else if (field === 'is') {
       hit = (get.flags?.() || []).includes(value)
+    } else if (field === 'path') {
+      hit = (get.path?.() || '').toLowerCase().includes(value)
     }
     if (negate ? hit : !hit) return false
   }

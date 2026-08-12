@@ -360,6 +360,7 @@ export default function LibraryView({ onNavigate, navContext }) {
           tags: () => packageHubTags(p),
           labels: () => (p.labelIds || []).map((id) => labelNameById.get(id)).filter(Boolean),
           types: () => [libraryTypeBadgeLabel(p.type)],
+          path: () => p.subpath || '',
           flags: () => {
             const rid = p.hubResourceId != null ? String(p.hubResourceId) : ''
             return libraryFlags({
@@ -887,6 +888,7 @@ export default function LibraryView({ onNavigate, navContext }) {
           labels,
           types: LIBRARY_FILTER_TYPES,
           flags: LIBRARY_IS_FLAGS,
+          path: true,
         }}
         sections={sections}
       />

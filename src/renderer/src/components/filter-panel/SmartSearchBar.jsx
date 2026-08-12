@@ -16,6 +16,8 @@ const FIELD_CLASS = {
   type: 'text-accent-green',
   pkg: 'text-accent-green',
   is: 'text-accent-amber',
+  // Quiet vs the accent fields — desaturated green-slate, secondary-level contrast.
+  path: 'text-[#8a9e96]',
 }
 const NEGATE_CLASS = 'text-error'
 
@@ -29,6 +31,8 @@ const SYNTAX_LEGEND = [
   { sigil: '^', label: 'type', field: 'type', needs: 'types' },
   { sigil: 'pkg:', label: 'pkg type', field: 'pkg', needs: 'pkgTypes' },
   { sigil: 'is:', label: 'flag', field: 'is', needs: 'flags' },
+  // Free-substring (no autocomplete); Library-only via `path` prop.
+  { sigil: 'path:', label: 'folder', field: 'path', needs: 'path' },
 ]
 
 function segmentClass(seg) {
@@ -95,6 +99,8 @@ export function SmartSearchBar({
   types = null,
   pkgTypes = null,
   flags = null,
+  /** When true, show `path:` in the hint (Library). No suggestion list. */
+  path = false,
   placeholder = 'Search…',
 }) {
   const [caret, setCaret] = useState(0)
@@ -103,6 +109,7 @@ export function SmartSearchBar({
 
   const segments = useMemo(() => highlightSegments(value), [value])
   const active = useMemo(() => tokenAtCaret(value, caret), [value, caret])
+  // Autocomplete sources only — `path` is legend-only (free substring, no list).
   const sources = useMemo(
     () => ({
       author: true,
@@ -124,9 +131,10 @@ export function SmartSearchBar({
         if (x.needs === 'types') return sources.type
         if (x.needs === 'pkgTypes') return sources.pkg
         if (x.needs === 'flags') return sources.is
+        if (x.needs === 'path') return !!path
         return true
       }),
-    [sources],
+    [sources, path],
   )
 
   const matches = useMemo(() => {
