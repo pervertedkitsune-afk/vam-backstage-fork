@@ -77,6 +77,18 @@ export const FILTER_DEFAULTS = {
   visibilityFilter: 'visible',
 }
 
+// [AddOn] Filter - Begin
+const asPackageStatusFilter = (v) => {
+  if (typeof v !== 'string') return undefined
+  if (['all', 'enabled', 'disabled', 'archived', 'offloaded'].includes(v) || v.startsWith('offloaded:')) {
+    console.log('[AddOn] Filter - Rehydrated valid packageStatusFilter:', v)
+    return v
+  }
+  console.log('[AddOn] Filter - Invalid packageStatusFilter, falling back:', v)
+  return undefined
+}
+// [AddOn] Filter - End
+
 export const useContentStore = create(
   persist(
     (set, get) => ({
@@ -248,7 +260,9 @@ export const useContentStore = create(
       selectedLabelIds: asPolarityList,
       excludedAuthors: asArray,
       packageFilter: oneOf(['all', 'installed', 'dependency', 'local']),
-      packageStatusFilter: oneOf(['all', 'enabled', 'disabled', 'archived']),
+      // [AddOn] Filter - Begin
+      packageStatusFilter: asPackageStatusFilter,
+      // [AddOn] Filter - End
       visibilityFilter: oneOf(['all', 'visible', 'hidden', 'favorites']),
       primarySort: asString,
       secondarySort: asString,
