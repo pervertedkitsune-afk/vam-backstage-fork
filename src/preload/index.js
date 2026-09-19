@@ -155,6 +155,7 @@ const api = {
     set: (key, value) => invoke('settings:set', key, value),
     getDatabasePath: () => invoke('settings:getDatabasePath'),
   },
+  // [AddOn] OrigOffload_Begin
   libraryDirs: {
     list: () => invoke('library-dirs:list'),
     browse: () => invoke('library-dirs:browse'),
@@ -164,7 +165,9 @@ const api = {
     remove: (id, opts) => invoke('library-dirs:remove', id, opts),
     setBrowserAssist: (id, enabled) => invoke('library-dirs:set-browser-assist', id, enabled),
     setRole: (id, role) => invoke('library-dirs:set-role', id, role),
+    reorder: (orderedIds) => invoke('library-dirs:reorder', orderedIds),
   },
+  // [AddOn] OrigOffload_End
   browserAssist: {
     dirExists: () => invoke('browser-assist:dir-exists'),
     sync: () => invoke('browser-assist:sync'),

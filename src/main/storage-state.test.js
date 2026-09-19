@@ -17,6 +17,10 @@ describe('parseDisableBehavior', () => {
     expect(parseDisableBehavior('move-to:1')).toEqual({ kind: 'move-to', auxDirId: 1 })
   })
 
+  it('parses "move-to-orig"', () => {
+    expect(parseDisableBehavior('move-to-orig')).toEqual({ kind: 'move-to-orig' })
+  })
+
   it('falls back to suffix for malformed move-to refs', () => {
     expect(parseDisableBehavior('move-to:abc')).toEqual({ kind: 'suffix' })
     expect(parseDisableBehavior('move-to:')).toEqual({ kind: 'suffix' })

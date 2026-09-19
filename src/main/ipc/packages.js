@@ -69,7 +69,11 @@ import {
   getLibraryDirPath,
   isArchiveLibraryDir,
   getArchiveLibraryDirs,
+  getAuxLibraryDirs,
 } from '../library-dirs.js'
+// [AddOn] OrigOffload_Begin
+import { resolveOriginalOffloadDirId } from '../addons/orig-offload.js'
+// [AddOn] OrigOffload_End
 import { buildHomeSubpathMapForIndex, buildHomeSubpathMapFor } from '../home-subpath.js'
 import {
   enqueueInstall,
@@ -234,7 +238,13 @@ async function syncExtractedPresets(filenames) {
  */
 async function resettleDeps(candidates, { vamDir, prune = true }) {
   const parsed = parseDisableBehavior(getSetting('disable_behavior'))
-  const disableBehaviorTargetId = parsed.kind === 'move-to' ? parsed.auxDirId : null
+  // [AddOn] OrigOffload_Begin
+  let disableBehaviorTargetId = parsed.kind === 'move-to' ? parsed.auxDirId : null
+  if (parsed.kind === 'move-to-orig') {
+    const offloadDirs = getAuxLibraryDirs().filter((d) => !d.archive)
+    if (offloadDirs.length > 0) disableBehaviorTargetId = offloadDirs[0].id
+  }
+  // [AddOn] OrigOffload_End
   const { toPrune, decisions } = planResettle({
     candidates,
     packageIndex: getPackageIndex(),
@@ -307,11 +317,23 @@ async function resettleDeps(candidates, { vamDir, prune = true }) {
  */
 async function applyStorageStateChange(filenames, intentFn) {
   if (!getSetting('vam_dir')) throw new Error('VaM directory not configured')
+  // [AddOn] OrigOffload_Begin
   const parsedBehavior = parseDisableBehavior(getSetting('disable_behavior'))
-  const disableTarget =
-    parsedBehavior.kind === 'move-to'
-      ? { storageState: 'offloaded', libraryDirId: parsedBehavior.auxDirId }
-      : { storageState: 'disabled', libraryDirId: null }
+  const offloadAuxDirs = getAuxLibraryDirs().filter((d) => !d.archive)
+
+  const getDisableTargetForPkg = (pkg) => {
+    if (parsedBehavior.kind === 'move-to-orig') {
+      const origId = resolveOriginalOffloadDirId(pkg, offloadAuxDirs)
+      return origId != null
+        ? { storageState: 'offloaded', libraryDirId: origId }
+        : { storageState: 'disabled', libraryDirId: null }
+    }
+    if (parsedBehavior.kind === 'move-to') {
+      return { storageState: 'offloaded', libraryDirId: parsedBehavior.auxDirId }
+    }
+    return { storageState: 'disabled', libraryDirId: null }
+  }
+  // [AddOn] OrigOffload_End
 
   // Wrap the whole bulk in a watcher window so the ~hundreds of fs.rename's
   // we're about to fire don't get interpreted as external changes (each rename
@@ -340,6 +362,9 @@ async function applyStorageStateChange(filenames, intentFn) {
       }
 
       const intent = intentFn(pkg)
+      // [AddOn] OrigOffload_Begin
+      const disableTarget = getDisableTargetForPkg(pkg)
+      // [AddOn] OrigOffload_End
       const target = nextStorageStateForIntent({ current: pkg.storage_state, intent, disableTarget })
       if (!target) {
         out.push({
@@ -373,7 +398,14 @@ async function applyStorageStateChange(filenames, intentFn) {
           limit(async () => {
             const depPkg = getPackageIndex().get(depFilename)
             if (!depPkg) return
-            const depTarget = nextStorageStateForIntent({ current: depPkg.storage_state, intent, disableTarget })
+            // [AddOn] OrigOffload_Begin
+            const depDisableTarget = getDisableTargetForPkg(depPkg)
+            // [AddOn] OrigOffload_End
+            const depTarget = nextStorageStateForIntent({
+              current: depPkg.storage_state,
+              intent,
+              disableTarget: depDisableTarget,
+            })
             if (!depTarget) return
             if (isPackageArchived(depPkg.storage_state)) clearedArchive = true
             try {
@@ -769,7 +801,13 @@ export function registerPackageHandlers() {
     for (const fn of batchSet) for (const dep of getTransitiveDeps(fn, getForwardDeps())) closure.add(dep)
 
     const parsed = parseDisableBehavior(getSetting('disable_behavior'))
-    const disableBehaviorTargetId = parsed.kind === 'move-to' ? parsed.auxDirId : null
+    // [AddOn] OrigOffload_Begin
+    let disableBehaviorTargetId = parsed.kind === 'move-to' ? parsed.auxDirId : null
+    if (parsed.kind === 'move-to-orig') {
+      const offloadDirs = getAuxLibraryDirs().filter((d) => !d.archive)
+      if (offloadDirs.length > 0) disableBehaviorTargetId = offloadDirs[0].id
+    }
+    // [AddOn] OrigOffload_End
     const summarize = (prune) => {
       const { toPrune, decisions } = planResettle({
         candidates: closure,

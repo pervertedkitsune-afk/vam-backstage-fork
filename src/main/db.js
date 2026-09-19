@@ -4,7 +4,7 @@ import { app } from 'electron'
 import { join } from 'path'
 import { LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME } from '@shared/local-package.js'
 
-export const SCHEMA_VERSION = 30
+export const SCHEMA_VERSION = 31
 
 /**
  * Normalize a value to a non-negative integer string, or null. Hub resource/user
@@ -149,6 +149,9 @@ export const MIGRATIONS = [
   [28, applyV28],
   [29, applyV29],
   [30, applyV30],
+  // [AddOn] OrigOffload_Begin
+  [31, applyV31],
+  // [AddOn] OrigOffload_End
 ]
 
 function migrate() {
@@ -509,6 +512,30 @@ function applyV30() {
   }
 }
 
+// [AddOn] OrigOffload_Begin
+/**
+ * v31 — Original offload directory tracking and library_dirs sort order.
+ */
+function applyV31() {
+  const pkgCols = db
+    .prepare(`PRAGMA table_info(packages)`)
+    .all()
+    .map((c) => c.name)
+  if (!pkgCols.includes('original_library_dir_id')) {
+    db.exec(
+      'ALTER TABLE packages ADD COLUMN original_library_dir_id INTEGER NULL REFERENCES library_dirs(id) ON DELETE SET NULL',
+    )
+  }
+  const dirCols = db
+    .prepare(`PRAGMA table_info(library_dirs)`)
+    .all()
+    .map((c) => c.name)
+  if (!dirCols.includes('sort_order')) {
+    db.exec('ALTER TABLE library_dirs ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
+  }
+}
+// [AddOn] OrigOffload_End
+
 /**
  * Ensure the synthetic "local content" package row exists. Loose files under
  * `vamDir/Saves` and `vamDir/Custom` are stored as `contents` rows that point
@@ -535,7 +562,8 @@ function createSchema() {
       path TEXT UNIQUE NOT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch()),
       browser_assist INTEGER NOT NULL DEFAULT 0,
-      archive INTEGER NOT NULL DEFAULT 0
+      archive INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS packages (
@@ -552,6 +580,7 @@ function createSchema() {
       is_direct INTEGER NOT NULL DEFAULT 0,
       storage_state TEXT NOT NULL DEFAULT 'enabled',
       library_dir_id INTEGER NULL REFERENCES library_dirs(id) ON DELETE RESTRICT,
+      original_library_dir_id INTEGER NULL REFERENCES library_dirs(id) ON DELETE SET NULL,
       subpath TEXT NOT NULL DEFAULT '',
       hub_resource_id TEXT,
       dep_refs TEXT NOT NULL DEFAULT '[]',
@@ -682,21 +711,26 @@ function stmt(sql) {
  * by file mtime within the run, and keeps the inheritance donor gate
  * (`first_seen_at < self`) excluding same-run peers. Defaults to now when omitted.
  */
+// [AddOn] OrigOffload_Begin
 export function upsertPackage(pkg) {
+  const origDirId =
+    pkg.originalLibraryDirId ?? pkg.original_library_dir_id ?? pkg.libraryDirId ?? pkg.library_dir_id ?? null
   stmt(`
-    INSERT INTO packages (filename, creator, package_name, version, type, title, description, license, size_bytes, file_mtime, is_direct, storage_state, library_dir_id, subpath, dep_refs, first_seen_at, scanned_at)
-    VALUES (@filename, @creator, @packageName, @version, @type, @title, @description, @license, @sizeBytes, @fileMtime, @isDirect, @storageState, @libraryDirId, @subpath, @depRefs, @firstSeenAt, unixepoch())
+    INSERT INTO packages (filename, creator, package_name, version, type, title, description, license, size_bytes, file_mtime, is_direct, storage_state, library_dir_id, original_library_dir_id, subpath, dep_refs, first_seen_at, scanned_at)
+    VALUES (@filename, @creator, @packageName, @version, @type, @title, @description, @license, @sizeBytes, @fileMtime, @isDirect, @storageState, @libraryDirId, @origDirId, @subpath, @depRefs, @firstSeenAt, unixepoch())
     ON CONFLICT(filename) DO UPDATE SET
       creator = excluded.creator, package_name = excluded.package_name, version = excluded.version,
       type = excluded.type, title = excluded.title, description = excluded.description,
       license = excluded.license, size_bytes = excluded.size_bytes, file_mtime = excluded.file_mtime,
       storage_state = excluded.storage_state,
       library_dir_id = excluded.library_dir_id,
+      original_library_dir_id = COALESCE(excluded.original_library_dir_id, packages.original_library_dir_id),
       subpath = excluded.subpath,
       dep_refs = excluded.dep_refs, scanned_at = excluded.scanned_at,
       missing_since = NULL
-  `).run({ subpath: '', firstSeenAt: Math.floor(Date.now() / 1000), ...pkg })
+  `).run({ subpath: '', origDirId, firstSeenAt: Math.floor(Date.now() / 1000), ...pkg })
 }
+// [AddOn] OrigOffload_End
 
 export function deletePackage(filename) {
   stmt('DELETE FROM packages WHERE filename = ?').run(filename)
@@ -770,23 +804,35 @@ export function setPackageTypeFromHub(filename, hubType) {
  * state flips that don't relocate the file (enable/disable/offload preserve subpath
  * and pass the existing value explicitly).
  */
-export function setStorageState(filename, storageState, libraryDirId, subpath) {
-  // Clearing `missing_since` here is what resurrects a tombstoned package when the
-  // watcher's relocation walk finds its `.var` again (moved, restored, remounted):
-  // the file is back on disk, so the row is present again and its identity/settings
-  // survive intact.
-  if (subpath === undefined) {
-    stmt('UPDATE packages SET storage_state = ?, library_dir_id = ?, missing_since = NULL WHERE filename = ?').run(
-      storageState,
-      libraryDirId ?? null,
-      filename,
-    )
+// [AddOn] OrigOffload_Begin
+export function setStorageState(filename, storageState, libraryDirId, subpath, originalLibraryDirId) {
+  const effectiveOrigId =
+    originalLibraryDirId !== undefined ? originalLibraryDirId : libraryDirId != null ? libraryDirId : undefined
+  if (effectiveOrigId !== undefined) {
+    if (subpath === undefined) {
+      stmt(
+        'UPDATE packages SET storage_state = ?, library_dir_id = ?, original_library_dir_id = COALESCE(?, original_library_dir_id), missing_since = NULL WHERE filename = ?',
+      ).run(storageState, libraryDirId ?? null, effectiveOrigId, filename)
+    } else {
+      stmt(
+        'UPDATE packages SET storage_state = ?, library_dir_id = ?, original_library_dir_id = COALESCE(?, original_library_dir_id), subpath = ?, missing_since = NULL WHERE filename = ?',
+      ).run(storageState, libraryDirId ?? null, effectiveOrigId, subpath, filename)
+    }
   } else {
-    stmt(
-      'UPDATE packages SET storage_state = ?, library_dir_id = ?, subpath = ?, missing_since = NULL WHERE filename = ?',
-    ).run(storageState, libraryDirId ?? null, subpath, filename)
+    if (subpath === undefined) {
+      stmt('UPDATE packages SET storage_state = ?, library_dir_id = ?, missing_since = NULL WHERE filename = ?').run(
+        storageState,
+        libraryDirId ?? null,
+        filename,
+      )
+    } else {
+      stmt(
+        'UPDATE packages SET storage_state = ?, library_dir_id = ?, subpath = ?, missing_since = NULL WHERE filename = ?',
+      ).run(storageState, libraryDirId ?? null, subpath, filename)
+    }
   }
 }
+// [AddOn] OrigOffload_End
 
 /**
  * Reconciliation snapshot of a single package row, keyed by PK. This is the one
@@ -827,22 +873,49 @@ export function getDonorVersionsByPackageName(packageName, filename) {
 
 // Library directories (aux only — main is implicit via vam_dir setting + NULL pointer)
 
+// [AddOn] OrigOffload_Begin
 export function listLibraryDirs() {
-  return stmt('SELECT id, path, created_at, browser_assist, archive FROM library_dirs ORDER BY created_at ASC').all()
+  return stmt(
+    'SELECT id, path, created_at, browser_assist, archive, sort_order FROM library_dirs ORDER BY sort_order ASC, created_at ASC',
+  ).all()
 }
 
 export function getLibraryDir(id) {
-  return stmt('SELECT id, path, created_at, browser_assist, archive FROM library_dirs WHERE id = ?').get(id)
+  return stmt('SELECT id, path, created_at, browser_assist, archive, sort_order FROM library_dirs WHERE id = ?').get(id)
 }
 
 export function getLibraryDirByPath(path) {
-  return stmt('SELECT id, path, created_at, browser_assist, archive FROM library_dirs WHERE path = ?').get(path)
+  return stmt('SELECT id, path, created_at, browser_assist, archive, sort_order FROM library_dirs WHERE path = ?').get(
+    path,
+  )
 }
 
 export function insertLibraryDir(path, archive = false) {
-  const info = stmt('INSERT INTO library_dirs (path, archive) VALUES (?, ?)').run(path, archive ? 1 : 0)
+  const maxOrderRow = stmt('SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM library_dirs').get()
+  const nextOrder = (maxOrderRow?.max_order ?? -1) + 1
+  const info = stmt('INSERT INTO library_dirs (path, archive, sort_order) VALUES (?, ?, ?)').run(
+    path,
+    archive ? 1 : 0,
+    nextOrder,
+  )
   return info.lastInsertRowid
 }
+
+export function updateLibraryDirSortOrders(orderedIds) {
+  const stmtUpdate = stmt('UPDATE library_dirs SET sort_order = ? WHERE id = ?')
+  const tx = db.transaction((ids) => {
+    ids.forEach((id, index) => {
+      stmtUpdate.run(index, id)
+    })
+  })
+  tx(orderedIds)
+}
+
+export function setPackageOriginalLibraryDirId(filename, originalLibraryDirId) {
+  if (originalLibraryDirId == null) return
+  stmt('UPDATE packages SET original_library_dir_id = ? WHERE filename = ?').run(originalLibraryDirId, filename)
+}
+// [AddOn] OrigOffload_End
 
 /** Toggle the BrowserAssist sidecar mode flag on an aux dir (see applyV26 / storage-state.js). */
 export function setLibraryDirBrowserAssist(id, enabled) {
