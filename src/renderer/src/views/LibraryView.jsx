@@ -135,19 +135,7 @@ import {
 } from '@/lib/hub-availability'
 import { useViewStore } from '@/stores/useViewStore'
 
-// [AddOn] Filter - Begin
-const SORT_OPTIONS = [
-  'Recently installed',
-  'Type',
-  'Name',
-  'Author',
-  'Size',
-  'Content',
-  'Deps',
-  'Morphs',
-  'Offload Directory',
-]
-// [AddOn] Filter - End
+const SORT_OPTIONS = ['Recently installed', 'Type', 'Name', 'Author', 'Size', 'Content', 'Deps', 'Morphs']
 
 const getPackageId = (p) => p.filename
 
@@ -227,17 +215,10 @@ function filterPackagesBySelectedTypes(items, selectedTypes) {
   })
 }
 
-// [AddOn] Filter - Begin
 function filterPackagesByEnabledStorage(items, enabledFilter) {
-  console.log('[AddOn] Filter - LibraryView filtering packages by enabled state:', enabledFilter)
   if (enabledFilter === 'all') return items
-  if (enabledFilter.startsWith('offloaded:')) {
-    const dirId = enabledFilter.slice('offloaded:'.length)
-    return items.filter((p) => p.storageState === 'offloaded' && String(p.libraryDirId) === String(dirId))
-  }
   return items.filter((p) => p.storageState === enabledFilter)
 }
-// [AddOn] Filter - End
 
 export default function LibraryView({ onNavigate, navContext }) {
   const {
@@ -463,7 +444,6 @@ export default function LibraryView({ onNavigate, navContext }) {
     return counts
   }, [baseFiltered, statusFilter, effectiveEnabledFilter, selectedTags, selectedLabelIds, updateCheckResults])
 
-  // [AddOn] Filter - Begin
   /** Facet counts for Enabled filter: respects status/type/tags/labels but not enabled itself */
   const enabledFilterCounts = useMemo(() => {
     let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
@@ -473,26 +453,13 @@ export default function LibraryView({ onNavigate, navContext }) {
     let enabled = 0,
       disabled = 0,
       offloaded = 0
-    const offloadedByDir = {}
     for (const p of items) {
       if (p.storageState === 'disabled') disabled++
-      else if (p.storageState === 'offloaded') {
-        offloaded++
-        if (p.libraryDirId != null) {
-          offloadedByDir[p.libraryDirId] = (offloadedByDir[p.libraryDirId] || 0) + 1
-        }
-      } else if (p.storageState === 'enabled') enabled++
+      else if (p.storageState === 'offloaded') offloaded++
+      else if (p.storageState === 'enabled') enabled++
     }
-    console.log('[AddOn] Filter - LibraryView enabledFilterCounts:', {
-      all: items.length,
-      enabled,
-      disabled,
-      offloaded,
-      offloadedByDir,
-    })
-    return { all: items.length, enabled, disabled, offloaded, offloadedByDir }
+    return { all: items.length, enabled, disabled, offloaded }
   }, [baseFiltered, statusFilter, selectedTypes, selectedTags, selectedLabelIds, updateCheckResults])
-  // [AddOn] Filter - End
 
   const filtered = useMemo(() => {
     let result = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
@@ -500,13 +467,6 @@ export default function LibraryView({ onNavigate, navContext }) {
     result = filterPackagesBySelectedTypes(result, selectedTypes)
     result = result.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     result = result.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
-    // [AddOn] Filter - Begin
-    const auxDirMap = new Map()
-    for (const dir of auxDirs) {
-      const dirName = dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Directory ${dir.id}`)
-      auxDirMap.set(dir.id, dirName)
-    }
-
     const sortFns = {
       'Recently installed': (a, b) =>
         (b.firstSeenAt || 0) - (a.firstSeenAt || 0) || (b.fileMtime || 0) - (a.fileMtime || 0),
@@ -519,19 +479,7 @@ export default function LibraryView({ onNavigate, navContext }) {
       Content: (a, b) => b.contentCount - a.contentCount,
       Deps: (a, b) => b.depCount - a.depCount,
       Morphs: (a, b) => (b.morphCount || 0) - (a.morphCount || 0),
-      'Offload Directory': (a, b) => {
-        const nameA = a.libraryDirId != null ? auxDirMap.get(a.libraryDirId) || '' : ''
-        const nameB = b.libraryDirId != null ? auxDirMap.get(b.libraryDirId) || '' : ''
-        console.log('[AddOn] Filter - LibraryView sorting by Offload Directory:', {
-          a: a.filename,
-          dirA: nameA,
-          b: b.filename,
-          dirB: nameB,
-        })
-        return nameA.localeCompare(nameB) || displayName(a).localeCompare(displayName(b))
-      },
     }
-    // [AddOn] Filter - End
     const primary = sortFns[primarySort] || sortFns['Type']
     const secondary = sortFns[secondarySort] || sortFns['Recently installed']
     result.sort((a, b) => primary(a, b) || secondary(a, b))
@@ -547,9 +495,6 @@ export default function LibraryView({ onNavigate, navContext }) {
     secondarySort,
     updateCheckResults,
     authorCounts,
-    // [AddOn] Filter - Begin
-    auxDirs,
-    // [AddOn] Filter - End
   ])
 
   const sections = useMemo(
@@ -644,7 +589,6 @@ export default function LibraryView({ onNavigate, navContext }) {
           })),
         ],
       },
-      // [AddOn] Filter - Begin
       {
         key: 'enabled',
         label: 'Enabled',
@@ -661,17 +605,8 @@ export default function LibraryView({ onNavigate, navContext }) {
           { value: 'enabled', label: 'Enabled', count: enabledFilterCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: enabledFilterCounts.disabled },
           { value: 'offloaded', label: 'Offloaded', count: enabledFilterCounts.offloaded },
-          ...auxDirs
-            .filter((d) => !d.archive)
-            .map((dir) => ({
-              value: `offloaded:${dir.id}`,
-              label: dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Offload ${dir.id}`),
-              count: enabledFilterCounts.offloadedByDir?.[dir.id] || 0,
-              level: 1,
-            })),
         ],
       },
-      // [AddOn] Filter - End
       ...(labels.length
         ? [
             {
@@ -746,9 +681,6 @@ export default function LibraryView({ onNavigate, navContext }) {
       statusCounts,
       enabledFilterCounts,
       backendCounts,
-      // [AddOn] Filter - Begin
-      auxDirs,
-      // [AddOn] Filter - End
       updateFacetCount,
       authorSearch,
       excludedAuthors,

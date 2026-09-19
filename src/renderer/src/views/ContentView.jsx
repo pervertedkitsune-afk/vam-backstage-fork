@@ -79,9 +79,7 @@ import {
 import { packageNeedsDisableConfirmation } from '@/lib/package-disable-confirm'
 import { StorageStateChip } from '@/components/StorageStateChip'
 
-// [AddOn] Filter - Begin
-const SORT_OPTIONS = ['Recently installed', 'Name A-Z', 'Package', 'Type', 'Offload Directory']
-// [AddOn] Filter - End
+const SORT_OPTIONS = ['Recently installed', 'Name A-Z', 'Package', 'Type']
 
 const getContentId = (c) => c.id
 
@@ -112,28 +110,17 @@ const contentIsInstalled = (c) => {
  *  presets defer to their source package; plain local content is never archived. */
 const isContentArchived = (c) => isPackageArchived(governingPackage(c)?.storageState ?? 'enabled')
 
-// [AddOn] Filter - Begin
 function matchesContentPackageStatus(c, packageStatusFilter) {
-  console.log('[AddOn] Filter - ContentView matchesContentPackageStatus:', packageStatusFilter)
   if (packageStatusFilter === 'all') return true
   const archived = isContentArchived(c)
   if (packageStatusFilter === 'archived') return archived
+  // Enabled/Disabled are axes over the *active* library — archived is its own
+  // tier and never bleeds into them (it's inactive but not "disabled").
   if (archived) return false
-
-  const pkg = governingPackage(c)
-  if (packageStatusFilter === 'offloaded') {
-    return pkg?.storageState === 'offloaded'
-  }
-  if (packageStatusFilter.startsWith('offloaded:')) {
-    const dirId = packageStatusFilter.slice('offloaded:'.length)
-    return pkg?.storageState === 'offloaded' && String(pkg?.libraryDirId) === String(dirId)
-  }
-
   const disabled = isPackageDisabled(c)
   if (packageStatusFilter === 'disabled') return disabled
   return !disabled
 }
-// [AddOn] Filter - End
 
 function contentHubTags(c) {
   return parseCommaTags(c.package?.hubTags)
@@ -450,33 +437,15 @@ export default function ContentView({ onNavigate, navContext }) {
       },
       { packageStatus: true },
     )
-    // [AddOn] Filter - Begin
     let enabled = 0,
       disabled = 0,
-      archived = 0,
-      offloaded = 0
-    const offloadedByDir = {}
+      archived = 0
     for (const c of items) {
-      const pkg = governingPackage(c)
       if (isContentArchived(c)) archived++
-      else if (pkg?.storageState === 'offloaded') {
-        offloaded++
-        if (pkg.libraryDirId != null) {
-          offloadedByDir[pkg.libraryDirId] = (offloadedByDir[pkg.libraryDirId] || 0) + 1
-        }
-      } else if (isPackageDisabled(c)) disabled++
+      else if (isPackageDisabled(c)) disabled++
       else enabled++
     }
-    console.log('[AddOn] Filter - ContentView packageStatusCounts:', {
-      all: enabled + disabled + archived + offloaded,
-      enabled,
-      disabled,
-      archived,
-      offloaded,
-      offloadedByDir,
-    })
-    return { all: enabled + disabled + archived + offloaded, enabled, disabled, archived, offloaded, offloadedByDir }
-    // [AddOn] Filter - End
+    return { all: enabled + disabled + archived, enabled, disabled, archived }
   }, [
     baseFiltered,
     selectedTypes,
@@ -532,13 +501,6 @@ export default function ContentView({ onNavigate, navContext }) {
       selectedTags,
       selectedLabelIds,
     })
-    // [AddOn] Filter - Begin
-    const auxDirMap = new Map()
-    for (const dir of auxDirs) {
-      const dirName = dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Directory ${dir.id}`)
-      auxDirMap.set(dir.id, dirName)
-    }
-
     const sortFns = {
       // Loose rows carry their own fileMtime (matches VaM's on-disk order). Packaged
       // rows fall back to the owning package's install / file timestamps.
@@ -548,21 +510,7 @@ export default function ContentView({ onNavigate, navContext }) {
       'Name A-Z': (a, b) => (a.displayName || '').localeCompare(b.displayName || ''),
       Package: (a, b) => contentPackageLabel(a).localeCompare(contentPackageLabel(b)),
       Type: (a, b) => compareContentTypes(a.category, b.category),
-      'Offload Directory': (a, b) => {
-        const pkgA = governingPackage(a)
-        const pkgB = governingPackage(b)
-        const nameA = pkgA?.libraryDirId != null ? auxDirMap.get(pkgA.libraryDirId) || '' : ''
-        const nameB = pkgB?.libraryDirId != null ? auxDirMap.get(pkgB.libraryDirId) || '' : ''
-        console.log('[AddOn] Filter - ContentView sorting by Offload Directory:', {
-          a: a.id,
-          dirA: nameA,
-          b: b.id,
-          dirB: nameB,
-        })
-        return nameA.localeCompare(nameB) || (a.displayName || '').localeCompare(b.displayName || '')
-      },
     }
-    // [AddOn] Filter - End
     const primary = sortFns[primarySort] || sortFns['Type']
     const secondary = sortFns[secondarySort] || sortFns['Recently installed']
     result.sort((a, b) => primary(a, b) || secondary(a, b))
@@ -578,9 +526,6 @@ export default function ContentView({ onNavigate, navContext }) {
     visibilityFilter,
     primarySort,
     secondarySort,
-    // [AddOn] Filter - Begin
-    auxDirs,
-    // [AddOn] Filter - End
   ])
 
   const sections = useMemo(
@@ -645,23 +590,12 @@ export default function ContentView({ onNavigate, navContext }) {
         value: packageStatusFilter,
         default: FILTER_DEFAULTS.packageStatusFilter,
         onChange: setPackageStatusFilter,
-        // [AddOn] Filter - Begin
         items: [
           { value: 'all', label: 'All', count: packageStatusCounts.all },
           { value: 'enabled', label: 'Enabled', count: packageStatusCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: packageStatusCounts.disabled },
-          { value: 'offloaded', label: 'Offloaded', count: packageStatusCounts.offloaded },
-          ...auxDirs
-            .filter((d) => !d.archive)
-            .map((dir) => ({
-              value: `offloaded:${dir.id}`,
-              label: dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Offload ${dir.id}`),
-              count: packageStatusCounts.offloadedByDir?.[dir.id] || 0,
-              level: 1,
-            })),
           ...(hasArchiveDirs ? [{ value: 'archived', label: 'Archived', count: packageStatusCounts.archived }] : []),
         ],
-        // [AddOn] Filter - End
       },
       {
         key: 'package',
@@ -743,9 +677,6 @@ export default function ContentView({ onNavigate, navContext }) {
       packageStatusFilter,
       packageStatusCounts,
       hasArchiveDirs,
-      // [AddOn] Filter - Begin
-      auxDirs,
-      // [AddOn] Filter - End
       visibilityFilter,
       visibilityCounts,
       authorSearch,
