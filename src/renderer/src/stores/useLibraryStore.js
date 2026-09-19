@@ -166,6 +166,18 @@ export const FILTER_DEFAULTS = {
   license: 'Any',
 }
 
+// [AddOn] Filter - Begin
+const asEnabledFilter = (v) => {
+  if (typeof v !== 'string') return undefined
+  if (['all', 'enabled', 'disabled', 'offloaded'].includes(v) || v.startsWith('offloaded:')) {
+    console.log('[AddOn] Filter - Rehydrated valid enabledFilter:', v)
+    return v
+  }
+  console.log('[AddOn] Filter - Invalid enabledFilter, falling back:', v)
+  return undefined
+}
+// [AddOn] Filter - End
+
 export const useLibraryStore = create(
   persist(
     (set, get) => ({
@@ -437,7 +449,9 @@ export const useLibraryStore = create(
     persistViewState('library-view', {
       search: asString,
       statusFilter: oneOf(['direct', 'dependency', 'orphan', 'local', 'broken', 'missing', 'updates', 'archived']),
-      enabledFilter: oneOf(['all', 'enabled', 'disabled', 'offloaded']),
+      // [AddOn] Filter - Begin
+      enabledFilter: asEnabledFilter,
+      // [AddOn] Filter - End
       selectedTypes: asArray,
       selectedTags: asPolarityList,
       selectedLabelIds: asPolarityList,
