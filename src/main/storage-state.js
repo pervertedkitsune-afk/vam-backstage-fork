@@ -25,7 +25,7 @@
 import { rename, mkdir, stat, lstat, unlink, writeFile } from 'fs/promises'
 import { join, dirname } from 'path'
 import { getPackageIndex, patchStorageState } from './store.js'
-import { setStorageState } from './db.js'
+import { setStorageState, getSetting } from './db.js'
 import { recordOwnedPath, recordOwnedDirChain } from './watcher.js'
 // [AddOn] Multidrive_Begin
 import { performCrossDriveMove } from './addons/multidrive.js'
@@ -97,6 +97,9 @@ async function guardedRename(from, to) {
     await rename(from, to)
   } catch (err) {
     if (err.code === 'EXDEV' || err.code === 'EPERM' || err.code === 'EACCES') {
+      if (getSetting('multidrive_enabled') === '0') {
+        throw new Error(`Multi-Drive support is disabled in Settings. Cannot move across drives: ${err.message}`)
+      }
       console.log(`[Multidrive] Rename failed with ${err.code}, attempting cross-drive move for ${from} → ${to}`)
       await performCrossDriveMove(from, to)
     } else {

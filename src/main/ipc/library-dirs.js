@@ -18,9 +18,8 @@
  */
 
 import { ipcMain, dialog } from 'electron'
-import { stat } from 'fs/promises'
-// import { rename, unlink, writeFile } from 'fs/promises'
-// import { join } from 'path'
+import { rename, stat, unlink, writeFile } from 'fs/promises'
+import { join } from 'path'
 import {
   insertLibraryDir,
   deleteLibraryDir,
@@ -45,9 +44,8 @@ import { DISABLE_BEHAVIOR_SUFFIX, disableBehaviorMoveTo } from '@shared/disable-
 // [AddOn] Multidrive_Begin
 /**
  * Deprecated old same-filesystem probe function.
- * MultiDrive cross-drive support is now enabled.
+ * Called when MultiDrive support toggle is disabled ('0').
  */
-/*
 async function deprecated_probeSameFs(mainPath, auxPath) {
   // Fixed name (rather than random) so a leaked scratch file from a previous failed
   // run gets reused/overwritten on the next probe instead of accumulating.
@@ -70,7 +68,7 @@ async function deprecated_probeSameFs(mainPath, auxPath) {
   } catch (err) {
     await unlink(fromPath).catch(() => {})
     if (err.code === 'EXDEV' || err.code === 'EPERM' || err.code === 'EACCES') {
-      return `Offload directory must be on the same drive as the main library (${mainPath}). Cross-disk offload is not supported in this version.`
+      return `Offload directory must be on the same drive as the main library (${mainPath}). Cross-disk offload is not supported when Multi-Drive Support is turned off.`
     }
     return `Filesystem probe failed: ${err.message}`
   }
@@ -84,7 +82,6 @@ async function deprecated_probeSameFs(mainPath, auxPath) {
   }
   return null
 }
-*/
 // [AddOn] Multidrive_End
 
 /**
@@ -114,9 +111,10 @@ async function registerAuxDir(path, { archive = false } = {}) {
   const mainPath = getMainLibraryDirPath()
   if (!mainPath) throw new Error('Main library directory is not configured yet')
   // [AddOn] Multidrive_Begin
-  // MultiDrive support enabled: cross-drive moves supported via performCrossDriveMove.
-  // const probeError = await deprecated_probeSameFs(mainPath, path)
-  // if (probeError) throw new Error(probeError)
+  if (getSetting('multidrive_enabled') === '0') {
+    const probeError = await deprecated_probeSameFs(mainPath, path)
+    if (probeError) throw new Error(probeError)
+  }
   // [AddOn] Multidrive_End
 
   const id = insertLibraryDir(path, archive)

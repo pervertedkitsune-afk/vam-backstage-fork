@@ -104,6 +104,9 @@ export default function SettingsView() {
   const [libDirsBusy, setLibDirsBusy] = useState(null)
   const [disableBehavior, setDisableBehavior] = useState('suffix')
   const [moveOnImport, setMoveOnImport] = useState(false)
+  // [AddOn] Multidrive_Begin
+  const [multidriveEnabled, setMultidriveEnabled] = useState(true)
+  // [AddOn] Multidrive_End
   const [offloadSuggestions, setOffloadSuggestions] = useState([])
   const [dismissedOffload, setDismissedOffload] = useState(() => new Set())
   const stats = useStatusStore((s) => s.stats)
@@ -189,6 +192,9 @@ export default function SettingsView() {
     window.api.dev.getUnlocked().then((v) => setDeveloperUnlocked(!!v))
     window.api.settings.get('disable_behavior').then((v) => setDisableBehavior(v || 'suffix'))
     window.api.settings.get('import_move_files').then((v) => setMoveOnImport(v === '1'))
+    // [AddOn] Multidrive_Begin
+    window.api.settings.get('multidrive_enabled').then((v) => setMultidriveEnabled(v !== '0'))
+    // [AddOn] Multidrive_End
     window.api.settings.get('offload_suggestions_dismissed').then((v) =>
       setDismissedOffload(
         new Set(
@@ -372,6 +378,13 @@ export default function SettingsView() {
     setMoveOnImport(checked)
     await window.api.settings.set('import_move_files', checked ? '1' : '0')
   }, [])
+
+  // [AddOn] Multidrive_Begin
+  const handleToggleMultidrive = useCallback(async (checked) => {
+    setMultidriveEnabled(checked)
+    await window.api.settings.set('multidrive_enabled', checked ? '1' : '0')
+  }, [])
+  // [AddOn] Multidrive_End
 
   useEffect(() => {
     let cancelled = false
@@ -1058,6 +1071,14 @@ export default function SettingsView() {
               description="Hide clothing items bundled inside packages categorized as something else, so only dedicated clothing packs surface in the Clothing view."
               noun="clothing items"
             />
+            {/* [AddOn] Multidrive_Begin */}
+            <SettingRow
+              label="Multi-Drive Support"
+              description="Allow offload directories to be located on a separate drive or filesystem from your main VaM directory."
+            >
+              <Switch checked={multidriveEnabled} onCheckedChange={handleToggleMultidrive} />
+            </SettingRow>
+            {/* [AddOn] Multidrive_End */}
             {!isRemoteClient && (
               <SettingRow
                 as="label"
