@@ -6,13 +6,13 @@
  */
 export const CHANGELOG = [
   {
-    version: '0.5.3',
+    version: '0.5.3.1',
     date: '2026-09-20',
     notes: [
       {
         kind: 'new',
         title: 'Manual Dependencies',
-        body: 'Allows packages to be manually set, declared, or unmarked as dependency (DEP) packages via top bulk toolbar, context menus, package cards, and detail panel.',
+        body: 'Allows packages to be manually set, declared, or unmarked as dependency (DEP) packages without changing their enabled/active status.',
       },
     ],
   },
