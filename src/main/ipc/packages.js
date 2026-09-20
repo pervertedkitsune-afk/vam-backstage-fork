@@ -122,6 +122,16 @@ function normalizeFilenameArgs(arg) {
   return Array.isArray(arg) ? arg : [arg]
 }
 
+// [AddOn] Progressbar_Begin
+/**
+ * Yield the main process event loop during heavy bulk renames or moves.
+ * Prevents UI lag when reading hierarchy or processing IPC messages.
+ */
+function yieldEventLoop() {
+  return new Promise((resolve) => setImmediate(resolve))
+}
+// [AddOn] Progressbar_End
+
 /**
  * Per-bulk-op cache of home-subpath maps, one walk per distinct aux target dir.
  * Co-location targets aux dirs only: main never co-locates, so it short-circuits
@@ -358,6 +368,9 @@ async function applyStorageStateChange(filenames, intentFn) {
       notify('packages:updated')
     }
     for (const filename of filenames) {
+      // [AddOn] Progressbar_Begin
+      await yieldEventLoop()
+      // [AddOn] Progressbar_End
       const pkg = getPackageIndex().get(filename)
       if (!pkg) {
         out.push({ ok: false, filename, error: `Package not found: ${filename}` })
@@ -399,6 +412,9 @@ async function applyStorageStateChange(filenames, intentFn) {
       await Promise.all(
         [...cascadeSet].map((depFilename) =>
           limit(async () => {
+            // [AddOn] Progressbar_Begin
+            await yieldEventLoop()
+            // [AddOn] Progressbar_End
             const depPkg = getPackageIndex().get(depFilename)
             if (!depPkg) return
             // [AddOn] OrigOffload_Begin

@@ -6,12 +6,12 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  RotateCw,
   ChevronUp,
   Trash2,
   FolderSync,
   Power,
   PowerOff,
+  Boxes,
 } from 'lucide-react'
 import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
 import { MovingProgressAddon } from '@/addons/movingProgressAddon'
@@ -28,22 +28,52 @@ function itemDisplayName(item) {
   return item.filename ? pkgDisplayName({ filename: item.filename }) : 'Unknown Package'
 }
 
-function getTypeIcon(type) {
+function getTypeIndicator(type) {
   switch (type) {
     case 'activate':
-      return <Power size={12} className="text-success shrink-0" />
+      return (
+        <span className="flex items-center gap-1 shrink-0">
+          <Power size={12} className="text-success shrink-0" />
+          <span className="text-[10px] font-semibold text-success bg-success/15 px-1.5 py-0.2 rounded shrink-0">
+            Enable
+          </span>
+        </span>
+      )
     case 'disable':
-      return <PowerOff size={12} className="text-text-tertiary shrink-0" />
+      return (
+        <span className="flex items-center gap-1 shrink-0">
+          <PowerOff size={12} className="text-error shrink-0" />
+          <span className="text-[10px] font-semibold text-error bg-error/15 px-1.5 py-0.2 rounded shrink-0">
+            Disable
+          </span>
+        </span>
+      )
+    case 'archive':
+      return (
+        <span className="flex items-center gap-1 shrink-0">
+          <Boxes size={12} className="text-amber-400 shrink-0" />
+          <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/15 px-1.5 py-0.2 rounded shrink-0">
+            Archive
+          </span>
+        </span>
+      )
     case 'move':
     default:
-      return <FolderSync size={12} className="text-accent-blue shrink-0" />
+      return (
+        <span className="flex items-center gap-1 shrink-0">
+          <FolderSync size={12} className="text-accent-blue shrink-0" />
+          <span className="text-[10px] font-semibold text-accent-blue bg-accent-blue/15 px-1.5 py-0.2 rounded shrink-0">
+            Move
+          </span>
+        </span>
+      )
   }
 }
 
 const SECTION_CAP = 5
 
 export default function MovingProgressPanel({ onClose }) {
-  const { items, removeItem, clearCompleted, clearFailed, clearAll } = useMovingProgressStore()
+  const { items, removeItem, clearCompleted, clearFailed } = useMovingProgressStore()
 
   const [panelWidth, setPanelWidth] = usePersistedPanelWidth('panel_width_moving_progress', {
     min: 200,
@@ -112,7 +142,7 @@ export default function MovingProgressPanel({ onClose }) {
                   key={item.id}
                   className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-elevated transition-colors"
                 >
-                  {getTypeIcon(item.type)}
+                  {getTypeIndicator(item.type)}
                   <div className="min-w-0 flex-1">
                     <div className={`${VALUE} truncate select-text cursor-text`}>{itemDisplayName(item)}</div>
                   </div>
@@ -136,6 +166,7 @@ export default function MovingProgressPanel({ onClose }) {
                       <div className="text-xs text-error truncate select-text cursor-text">{item.error}</div>
                     )}
                   </div>
+                  {getTypeIndicator(item.type)}
                   <div className="flex items-center gap-0.5 shrink-0">
                     <Button
                       variant="ghost"
@@ -168,6 +199,7 @@ export default function MovingProgressPanel({ onClose }) {
                   <div className="min-w-0 flex-1">
                     <div className={`${VALUE} truncate select-text cursor-text`}>{itemDisplayName(item)}</div>
                   </div>
+                  {getTypeIndicator(item.type)}
                   <span className={`${META_DENSE} shrink-0`}>{formatTimeAgo(item.timestamp)}</span>
                 </div>
               )}
@@ -191,8 +223,8 @@ function ActiveOperationItem({ item, onCancel }) {
 
   return (
     <div className="group/active px-4 py-1.5 hover:bg-elevated transition-colors">
-      <div className="flex items-center gap-1.5 mb-1">
-        {getTypeIcon(item.type)}
+      <div className="flex items-center gap-1.5 mb-1 min-w-0">
+        {getTypeIndicator(item.type)}
         <div className={`min-w-0 flex-1 ${VALUE} truncate select-text cursor-text`}>{itemDisplayName(item)}</div>
         <span className={`${META_DENSE} shrink-0`}>{progress}%</span>
         <Button

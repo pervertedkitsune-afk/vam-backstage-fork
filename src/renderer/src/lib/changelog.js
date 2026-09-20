@@ -6,6 +6,17 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.6.1',
+    date: '2026-10-02',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Enhanced Moving Progress & Responsiveness',
+        body: 'Added explicit operation badges for enable/disable/move/archive tasks and decoupled file moving/renaming routines to prevent main program lagging.',
+      },
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-10-01',
     notes: [
