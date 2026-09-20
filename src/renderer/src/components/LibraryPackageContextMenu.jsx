@@ -676,6 +676,14 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                       Promote
                     </ContextMenuItem>
                   )}
+                  {/* [AddOn] ManualDependencies_Begin */}
+                  {bulkDirectCount > 0 && (
+                    <ContextMenuItem onSelect={() => void runLibraryBulkDemote(bulkPackages)}>
+                      <Boxes size={12} className="shrink-0 text-text-secondary" />
+                      Mark as DEP
+                    </ContextMenuItem>
+                  )}
+                  {/* [AddOn] ManualDependencies_End */}
                   <ContextMenuSeparator />
                   <ContextMenuItem onSelect={() => void runLibraryBulkToggleEnabled(bulkPackages)}>
                     <Power
@@ -922,6 +930,17 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                       </ContextMenuItem>
                     </>
                   )}
+                  {/* [AddOn] ManualDependencies_Begin */}
+                  {p.isDirect && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onSelect={() => void handleDemote()}>
+                        <Boxes size={12} className="shrink-0 text-text-secondary" />
+                        Mark as DEP
+                      </ContextMenuItem>
+                    </>
+                  )}
+                  {/* [AddOn] ManualDependencies_End */}
                   <ContextMenuSeparator />
                   {showDisableDialog ? (
                     <ContextMenuItem onSelect={() => openConfirm(setDisableOpen)} disabled={!detail}>

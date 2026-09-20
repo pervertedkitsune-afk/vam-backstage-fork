@@ -74,6 +74,9 @@ import {
 // [AddOn] OrigOffload_Begin
 import { resolveOriginalOffloadDirId } from '../addons/orig-offload.js'
 // [AddOn] OrigOffload_End
+// [AddOn] ManualDependencies_Begin
+import { ManualDependencies } from '../addons/manual-dependencies.js'
+// [AddOn] ManualDependencies_End
 import { buildHomeSubpathMapForIndex, buildHomeSubpathMapFor } from '../home-subpath.js'
 import {
   enqueueInstall,
@@ -561,23 +564,27 @@ export function registerPackageHandlers() {
   // (and anywhere else the UI exposes "Mark as dependency"). Sticky is_direct only;
   // storage_state / location are untouched.
   ipcMain.handle('packages:demote', async (_, filenameOrFilenames) => {
-    const vamDir = getSetting('vam_dir')
-    if (!vamDir) throw new Error('VaM directory not configured')
-
+    // [AddOn] ManualDependencies_Begin
     const filenames = normalizeFilenameArgs(filenameOrFilenames)
-    for (const filename of filenames) {
-      const pkg = getPackageIndex().get(filename)
-      if (!pkg) throw new Error(`Package not found: ${filename}`)
-      setPackageDirect(filename, false)
-      await syncAutoHideAfterDirectChange(vamDir, filename, false)
-    }
-    const prefs = await readAllPrefs(vamDir)
-    setPrefsMap(prefs)
-    buildFromDb({ skipGraph: true })
+    return await ManualDependencies.markAsDep(filenames, async (list) => {
+      const vamDir = getSetting('vam_dir')
+      if (!vamDir) throw new Error('VaM directory not configured')
 
-    notify('packages:updated')
-    notify('contents:updated')
-    return filenames.length === 1 ? { ok: true } : { ok: true, count: filenames.length }
+      for (const filename of list) {
+        const pkg = getPackageIndex().get(filename)
+        if (!pkg) throw new Error(`Package not found: ${filename}`)
+        setPackageDirect(filename, false)
+        await syncAutoHideAfterDirectChange(vamDir, filename, false)
+      }
+      const prefs = await readAllPrefs(vamDir)
+      setPrefsMap(prefs)
+      buildFromDb({ skipGraph: true })
+
+      notify('packages:updated')
+      notify('contents:updated')
+      return list.length === 1 ? { ok: true } : { ok: true, count: list.length }
+    })
+    // [AddOn] ManualDependencies_End
   })
 
   ipcMain.handle('packages:setHubResource', async (_, filename, resourceId) => {
