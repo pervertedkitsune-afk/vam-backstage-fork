@@ -23,6 +23,8 @@ import {
   FolderInput,
   Boxes,
   X,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { SettingRow } from '@/components/SettingRow'
@@ -36,7 +38,7 @@ import {
   CLARIFY,
   CLARIFY_DENSE,
 } from '@/lib/typography'
-import { parseDisableBehavior, disableBehaviorMoveTo, DISABLE_BEHAVIOR_SUFFIX } from '@shared/disable-behavior.js'
+import { parseDisableBehavior, DISABLE_BEHAVIOR_SUFFIX } from '@shared/disable-behavior.js'
 import { DEFAULT_REMOTE_PORT, normalizeConnectUrl } from '@shared/remote-config.js'
 import { toast } from '@/components/Toast'
 import { useStatusStore } from '@/stores/useStatusStore'
@@ -102,6 +104,9 @@ export default function SettingsView() {
   const [libDirsBusy, setLibDirsBusy] = useState(null)
   const [disableBehavior, setDisableBehavior] = useState('suffix')
   const [moveOnImport, setMoveOnImport] = useState(false)
+  // [AddOn] Multidrive_Begin
+  const [multidriveEnabled, setMultidriveEnabled] = useState(true)
+  // [AddOn] Multidrive_End
   const [offloadSuggestions, setOffloadSuggestions] = useState([])
   const [dismissedOffload, setDismissedOffload] = useState(() => new Set())
   const stats = useStatusStore((s) => s.stats)
@@ -187,6 +192,9 @@ export default function SettingsView() {
     window.api.dev.getUnlocked().then((v) => setDeveloperUnlocked(!!v))
     window.api.settings.get('disable_behavior').then((v) => setDisableBehavior(v || 'suffix'))
     window.api.settings.get('import_move_files').then((v) => setMoveOnImport(v === '1'))
+    // [AddOn] Multidrive_Begin
+    window.api.settings.get('multidrive_enabled').then((v) => setMultidriveEnabled(v !== '0'))
+    // [AddOn] Multidrive_End
     window.api.settings.get('offload_suggestions_dismissed').then((v) =>
       setDismissedOffload(
         new Set(
@@ -302,6 +310,23 @@ export default function SettingsView() {
     })
   }, [])
 
+  // [AddOn] OrigOffload_Begin
+  const handleReorderAuxDirs = async (index, direction) => {
+    const newAuxDirs = [...auxDirs]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= newAuxDirs.length) return
+    const [movedDir] = newAuxDirs.splice(index, 1)
+    newAuxDirs.splice(targetIndex, 0, movedDir)
+    const orderedIds = newAuxDirs.map((d) => d.id)
+    try {
+      await window.api.libraryDirs.reorder(orderedIds)
+      await refreshLibDirs({ suggestions: false })
+    } catch (err) {
+      toast(`Failed to reorder offload folders: ${err.message}`, 'error')
+    }
+  }
+  // [AddOn] OrigOffload_End
+
   const handleRemoveAuxDir = useCallback(
     async (id, opts) => {
       if (!beginLibDirsOp(id)) return
@@ -353,6 +378,13 @@ export default function SettingsView() {
     setMoveOnImport(checked)
     await window.api.settings.set('import_move_files', checked ? '1' : '0')
   }, [])
+
+  // [AddOn] Multidrive_Begin
+  const handleToggleMultidrive = useCallback(async (checked) => {
+    setMultidriveEnabled(checked)
+    await window.api.settings.set('multidrive_enabled', checked ? '1' : '0')
+  }, [])
+  // [AddOn] Multidrive_End
 
   useEffect(() => {
     let cancelled = false
@@ -806,7 +838,7 @@ export default function SettingsView() {
                   </Button>
                 </div>
               )}
-              {auxDirs.map((d) => (
+              {auxDirs.map((d, index) => (
                 <AuxDirRow
                   key={d.id}
                   d={d}
@@ -814,6 +846,10 @@ export default function SettingsView() {
                   disabled={libDirsBusy === d.id}
                   disableBehavior={disableBehavior}
                   showBrowserAssist={baDirPresent}
+                  auxDirsCount={auxDirs.length}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < auxDirs.length - 1}
+                  onReorder={(dir) => void handleReorderAuxDirs(index, dir)}
                   onRemove={handleRemoveAuxDir}
                   onToggleBrowserAssist={handleToggleBrowserAssist}
                   onSetRole={handleSetRole}
@@ -872,11 +908,7 @@ export default function SettingsView() {
                 </SelectTrigger>
                 <SelectContent className="max-w-[420px]">
                   <SelectItem value="suffix">VaM native (.var.disabled marker)</SelectItem>
-                  {offloadAuxDirs.map((d) => (
-                    <SelectItem key={d.id} value={disableBehaviorMoveTo(d.id)} title={d.path}>
-                      <span className="block min-w-0 truncate">Move to {shortenLibraryPath(d.path, vamDir)}</span>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="move-to-orig">Move to Original Offload Directory</SelectItem>
                 </SelectContent>
               </Select>
             </SettingRow>
@@ -1039,6 +1071,14 @@ export default function SettingsView() {
               description="Hide clothing items bundled inside packages categorized as something else, so only dedicated clothing packs surface in the Clothing view."
               noun="clothing items"
             />
+            {/* [AddOn] Multidrive_Begin */}
+            <SettingRow
+              label="Multi-Drive Support"
+              description="Allow offload directories to be located on a separate drive or filesystem from your main VaM directory."
+            >
+              <Switch checked={multidriveEnabled} onCheckedChange={handleToggleMultidrive} />
+            </SettingRow>
+            {/* [AddOn] Multidrive_End */}
             {!isRemoteClient && (
               <SettingRow
                 as="label"
@@ -1565,6 +1605,10 @@ function AuxDirRow({
   disabled,
   disableBehavior,
   showBrowserAssist,
+  auxDirsCount = 0,
+  canMoveUp = false,
+  canMoveDown = false,
+  onReorder,
   onRemove,
   onToggleBrowserAssist,
   onSetRole,
@@ -1598,6 +1642,32 @@ function AuxDirRow({
         >
           {shortenLibraryPath(d.path, vamDir)}
         </TruncateWithTooltip>
+        {/* [AddOn] OrigOffload_Begin */}
+        {auxDirsCount > 1 && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled || !canMoveUp}
+              onClick={() => onReorder('up')}
+              title="Move folder up"
+              className="shrink-0 text-text-aside hover:text-text-primary disabled:opacity-30"
+            >
+              <ChevronUp size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={disabled || !canMoveDown}
+              onClick={() => onReorder('down')}
+              title="Move folder down"
+              className="shrink-0 text-text-aside hover:text-text-primary disabled:opacity-30"
+            >
+              <ChevronDown size={14} />
+            </Button>
+          </div>
+        )}
+        {/* [AddOn] OrigOffload_End */}
         <ArchiveSwitch
           archived={d.archive}
           disabled={disabled}
@@ -1941,15 +2011,18 @@ function shortenLibraryPath(path, vamDir) {
   return path
 }
 
+// [AddOn] OrigOffload_Begin
 function getDisableBehaviorLabel(value, auxDirs) {
   const parsed = parseDisableBehavior(value)
   if (parsed.kind === 'suffix') return 'VaM native'
+  if (parsed.kind === 'move-to-orig') return 'Move to Original Offload Directory'
   const dir = auxDirs.find((d) => d.id === parsed.auxDirId)
   if (!dir) return 'Move to …'
   const parts = dir.path.split(/[\\/]/).filter(Boolean)
   const basename = parts[parts.length - 1] || dir.path
   return `Move to ${basename}`
 }
+// [AddOn] OrigOffload_End
 
 const HOST_SERVE_TOOLTIP =
   'Runs the normal app and hosts at the same time. For a headless server with no window, launch with --serve (or set VAM_SERVE).'
@@ -1959,12 +2032,16 @@ function getLocalReachabilityTooltip(localIps, port) {
   return `Enter one of these on the other device:\n${localIps.all.map((a) => `${a.address}:${port} (${a.name})`).join('\n')}`
 }
 
+// [AddOn] OrigOffload_Begin
 function getDisableBehaviorTooltip(value, auxDirs) {
   const parsed = parseDisableBehavior(value)
   if (parsed.kind === 'suffix') return 'VaM native disable (empty .var.disabled marker beside the package)'
+  if (parsed.kind === 'move-to-orig')
+    return 'Move package back to its original offload directory (or first offload folder)'
   const dir = auxDirs.find((d) => d.id === parsed.auxDirId)
   return dir ? `Move to ${dir.path}` : undefined
 }
+// [AddOn] OrigOffload_End
 
 function StatRow({ label, value, warn }) {
   return (

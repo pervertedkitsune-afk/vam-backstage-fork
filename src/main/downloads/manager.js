@@ -53,7 +53,7 @@ import { syncAutoHideAfterDirectChange } from '../auto-hide-sync.js'
 import { recordOwnedPath } from '../watcher.js'
 import { resolvePackageThumbnails } from '../thumb-resolver.js'
 import { applyStorageState, computeInstallTarget, parseDisableBehavior } from '../storage-state.js'
-import { getMainLibraryDirPath } from '../library-dirs.js'
+import { getMainLibraryDirPath, getAuxLibraryDirs } from '../library-dirs.js'
 
 const MAX_CONCURRENT = 5
 const PROGRESS_INTERVAL_MS = 250
@@ -1169,10 +1169,17 @@ export async function integrateGraphPhase(entries, { autoQueueDeps = false } = {
         try {
           const dependents = getReverseDeps().get(filename) || null
           const parsed = parseDisableBehavior(getSetting('disable_behavior'))
+          // [AddOn] OrigOffload_Begin
+          let disableBehaviorTargetId = parsed.kind === 'move-to' ? parsed.auxDirId : null
+          if (parsed.kind === 'move-to-orig') {
+            const offloadDirs = getAuxLibraryDirs().filter((d) => !d.archive)
+            if (offloadDirs.length > 0) disableBehaviorTargetId = offloadDirs[0].id
+          }
+          // [AddOn] OrigOffload_End
           const target = computeInstallTarget({
             dependents,
             packageIndex: getPackageIndex(),
-            disableBehaviorTargetId: parsed.kind === 'move-to' ? parsed.auxDirId : null,
+            disableBehaviorTargetId,
           })
           if (target) {
             await applyStorageState(filename, target)

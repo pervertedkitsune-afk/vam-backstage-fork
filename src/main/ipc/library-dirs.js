@@ -29,6 +29,7 @@ import {
   countPackagesInLibraryDir,
   setLibraryDirBrowserAssist,
   setLibraryDirRole,
+  updateLibraryDirSortOrders,
   getSetting,
   setSetting,
 } from '../db.js'
@@ -40,17 +41,12 @@ import { buildFromDb } from '../store.js'
 import { notify, getWindow } from '../notify.js'
 import { DISABLE_BEHAVIOR_SUFFIX, disableBehaviorMoveTo } from '@shared/disable-behavior.js'
 
+// [AddOn] Multidrive_Begin
 /**
- * Probe whether `auxPath` is on the same filesystem as `mainPath` by attempting
- * a `rename` of a tiny scratch file from main into aux. Returns null on success,
- * or an error message string on failure (cross-FS rejected, perms, etc.).
- *
- * Same-FS-only is a v1 invariant: `applyStorageState`, the watcher, and the
- * scanner all assume `fs.rename` between main and any aux dir is a microsecond
- * operation. Cross-FS aux dirs would require copy+verify+unlink fallback,
- * temp-file sweeping, and progress UI — deferred to v2.
+ * Deprecated old same-filesystem probe function.
+ * Called when MultiDrive support toggle is disabled ('0').
  */
-async function probeSameFs(mainPath, auxPath) {
+async function deprecated_probeSameFs(mainPath, auxPath) {
   // Fixed name (rather than random) so a leaked scratch file from a previous failed
   // run gets reused/overwritten on the next probe instead of accumulating.
   const tag = '.backstage-fs-probe'
@@ -72,7 +68,7 @@ async function probeSameFs(mainPath, auxPath) {
   } catch (err) {
     await unlink(fromPath).catch(() => {})
     if (err.code === 'EXDEV' || err.code === 'EPERM' || err.code === 'EACCES') {
-      return `Offload directory must be on the same drive as the main library (${mainPath}). Cross-disk offload is not supported in this version.`
+      return `Offload directory must be on the same drive as the main library (${mainPath}). Cross-disk offload is not supported when Multi-Drive Support is turned off.`
     }
     return `Filesystem probe failed: ${err.message}`
   }
@@ -86,6 +82,7 @@ async function probeSameFs(mainPath, auxPath) {
   }
   return null
 }
+// [AddOn] Multidrive_End
 
 /**
  * Validate → stat → dedupe → same-FS probe → insert a new offload dir row.
@@ -113,10 +110,12 @@ async function registerAuxDir(path, { archive = false } = {}) {
 
   const mainPath = getMainLibraryDirPath()
   if (!mainPath) throw new Error('Main library directory is not configured yet')
-  // TODO(cross-fs): archive dirs on a cheap HDD are the natural end state, but v1
-  // requires same-FS (rename-based moves). Lifts with the future cross-FS/symlink work.
-  const probeError = await probeSameFs(mainPath, path)
-  if (probeError) throw new Error(probeError)
+  // [AddOn] Multidrive_Begin
+  if (getSetting('multidrive_enabled') === '0') {
+    const probeError = await deprecated_probeSameFs(mainPath, path)
+    if (probeError) throw new Error(probeError)
+  }
+  // [AddOn] Multidrive_End
 
   const id = insertLibraryDir(path, archive)
   // BrowserAssist auto-detect is an *offload* concern (its semantics are our
@@ -145,6 +144,17 @@ export function registerLibraryDirHandlers() {
     })
     return { main, aux }
   })
+
+  // [AddOn] OrigOffload_Begin
+  ipcMain.handle('library-dirs:reorder', async (_, orderedIds) => {
+    if (!Array.isArray(orderedIds)) throw new Error('Invalid directory order')
+    updateLibraryDirSortOrders(orderedIds)
+    refreshLibraryDirs()
+    notify('packages:updated')
+    notify('contents:updated')
+    return { ok: true }
+  })
+  // [AddOn] OrigOffload_End
 
   // Toggle JayJayWon BrowserAssist sidecar mode on an offload dir. This only flips
   // the flag: it governs whether *future* offloads into this dir write a sidecar and

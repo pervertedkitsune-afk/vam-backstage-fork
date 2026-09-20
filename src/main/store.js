@@ -904,6 +904,7 @@ function enrichPackageSummary(pkg) {
     isDirect: !!pkg.is_direct,
     storageState: pkg.storage_state,
     libraryDirId: pkg.library_dir_id ?? null,
+    originalLibraryDirId: pkg.original_library_dir_id ?? null,
     subpath: pkg.subpath || '',
     hubResourceId: pkg.hub_resource_id,
     hubUserId: pkg.hub_user_id,
@@ -1406,16 +1407,32 @@ export function patchMarkRecent(filename, fileMtime) {
  * fall back to `buildFromDb()` — otherwise a toggle will leave it stale until the
  * next rescan.
  */
-export function patchStorageState(filenames, storageState, libraryDirId, subpath) {
+// [AddOn] OrigOffload_Begin
+export function patchStorageState(filenames, storageState, libraryDirId, subpath, originalLibraryDirId) {
   for (const fn of filenames) {
     const pkg = packageIndex.get(fn)
     if (pkg) {
       pkg.storage_state = storageState
       if (libraryDirId !== undefined) pkg.library_dir_id = libraryDirId == null ? null : libraryDirId
       if (subpath !== undefined) pkg.subpath = subpath || ''
+      if (originalLibraryDirId !== undefined) {
+        pkg.original_library_dir_id = originalLibraryDirId == null ? null : originalLibraryDirId
+      } else if (libraryDirId != null) {
+        pkg.original_library_dir_id = libraryDirId
+      }
     }
   }
 }
+
+export function patchOriginalLibraryDirId(filenames, originalLibraryDirId) {
+  for (const fn of filenames) {
+    const pkg = packageIndex.get(fn)
+    if (pkg) {
+      pkg.original_library_dir_id = originalLibraryDirId == null ? null : originalLibraryDirId
+    }
+  }
+}
+// [AddOn] OrigOffload_End
 
 /** Reload packageIndex from DB and rebuild the dependency graph only.
  *  Skips content arrays, dedup, stats, and all expensive aggregates.
