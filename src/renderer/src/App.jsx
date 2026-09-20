@@ -1,5 +1,16 @@
 import { useState, useCallback, useEffect, useRef, Activity } from 'react'
-import { Compass, Library, LayoutGrid, Download, Settings, Pause, Loader2, AlertTriangle, Network } from 'lucide-react'
+import {
+  Compass,
+  Library,
+  LayoutGrid,
+  Download,
+  Settings,
+  Pause,
+  Loader2,
+  AlertTriangle,
+  Network,
+  Files,
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +24,11 @@ import {
 import ribbonAppIcon from '@resources/icon.png?url'
 import StatusBar from '@/components/StatusBar'
 import DownloadsPanel from '@/components/DownloadsPanel'
+// [AddOn] Progressbar_Begin
+import MovingProgressPanel from '@/components/MovingProgressPanel'
+import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
+import { MovingProgressAddon } from '@/addons/movingProgressAddon'
+// [AddOn] Progressbar_End
 import FirstRun from '@/components/FirstRun'
 import DropImport from '@/components/DropImport'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -49,6 +65,12 @@ export default function App() {
   const setView = useViewStore((s) => s.setView)
   const blurThumbnails = useRemoteUiStore((s) => s.blurThumbnails)
   const [dlPanelOpen, setDlPanelOpen] = useState(false)
+  // [AddOn] Progressbar_Begin
+  const [movingPanelOpen, setMovingPanelOpen] = useState(false)
+  const movingItems = useMovingProgressStore((s) => s.items)
+  const movingBadge = MovingProgressAddon.getActiveCount(movingItems)
+  const movingErrorBadge = MovingProgressAddon.getErrorCount(movingItems)
+  // [AddOn] Progressbar_End
   const [showWizard, setShowWizard] = useState(null) // null=checking, true/false
   const [whatsNew, setWhatsNew] = useState(null) // { entries, current } | null
   const dlItems = useDownloadStore((s) => s.items)
@@ -204,6 +226,9 @@ export default function App() {
       }
       setView(targetView)
       setDlPanelOpen(false)
+      // [AddOn] Progressbar_Begin
+      setMovingPanelOpen(false)
+      // [AddOn] Progressbar_End
     },
     [setView],
   )
@@ -244,28 +269,48 @@ export default function App() {
               <NavButton
                 key={item.id}
                 item={item}
-                active={view === item.id && !dlPanelOpen}
+                active={view === item.id && !dlPanelOpen && !movingPanelOpen}
                 onClick={() => navigateTo(item.id)}
               />
             ))}
           </div>
 
           <div className="flex flex-col items-center gap-1 pb-3">
+            {/* [AddOn] Progressbar_Begin */}
+            <NavButton
+              item={{ id: 'movingProgress', icon: Files, label: 'Moving Progress' }}
+              active={movingPanelOpen}
+              badge={movingBadge}
+              errorBadge={movingErrorBadge}
+              onClick={() => {
+                setDlPanelOpen(false)
+                setMovingPanelOpen(!movingPanelOpen)
+              }}
+            />
+            {/* [AddOn] Progressbar_End */}
             <NavButton
               item={{ id: 'downloads', icon: Download, label: 'Downloads' }}
               active={dlPanelOpen}
               badge={dlBadge}
               badgePaused={dlPaused && dlBadge > 0}
               errorBadge={dlErrorBadge}
-              onClick={() => setDlPanelOpen(!dlPanelOpen)}
+              onClick={() => {
+                setMovingPanelOpen(false)
+                setDlPanelOpen(!dlPanelOpen)
+              }}
             />
             <NavButton
               item={{ id: 'settings', icon: Settings, label: 'Settings' }}
-              active={view === 'settings' && !dlPanelOpen}
+              active={view === 'settings' && !dlPanelOpen && !movingPanelOpen}
               onClick={() => navigateTo('settings')}
             />
           </div>
         </nav>
+
+        {/* Moving progress panel */}
+        {/* [AddOn] Progressbar_Begin */}
+        {movingPanelOpen && <MovingProgressPanel onClose={() => setMovingPanelOpen(false)} />}
+        {/* [AddOn] Progressbar_End */}
 
         {/* Downloads panel */}
         {dlPanelOpen && <DownloadsPanel onClose={() => setDlPanelOpen(false)} />}

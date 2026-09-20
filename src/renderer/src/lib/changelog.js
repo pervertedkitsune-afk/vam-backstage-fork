@@ -6,6 +6,17 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.6.0',
+    date: '2026-10-01',
+    notes: [
+      {
+        kind: 'new',
+        title: 'Moving Progress Tracker',
+        body: 'Added a dedicated side panel and progress tracker for package move, activation, and deactivation operations.',
+      },
+    ],
+  },
+  {
     version: '0.5.4',
     date: '2026-09-20',
     notes: [
