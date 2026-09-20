@@ -73,6 +73,10 @@ import { useLibraryStore } from '@/stores/useLibraryStore'
 import { isBulk } from '@/stores/selection'
 import { useLabelsStore } from '@/stores/useLabelsStore'
 import { useLibraryDirsStore } from '@/stores/useLibraryDirsStore'
+// [AddOn] Progressbar_Begin
+import { MovingProgressAddon } from '@/addons/movingProgressAddon'
+import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
+// [AddOn] Progressbar_End
 
 const SCENE_SOURCE_TYPES = new Set(['scene', 'legacyScene'])
 const LOOK_SOURCE_TYPES = new Set(['legacyLook'])
@@ -255,7 +259,17 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
 
   const handleToggleEnabled = async () => {
     try {
-      const res = await window.api.packages.toggleEnabled(p.filename)
+      const active = isPackageActive(p.storageState ?? 'enabled')
+      const type = active ? 'disable' : 'activate'
+      const res = await MovingProgressAddon.trackOperation(
+        {
+          filename: p.filename,
+          type,
+          step: active ? 'Disabling package…' : 'Activating package…',
+          opFn: () => window.api.packages.toggleEnabled(p.filename),
+        },
+        useMovingProgressStore.getState(),
+      )
       toastIfSingleToggleFailed(res)
     } catch (err) {
       toast(`Failed to toggle package: ${err.message}`)
@@ -285,7 +299,15 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
   }
   const handleUninstall = async () => {
     try {
-      const res = await window.api.packages.uninstall(p.filename)
+      const res = await MovingProgressAddon.trackOperation(
+        {
+          filename: p.filename,
+          type: 'move',
+          step: 'Uninstalling/Moving package…',
+          opFn: () => window.api.packages.uninstall(p.filename),
+        },
+        useMovingProgressStore.getState(),
+      )
       const msg = uninstallOutcomeMessage(res)
       if (msg) toast(msg, 'success')
     } catch (err) {
@@ -310,7 +332,15 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
   const handleArchive = async (archiveDirId, depMode) => {
     setArchiveOpen(false)
     try {
-      const res = await window.api.packages.archive(archiveTargetFilenames, archiveDirId, depMode)
+      const res = await MovingProgressAddon.trackBatchOperations(
+        {
+          filenames: archiveTargetFilenames,
+          type: 'move',
+          step: 'Archiving package…',
+          opFn: () => window.api.packages.archive(archiveTargetFilenames, archiveDirId, depMode),
+        },
+        useMovingProgressStore.getState(),
+      )
       const parts = []
       if (res?.pruned) parts.push(`${res.pruned} dropped`)
       if (res?.storedToArchive) parts.push(`${res.storedToArchive} stored`)
@@ -332,7 +362,15 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
   const handleInstallFromArchive = async () => {
     setInstallArchiveOpen(false)
     try {
-      const res = await window.api.packages.installFromArchive([p.filename])
+      const res = await MovingProgressAddon.trackOperation(
+        {
+          filename: p.filename,
+          type: 'activate',
+          step: 'Restoring & activating package from archive…',
+          opFn: () => window.api.packages.installFromArchive([p.filename]),
+        },
+        useMovingProgressStore.getState(),
+      )
       if (res?.queued > 0)
         toast(`Installing: ${res.queued} dependenc${res.queued === 1 ? 'y' : 'ies'} queued`, 'success')
       await useDownloadStore.getState().fetchItems()

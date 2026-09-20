@@ -59,5 +59,55 @@ export class MovingProgressAddon {
     console.log('[MovingProgress] Clearing failed tasks')
     return items.filter((item) => item.status !== 'failed')
   }
+
+  /**
+   * Track an async operation on a package in the store.
+   * @param {object} params
+   * @param {string} params.filename
+   * @param {'move'|'activate'|'disable'} params.type
+   * @param {string} [params.step]
+   * @param {function} params.opFn
+   * @param {object} store
+   * @returns {Promise<any>}
+   */
+  static async trackOperation({ filename, type, step, opFn }, store) {
+    if (!store) return opFn()
+    const id = store.addItem({ filename, type, status: 'active', progress: 10, step })
+    try {
+      store.updateItem(id, { progress: 50, step: 'Processing…' })
+      const res = await opFn()
+      store.updateItem(id, { status: 'completed', progress: 100, step: 'Done' })
+      return res
+    } catch (err) {
+      store.updateItem(id, { status: 'failed', error: err?.message || 'Operation failed', step: 'Failed' })
+      throw err
+    }
+  }
+
+  /**
+   * Track batch async operations on multiple packages in the store.
+   * @param {object} params
+   * @param {Array<string>} params.filenames
+   * @param {'move'|'activate'|'disable'} params.type
+   * @param {string} [params.step]
+   * @param {function} params.opFn
+   * @param {object} store
+   * @returns {Promise<any>}
+   */
+  static async trackBatchOperations({ filenames = [], type, step, opFn }, store) {
+    if (!store || !filenames.length) return opFn()
+    const itemIds = filenames.map((fn) => store.addItem({ filename: fn, type, status: 'active', progress: 10, step }))
+    try {
+      itemIds.forEach((id) => store.updateItem(id, { progress: 50, step: 'Processing…' }))
+      const res = await opFn()
+      itemIds.forEach((id) => store.updateItem(id, { status: 'completed', progress: 100, step: 'Done' }))
+      return res
+    } catch (err) {
+      itemIds.forEach((id) =>
+        store.updateItem(id, { status: 'failed', error: err?.message || 'Operation failed', step: 'Failed' }),
+      )
+      throw err
+    }
+  }
 }
 // [AddOn] Progressbar_End
