@@ -6,6 +6,17 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.5.2',
+    date: '2026-09-20',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Filter Refactor & Offload Subfolder Filtering',
+        body: 'Added support for 1-level nested folder filtering in offloaded packages and modularized filter AddOn logic.',
+      },
+    ],
+  },
+  {
     version: '0.5.1.1',
     date: '2026-09-19',
     notes: [

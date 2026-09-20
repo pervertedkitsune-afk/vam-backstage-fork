@@ -134,8 +134,9 @@ import {
   updateTargetFilename,
 } from '@/lib/hub-availability'
 import { useViewStore } from '@/stores/useViewStore'
+import { FilterAddon } from '@/addons/filterAddon'
 
-// [AddOn] Filter - Begin
+// [AddOn] Filter_Begin
 const SORT_OPTIONS = [
   'Recently installed',
   'Type',
@@ -147,7 +148,7 @@ const SORT_OPTIONS = [
   'Morphs',
   'Offload Directory',
 ]
-// [AddOn] Filter - End
+// [AddOn] Filter_End
 
 const getPackageId = (p) => p.filename
 
@@ -227,17 +228,13 @@ function filterPackagesBySelectedTypes(items, selectedTypes) {
   })
 }
 
-// [AddOn] Filter - Begin
+// [AddOn] Filter_Begin
 function filterPackagesByEnabledStorage(items, enabledFilter) {
-  console.log('[AddOn] Filter - LibraryView filtering packages by enabled state:', enabledFilter)
+  console.log('[Filter] LibraryView filtering packages by enabled state:', enabledFilter)
   if (enabledFilter === 'all') return items
-  if (enabledFilter.startsWith('offloaded:')) {
-    const dirId = enabledFilter.slice('offloaded:'.length)
-    return items.filter((p) => p.storageState === 'offloaded' && String(p.libraryDirId) === String(dirId))
-  }
-  return items.filter((p) => p.storageState === enabledFilter)
+  return items.filter((p) => FilterAddon.matchesPackageFilter(p, enabledFilter))
 }
-// [AddOn] Filter - End
+// [AddOn] Filter_End
 
 export default function LibraryView({ onNavigate, navContext }) {
   const {
@@ -463,7 +460,7 @@ export default function LibraryView({ onNavigate, navContext }) {
     return counts
   }, [baseFiltered, statusFilter, effectiveEnabledFilter, selectedTags, selectedLabelIds, updateCheckResults])
 
-  // [AddOn] Filter - Begin
+  // [AddOn] Filter_Begin
   /** Facet counts for Enabled filter: respects status/type/tags/labels but not enabled itself */
   const enabledFilterCounts = useMemo(() => {
     let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
@@ -473,26 +470,22 @@ export default function LibraryView({ onNavigate, navContext }) {
     let enabled = 0,
       disabled = 0,
       offloaded = 0
-    const offloadedByDir = {}
     for (const p of items) {
       if (p.storageState === 'disabled') disabled++
-      else if (p.storageState === 'offloaded') {
-        offloaded++
-        if (p.libraryDirId != null) {
-          offloadedByDir[p.libraryDirId] = (offloadedByDir[p.libraryDirId] || 0) + 1
-        }
-      } else if (p.storageState === 'enabled') enabled++
+      else if (p.storageState === 'offloaded') offloaded++
+      else if (p.storageState === 'enabled') enabled++
     }
-    console.log('[AddOn] Filter - LibraryView enabledFilterCounts:', {
+    const offloadCounts = FilterAddon.calculateOffloadCounts(items)
+    console.log('[Filter] LibraryView enabledFilterCounts:', {
       all: items.length,
       enabled,
       disabled,
       offloaded,
-      offloadedByDir,
+      offloadCounts,
     })
-    return { all: items.length, enabled, disabled, offloaded, offloadedByDir }
+    return { all: items.length, enabled, disabled, offloaded, ...offloadCounts }
   }, [baseFiltered, statusFilter, selectedTypes, selectedTags, selectedLabelIds, updateCheckResults])
-  // [AddOn] Filter - End
+  // [AddOn] Filter_End
 
   const filtered = useMemo(() => {
     let result = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
@@ -500,13 +493,7 @@ export default function LibraryView({ onNavigate, navContext }) {
     result = filterPackagesBySelectedTypes(result, selectedTypes)
     result = result.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     result = result.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
-    // [AddOn] Filter - Begin
-    const auxDirMap = new Map()
-    for (const dir of auxDirs) {
-      const dirName = dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Directory ${dir.id}`)
-      auxDirMap.set(dir.id, dirName)
-    }
-
+    // [AddOn] Filter_Begin
     const sortFns = {
       'Recently installed': (a, b) =>
         (b.firstSeenAt || 0) - (a.firstSeenAt || 0) || (b.fileMtime || 0) - (a.fileMtime || 0),
@@ -520,18 +507,14 @@ export default function LibraryView({ onNavigate, navContext }) {
       Deps: (a, b) => b.depCount - a.depCount,
       Morphs: (a, b) => (b.morphCount || 0) - (a.morphCount || 0),
       'Offload Directory': (a, b) => {
-        const nameA = a.libraryDirId != null ? auxDirMap.get(a.libraryDirId) || '' : ''
-        const nameB = b.libraryDirId != null ? auxDirMap.get(b.libraryDirId) || '' : ''
-        console.log('[AddOn] Filter - LibraryView sorting by Offload Directory:', {
+        console.log('[Filter] LibraryView sorting by Offload Directory:', {
           a: a.filename,
-          dirA: nameA,
           b: b.filename,
-          dirB: nameB,
         })
-        return nameA.localeCompare(nameB) || displayName(a).localeCompare(displayName(b))
+        return FilterAddon.compareByOffloadDirectory(a, b, auxDirs, null, displayName)
       },
     }
-    // [AddOn] Filter - End
+    // [AddOn] Filter_End
     const primary = sortFns[primarySort] || sortFns['Type']
     const secondary = sortFns[secondarySort] || sortFns['Recently installed']
     result.sort((a, b) => primary(a, b) || secondary(a, b))
@@ -547,9 +530,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     secondarySort,
     updateCheckResults,
     authorCounts,
-    // [AddOn] Filter - Begin
+    // [AddOn] Filter_Begin
     auxDirs,
-    // [AddOn] Filter - End
+    // [AddOn] Filter_End
   ])
 
   const sections = useMemo(
@@ -644,10 +627,10 @@ export default function LibraryView({ onNavigate, navContext }) {
           })),
         ],
       },
-      // [AddOn] Filter - Begin
+      // [AddOn] Filter_Begin
       {
         key: 'enabled',
-        label: 'Enabled',
+        label: 'Filter',
         type: 'list',
         value: enabledFilter,
         default: FILTER_DEFAULTS.enabledFilter,
@@ -661,17 +644,10 @@ export default function LibraryView({ onNavigate, navContext }) {
           { value: 'enabled', label: 'Enabled', count: enabledFilterCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: enabledFilterCounts.disabled },
           { value: 'offloaded', label: 'Offloaded', count: enabledFilterCounts.offloaded },
-          ...auxDirs
-            .filter((d) => !d.archive)
-            .map((dir) => ({
-              value: `offloaded:${dir.id}`,
-              label: dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Offload ${dir.id}`),
-              count: enabledFilterCounts.offloadedByDir?.[dir.id] || 0,
-              level: 1,
-            })),
+          ...FilterAddon.buildOffloadFilterItems(auxDirs, enabledFilterCounts),
         ],
       },
-      // [AddOn] Filter - End
+      // [AddOn] Filter_End
       ...(labels.length
         ? [
             {
@@ -746,9 +722,9 @@ export default function LibraryView({ onNavigate, navContext }) {
       statusCounts,
       enabledFilterCounts,
       backendCounts,
-      // [AddOn] Filter - Begin
+      // [AddOn] Filter_Begin
       auxDirs,
-      // [AddOn] Filter - End
+      // [AddOn] Filter_End
       updateFacetCount,
       authorSearch,
       excludedAuthors,

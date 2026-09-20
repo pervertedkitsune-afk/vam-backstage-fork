@@ -6,6 +6,7 @@ import { selectionMutators } from './selection'
 import { useContentStore } from './useContentStore'
 import { persistViewState, oneOf, asArray, asPolarityList, asString, asBool, asCardWidth } from './persistViewState'
 import { applyUpdateEnrichment, applyDepEnrichment } from '@/lib/hub-availability'
+import { FilterAddon } from '@/addons/filterAddon'
 
 let missingDepsNonce = 0
 let updateCheckNonce = 0
@@ -166,17 +167,17 @@ export const FILTER_DEFAULTS = {
   license: 'Any',
 }
 
-// [AddOn] Filter - Begin
+// [AddOn] Filter_Begin
 const asEnabledFilter = (v) => {
   if (typeof v !== 'string') return undefined
-  if (['all', 'enabled', 'disabled', 'offloaded'].includes(v) || v.startsWith('offloaded:')) {
-    console.log('[AddOn] Filter - Rehydrated valid enabledFilter:', v)
+  if (FilterAddon.isValidFilterValue(v)) {
+    console.log('[Filter] Rehydrated valid enabledFilter:', v)
     return v
   }
-  console.log('[AddOn] Filter - Invalid enabledFilter, falling back:', v)
+  console.log('[Filter] Invalid enabledFilter, falling back:', v)
   return undefined
 }
-// [AddOn] Filter - End
+// [AddOn] Filter_End
 
 export const useLibraryStore = create(
   persist(
@@ -449,9 +450,9 @@ export const useLibraryStore = create(
     persistViewState('library-view', {
       search: asString,
       statusFilter: oneOf(['direct', 'dependency', 'orphan', 'local', 'broken', 'missing', 'updates', 'archived']),
-      // [AddOn] Filter - Begin
+      // [AddOn] Filter_Begin
       enabledFilter: asEnabledFilter,
-      // [AddOn] Filter - End
+      // [AddOn] Filter_End
       selectedTypes: asArray,
       selectedTags: asPolarityList,
       selectedLabelIds: asPolarityList,
