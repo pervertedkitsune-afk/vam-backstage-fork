@@ -931,8 +931,6 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                       </ContextMenuItem>
                     </>
                   )}
-                  {/* [AddOn] ManualDependencies_End */}
-                  {/* [AddOn] ManualDependencies_Begin */}
                   {p.isDirect && (
                     <>
                       <ContextMenuSeparator />

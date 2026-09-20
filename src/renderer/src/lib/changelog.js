@@ -6,7 +6,7 @@
  */
 export const CHANGELOG = [
   {
-    version: '0.5.3.1',
+    version: '0.5.4',
     date: '2026-09-20',
     notes: [
       {
