@@ -5,6 +5,7 @@ import { typeFilterSlice } from './typeFilterSlice'
 import { selectionMutators } from './selection'
 import { useLibraryStore } from './useLibraryStore'
 import { persistViewState, oneOf, asArray, asPolarityList, asString, asCardWidth, asObject } from './persistViewState'
+import { FilterAddon } from '@/addons/filterAddon'
 
 /**
  * Attach `c.package` references onto a fresh content array. Content rows arrive
@@ -77,17 +78,17 @@ export const FILTER_DEFAULTS = {
   visibilityFilter: 'visible',
 }
 
-// [AddOn] Filter - Begin
+// [AddOn] Filter_Begin
 const asPackageStatusFilter = (v) => {
   if (typeof v !== 'string') return undefined
-  if (['all', 'enabled', 'disabled', 'archived', 'offloaded'].includes(v) || v.startsWith('offloaded:')) {
-    console.log('[AddOn] Filter - Rehydrated valid packageStatusFilter:', v)
+  if (FilterAddon.isValidFilterValue(v)) {
+    console.log('[Filter] Rehydrated valid packageStatusFilter:', v)
     return v
   }
-  console.log('[AddOn] Filter - Invalid packageStatusFilter, falling back:', v)
+  console.log('[Filter] Invalid packageStatusFilter, falling back:', v)
   return undefined
 }
-// [AddOn] Filter - End
+// [AddOn] Filter_End
 
 export const useContentStore = create(
   persist(
@@ -260,9 +261,9 @@ export const useContentStore = create(
       selectedLabelIds: asPolarityList,
       excludedAuthors: asArray,
       packageFilter: oneOf(['all', 'installed', 'dependency', 'local']),
-      // [AddOn] Filter - Begin
+      // [AddOn] Filter_Begin
       packageStatusFilter: asPackageStatusFilter,
-      // [AddOn] Filter - End
+      // [AddOn] Filter_End
       visibilityFilter: oneOf(['all', 'visible', 'hidden', 'favorites']),
       primarySort: asString,
       secondarySort: asString,

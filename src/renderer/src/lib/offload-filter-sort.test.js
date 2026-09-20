@@ -1,88 +1,79 @@
-// [AddOn] Filter - Begin
+// [AddOn] Filter_Begin
 import { describe, it, expect } from 'vitest'
+import { FilterAddon } from '../addons/filterAddon'
 
-function filterPackagesByEnabledStorage(items, enabledFilter) {
-  if (enabledFilter === 'all') return items
-  if (enabledFilter.startsWith('offloaded:')) {
-    const dirId = enabledFilter.slice('offloaded:'.length)
-    return items.filter((p) => p.storageState === 'offloaded' && String(p.libraryDirId) === String(dirId))
-  }
-  return items.filter((p) => p.storageState === enabledFilter)
-}
-
-function matchesContentPackageStatus(c, packageStatusFilter, isContentArchived, isPackageDisabled) {
-  if (packageStatusFilter === 'all') return true
-  const archived = isContentArchived(c)
-  if (packageStatusFilter === 'archived') return archived
-  if (archived) return false
-
-  const pkg = c.sourcePackage ?? c.package
-  if (packageStatusFilter === 'offloaded') {
-    return pkg?.storageState === 'offloaded'
-  }
-  if (packageStatusFilter.startsWith('offloaded:')) {
-    const dirId = packageStatusFilter.slice('offloaded:'.length)
-    return pkg?.storageState === 'offloaded' && String(pkg?.libraryDirId) === String(dirId)
-  }
-
-  const disabled = isPackageDisabled(c)
-  if (packageStatusFilter === 'disabled') return disabled
-  return !disabled
-}
-
-describe('Offload Directory Filtering and Sorting', () => {
+describe('Offload Directory Filtering and Sorting with FilterAddon', () => {
   const pkgs = [
-    { filename: 'A.var', storageState: 'enabled', libraryDirId: null },
-    { filename: 'B.var', storageState: 'disabled', libraryDirId: null },
-    { filename: 'C.var', storageState: 'offloaded', libraryDirId: 101 },
-    { filename: 'D.var', storageState: 'offloaded', libraryDirId: 102 },
+    { filename: 'A.var', storageState: 'enabled', libraryDirId: null, subpath: '' },
+    { filename: 'B.var', storageState: 'disabled', libraryDirId: null, subpath: '' },
+    { filename: 'C.var', storageState: 'offloaded', libraryDirId: 101, subpath: 'CNXN' },
+    { filename: 'D.var', storageState: 'offloaded', libraryDirId: 101, subpath: 'CNXN/Dependencies' },
+    { filename: 'E.var', storageState: 'offloaded', libraryDirId: 101, subpath: 'OtherFolder' },
+    { filename: 'F.var', storageState: 'offloaded', libraryDirId: 102, subpath: '' },
   ]
 
-  const auxDirMap = new Map([
-    [101, 'Directory Alpha'],
-    [102, 'Directory Beta'],
-  ])
+  const auxDirs = [
+    { id: 101, label: 'AddonPackages_Offload' },
+    { id: 102, label: 'Directory Beta' },
+  ]
 
-  it('filters packages by general storage state and specific offloaded directory ID', () => {
-    expect(filterPackagesByEnabledStorage(pkgs, 'all')).toHaveLength(4)
-    expect(filterPackagesByEnabledStorage(pkgs, 'enabled')).toEqual([pkgs[0]])
-    expect(filterPackagesByEnabledStorage(pkgs, 'disabled')).toEqual([pkgs[1]])
-    expect(filterPackagesByEnabledStorage(pkgs, 'offloaded')).toEqual([pkgs[2], pkgs[3]])
-    expect(filterPackagesByEnabledStorage(pkgs, 'offloaded:101')).toEqual([pkgs[2]])
-    expect(filterPackagesByEnabledStorage(pkgs, 'offloaded:102')).toEqual([pkgs[3]])
+  it('extracts top-level subfolder correctly', () => {
+    expect(FilterAddon.getFirstSubfolder(pkgs[0])).toBe('')
+    expect(FilterAddon.getFirstSubfolder(pkgs[2])).toBe('CNXN')
+    expect(FilterAddon.getFirstSubfolder(pkgs[3])).toBe('CNXN')
+    expect(FilterAddon.getFirstSubfolder(pkgs[4])).toBe('OtherFolder')
+    expect(FilterAddon.getFirstSubfolder(pkgs[5])).toBe('')
   })
 
-  it('sorts packages by offloaded directory label correctly', () => {
-    const sortFn = (a, b) => {
-      const nameA = a.libraryDirId != null ? auxDirMap.get(a.libraryDirId) || '' : ''
-      const nameB = b.libraryDirId != null ? auxDirMap.get(b.libraryDirId) || '' : ''
-      return nameA.localeCompare(nameB) || a.filename.localeCompare(b.filename)
-    }
-
-    const sorted = [...pkgs].sort(sortFn)
-    expect(sorted.map((p) => p.filename)).toEqual(['A.var', 'B.var', 'C.var', 'D.var'])
+  it('filters packages by general storage state and specific offloaded directory/subfolder', () => {
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'all'))).toHaveLength(6)
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'enabled'))).toEqual([pkgs[0]])
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'disabled'))).toEqual([pkgs[1]])
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'offloaded'))).toEqual([
+      pkgs[2],
+      pkgs[3],
+      pkgs[4],
+      pkgs[5],
+    ])
+    // Parent offload dir matches all packages in dir 101
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'offloaded:101'))).toEqual([
+      pkgs[2],
+      pkgs[3],
+      pkgs[4],
+    ])
+    // Nested subfolder filter matches only packages under CNXN in dir 101
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'offloaded:101:CNXN'))).toEqual([pkgs[2], pkgs[3]])
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'offloaded:101:OtherFolder'))).toEqual([pkgs[4]])
+    expect(pkgs.filter((p) => FilterAddon.matchesPackageFilter(p, 'offloaded:102'))).toEqual([pkgs[5]])
   })
 
-  it('filters content items by offloaded directory ID', () => {
-    const contentItems = [
-      { id: '1', package: pkgs[0] },
-      { id: '2', package: pkgs[2] },
-      { id: '3', package: pkgs[3] },
-    ]
+  it('calculates offload counts correctly for dirs and subfolders', () => {
+    const counts = FilterAddon.calculateOffloadCounts(pkgs)
+    expect(counts.offloadedByDir).toEqual({
+      101: 3,
+      102: 1,
+    })
+    expect(counts.offloadedBySubfolder).toEqual({
+      '101:CNXN': 2,
+      '101:OtherFolder': 1,
+    })
+  })
 
-    const isArchived = () => false
-    const isDisabled = (c) => c.package.storageState === 'disabled'
+  it('builds FilterPanel offload items with nested level 2 items', () => {
+    const counts = FilterAddon.calculateOffloadCounts(pkgs)
+    const items = FilterAddon.buildOffloadFilterItems(auxDirs, counts)
 
-    expect(contentItems.filter((c) => matchesContentPackageStatus(c, 'all', isArchived, isDisabled))).toHaveLength(3)
-    expect(
-      contentItems.filter((c) => matchesContentPackageStatus(c, 'offloaded', isArchived, isDisabled)),
-    ).toHaveLength(2)
-    expect(contentItems.filter((c) => matchesContentPackageStatus(c, 'offloaded:101', isArchived, isDisabled))).toEqual(
-      [contentItems[1]],
-    )
-    expect(contentItems.filter((c) => matchesContentPackageStatus(c, 'offloaded:102', isArchived, isDisabled))).toEqual(
-      [contentItems[2]],
-    )
+    expect(items).toEqual([
+      { value: 'offloaded:101', label: 'AddonPackages_Offload', count: 3, level: 1 },
+      { value: 'offloaded:101:CNXN', label: 'CNXN', count: 2, level: 2 },
+      { value: 'offloaded:101:OtherFolder', label: 'OtherFolder', count: 1, level: 2 },
+      { value: 'offloaded:102', label: 'Directory Beta', count: 1, level: 1 },
+    ])
+  })
+
+  it('sorts packages by offloaded directory label and subfolder correctly', () => {
+    const sorted = [...pkgs].sort((a, b) => FilterAddon.compareByOffloadDirectory(a, b, auxDirs))
+    expect(sorted.map((p) => p.filename)).toEqual(['A.var', 'B.var', 'C.var', 'D.var', 'E.var', 'F.var'])
   })
 })
-// [AddOn] Filter - End
+// [AddOn] Filter_End
