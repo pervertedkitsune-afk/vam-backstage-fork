@@ -1040,16 +1040,6 @@ export default function LibraryView({ onNavigate, navContext }) {
                   <Trash2 size={16} className="shrink-0" />
                   Remove
                 </button>
-                {bulkSelectedPackages.some((p) => !p.isDirect) && (
-                  <button
-                    type="button"
-                    onClick={() => void runBulkPromote()}
-                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-border hover:bg-elevated text-accent-blue text-[11px]"
-                  >
-                    <Plus size={16} className="shrink-0" />
-                    Promote
-                  </button>
-                )}
                 {/* [AddOn] ManualDependencies_Begin */}
                 {bulkSelectedPackages.some((p) => p.isDirect) && (
                   <button
@@ -1059,6 +1049,16 @@ export default function LibraryView({ onNavigate, navContext }) {
                   >
                     <Boxes size={16} className="shrink-0" />
                     Mark as DEP
+                  </button>
+                )}
+                {bulkSelectedPackages.some((p) => !p.isDirect) && (
+                  <button
+                    type="button"
+                    onClick={() => void runBulkPromote()}
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-border hover:bg-elevated text-accent-blue text-[11px]"
+                  >
+                    <Plus size={16} className="shrink-0" />
+                    Remove from DEP
                   </button>
                 )}
                 {/* [AddOn] ManualDependencies_End */}
@@ -2372,9 +2372,10 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
               </div>
             ) : (
               <div className="space-y-1.5">
+                {/* [AddOn] ManualDependencies_Begin */}
                 <div>
                   <Button variant="gradient" onClick={handlePromote} className="w-full text-[11px]">
-                    <Plus size={12} /> Add to Library
+                    <Plus size={12} /> Remove from DEP
                   </Button>
                   {hiddenContentCount > 0 && (
                     <p className={cn(CLARIFY_DENSE, 'mt-1 px-0.5')}>
@@ -2382,6 +2383,7 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
                     </p>
                   )}
                 </div>
+                {/* [AddOn] ManualDependencies_End */}
                 <div className="flex gap-1.5" ref={forceRemoveActionsRowRef}>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>

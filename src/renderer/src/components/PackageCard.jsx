@@ -717,7 +717,7 @@ export function LibraryCard({
                   })
                 }}
                 className={`${THUMB_OVERLAY_CHIP} bg-accent-blue/30 text-accent-blue backdrop-blur-sm cursor-pointer hover:brightness-125 transition-[filter]`}
-                title="Dependency package. Click to promote to direct library package."
+                title="Dependency package. Click to remove from DEP status."
               >
                 DEP
               </button>
