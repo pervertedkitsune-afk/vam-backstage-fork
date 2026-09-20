@@ -74,6 +74,9 @@ import {
 // [AddOn] OrigOffload_Begin
 import { resolveOriginalOffloadDirId } from '../addons/orig-offload.js'
 // [AddOn] OrigOffload_End
+// [AddOn] ManualDependencies_Begin
+import { ManualDependencies } from '../addons/manual-dependencies.js'
+// [AddOn] ManualDependencies_End
 import { buildHomeSubpathMapForIndex, buildHomeSubpathMapFor } from '../home-subpath.js'
 import {
   enqueueInstall,
@@ -511,73 +514,61 @@ export function registerPackageHandlers() {
   })
 
   ipcMain.handle('packages:promote', async (_, filenameOrFilenames, hubResourceId) => {
-    const vamDir = getSetting('vam_dir')
-    if (!vamDir) throw new Error('VaM directory not configured')
-
+    // [AddOn] ManualDependencies_Begin
     const filenames = normalizeFilenameArgs(filenameOrFilenames)
-    // Archive-internal promote only flips is_direct (hoard classification). Enabling
-    // would pull the package out of the archive — that's Install-from-archive's job.
-    const stayArchived = new Set(
-      filenames.filter((fn) => {
-        const pkg = getPackageIndex().get(fn)
-        return pkg && isPackageArchived(pkg.storage_state)
-      }),
-    )
-    // Promoting a live package implies the user wants it usable — enable
-    // disabled/offloaded targets first (cascade-enables inactive deps).
-    const toEnable = filenames.filter((fn) => {
-      if (stayArchived.has(fn)) return false
-      const pkg = getPackageIndex().get(fn)
-      return pkg && !isPackageActive(pkg.storage_state)
+    return await ManualDependencies.unmarkDep(filenames, async (list) => {
+      const vamDir = getSetting('vam_dir')
+      if (!vamDir) throw new Error('VaM directory not configured')
+
+      // Unmarking DEP only flips the direct flag and does NOT modify the storage state (enable/activate).
+      for (const filename of list) {
+        setPackageDirect(filename, true)
+        await syncAutoHideAfterDirectChange(vamDir, filename, true)
+      }
+      const prefs = await readAllPrefs(vamDir)
+      setPrefsMap(prefs)
+      buildFromDb({ skipGraph: true })
+
+      if (list.length === 1 && hubResourceId != null && String(hubResourceId).trim() !== '') {
+        try {
+          const detail = await getResourceDetail(String(hubResourceId))
+          await cacheAvatarsFromResources([detail])
+          notify('avatars:updated')
+        } catch {}
+      }
+
+      notify('packages:updated')
+      notify('contents:updated')
+      return list.length === 1 ? { ok: true } : { ok: true, count: list.length }
     })
-    if (toEnable.length > 0) {
-      await applyStorageStateChange(toEnable, () => 'enable')
-    }
-
-    for (const filename of filenames) {
-      setPackageDirect(filename, true)
-      // Don't restamp first_seen for archive-only classification — nothing was installed.
-      if (!stayArchived.has(filename)) touchPackageFirstSeen(filename)
-      await syncAutoHideAfterDirectChange(vamDir, filename, true)
-    }
-    const prefs = await readAllPrefs(vamDir)
-    setPrefsMap(prefs)
-    buildFromDb({ skipGraph: true })
-
-    if (filenames.length === 1 && hubResourceId != null && String(hubResourceId).trim() !== '') {
-      try {
-        const detail = await getResourceDetail(String(hubResourceId))
-        await cacheAvatarsFromResources([detail])
-        notify('avatars:updated')
-      } catch {}
-    }
-
-    notify('packages:updated')
-    notify('contents:updated')
-    return filenames.length === 1 ? { ok: true } : { ok: true, count: filenames.length }
+    // [AddOn] ManualDependencies_End
   })
 
   // Flip direct → dep without uninstalling. Used for archive-hoard classification
   // (and anywhere else the UI exposes "Mark as dependency"). Sticky is_direct only;
   // storage_state / location are untouched.
   ipcMain.handle('packages:demote', async (_, filenameOrFilenames) => {
-    const vamDir = getSetting('vam_dir')
-    if (!vamDir) throw new Error('VaM directory not configured')
-
+    // [AddOn] ManualDependencies_Begin
     const filenames = normalizeFilenameArgs(filenameOrFilenames)
-    for (const filename of filenames) {
-      const pkg = getPackageIndex().get(filename)
-      if (!pkg) throw new Error(`Package not found: ${filename}`)
-      setPackageDirect(filename, false)
-      await syncAutoHideAfterDirectChange(vamDir, filename, false)
-    }
-    const prefs = await readAllPrefs(vamDir)
-    setPrefsMap(prefs)
-    buildFromDb({ skipGraph: true })
+    return await ManualDependencies.markAsDep(filenames, async (list) => {
+      const vamDir = getSetting('vam_dir')
+      if (!vamDir) throw new Error('VaM directory not configured')
 
-    notify('packages:updated')
-    notify('contents:updated')
-    return filenames.length === 1 ? { ok: true } : { ok: true, count: filenames.length }
+      for (const filename of list) {
+        const pkg = getPackageIndex().get(filename)
+        if (!pkg) throw new Error(`Package not found: ${filename}`)
+        setPackageDirect(filename, false)
+        await syncAutoHideAfterDirectChange(vamDir, filename, false)
+      }
+      const prefs = await readAllPrefs(vamDir)
+      setPrefsMap(prefs)
+      buildFromDb({ skipGraph: true })
+
+      notify('packages:updated')
+      notify('contents:updated')
+      return list.length === 1 ? { ok: true } : { ok: true, count: list.length }
+    })
+    // [AddOn] ManualDependencies_End
   })
 
   ipcMain.handle('packages:setHubResource', async (_, filename, resourceId) => {

@@ -670,12 +670,20 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                     <Download size={12} className="shrink-0 text-accent-blue" />
                     Convert legacy looks to appearance presets
                   </ContextMenuItem>
+                  {/* [AddOn] ManualDependencies_Begin */}
+                  {bulkDirectCount > 0 && (
+                    <ContextMenuItem onSelect={() => void runLibraryBulkDemote(bulkPackages)}>
+                      <Boxes size={12} className="shrink-0 text-text-secondary" />
+                      Mark as DEP
+                    </ContextMenuItem>
+                  )}
                   {bulkDepCount > 0 && (
                     <ContextMenuItem onSelect={() => void runLibraryBulkPromote(bulkPackages)}>
                       <Plus size={12} className="shrink-0 text-accent-blue" />
-                      Promote
+                      Remove from DEP
                     </ContextMenuItem>
                   )}
+                  {/* [AddOn] ManualDependencies_End */}
                   <ContextMenuSeparator />
                   <ContextMenuItem onSelect={() => void runLibraryBulkToggleEnabled(bulkPackages)}>
                     <Power
@@ -913,15 +921,26 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
               ) : (
                 <>
                   {renderPkgExtractEntries()}
+                  {/* [AddOn] ManualDependencies_Begin */}
                   {!p.isDirect && (
                     <>
                       <ContextMenuSeparator />
                       <ContextMenuItem onSelect={() => void handlePromote()}>
                         <Plus size={12} className="shrink-0 text-accent-blue" />
-                        Add to Library
+                        Remove from DEP
                       </ContextMenuItem>
                     </>
                   )}
+                  {p.isDirect && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onSelect={() => void handleDemote()}>
+                        <Boxes size={12} className="shrink-0 text-text-secondary" />
+                        Mark as DEP
+                      </ContextMenuItem>
+                    </>
+                  )}
+                  {/* [AddOn] ManualDependencies_End */}
                   <ContextMenuSeparator />
                   {showDisableDialog ? (
                     <ContextMenuItem onSelect={() => openConfirm(setDisableOpen)} disabled={!detail}>

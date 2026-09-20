@@ -6,13 +6,13 @@
  */
 export const CHANGELOG = [
   {
-    version: '0.5.2',
+    version: '0.5.4',
     date: '2026-09-20',
     notes: [
       {
-        kind: 'improved',
-        title: 'Filter Refactor & Offload Subfolder Filtering',
-        body: 'Added support for 1-level nested folder filtering in offloaded packages and modularized filter AddOn logic.',
+        kind: 'new',
+        title: 'Manual Dependencies',
+        body: 'Allows packages to be manually set, declared, or unmarked as dependency (DEP) packages without changing their enabled/active status.',
       },
     ],
   },

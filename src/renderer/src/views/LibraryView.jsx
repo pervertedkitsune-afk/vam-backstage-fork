@@ -104,6 +104,9 @@ import {
   resolveLibraryBulkPackages,
   runLibraryBulkInstallFromArchive,
   runLibraryBulkPromote,
+  // [AddOn] ManualDependencies_Begin
+  runLibraryBulkDemote,
+  // [AddOn] ManualDependencies_End
   runLibraryBulkRemove,
   runLibraryBulkRemoveFromArchive,
   runLibraryBulkToggleEnabled,
@@ -1013,6 +1016,17 @@ export default function LibraryView({ onNavigate, navContext }) {
                   <Trash2 size={16} className="shrink-0" />
                   Remove
                 </button>
+                {/* [AddOn] ManualDependencies_Begin */}
+                {bulkSelectedPackages.some((p) => p.isDirect) && (
+                  <button
+                    type="button"
+                    onClick={() => void runLibraryBulkDemote(bulkSelectedPackages)}
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-border hover:bg-elevated text-text-secondary text-[11px]"
+                  >
+                    <Boxes size={16} className="shrink-0" />
+                    Mark as DEP
+                  </button>
+                )}
                 {bulkSelectedPackages.some((p) => !p.isDirect) && (
                   <button
                     type="button"
@@ -1020,9 +1034,10 @@ export default function LibraryView({ onNavigate, navContext }) {
                     className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-border hover:bg-elevated text-accent-blue text-[11px]"
                   >
                     <Plus size={16} className="shrink-0" />
-                    Promote
+                    Remove from DEP
                   </button>
                 )}
+                {/* [AddOn] ManualDependencies_End */}
               </>
             )}
             <DropdownMenu>
@@ -2005,6 +2020,15 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
       toast(`Failed to promote package: ${err.message}`)
     }
   }
+  // [AddOn] ManualDependencies_Begin
+  const handleDemote = async () => {
+    try {
+      await window.api.packages.demote(pkg.filename)
+    } catch (err) {
+      toast(`Failed to mark package as DEP: ${err.message}`)
+    }
+  }
+  // [AddOn] ManualDependencies_End
   const handleUninstall = async () => {
     try {
       const res = await window.api.packages.uninstall(pkg.filename)
@@ -2233,6 +2257,18 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
               </div>
             ) : pkg.isDirect ? (
               <div>
+                {/* [AddOn] ManualDependencies_Begin */}
+                <div className="mb-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDemote}
+                    className="w-full text-[11px] border-text-secondary/25 text-text-primary hover:bg-elevated"
+                  >
+                    <Boxes size={12} /> Mark as DEP
+                  </Button>
+                </div>
+                {/* [AddOn] ManualDependencies_End */}
                 <div className="flex gap-1.5">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -2312,9 +2348,10 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
               </div>
             ) : (
               <div className="space-y-1.5">
+                {/* [AddOn] ManualDependencies_Begin */}
                 <div>
                   <Button variant="gradient" onClick={handlePromote} className="w-full text-[11px]">
-                    <Plus size={12} /> Add to Library
+                    <Plus size={12} /> Remove from DEP
                   </Button>
                   {hiddenContentCount > 0 && (
                     <p className={cn(CLARIFY_DENSE, 'mt-1 px-0.5')}>
@@ -2322,6 +2359,7 @@ function LibraryDetailPanel({ pkg, onNavigate, onFilterAuthor, updateInfo }) {
                     </p>
                   )}
                 </div>
+                {/* [AddOn] ManualDependencies_End */}
                 <div className="flex gap-1.5" ref={forceRemoveActionsRowRef}>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>

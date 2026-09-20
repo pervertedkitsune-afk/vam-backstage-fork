@@ -706,14 +706,23 @@ export function LibraryCard({
                 {pkg.hasExtractedAppearancePreset && <Check size={11} strokeWidth={3} className="shrink-0" />}
               </div>
             )}
+            {/* [AddOn] ManualDependencies_Begin */}
             {!pkg.isDirect && (
-              <div
-                className={`${THUMB_OVERLAY_CHIP} bg-accent-blue/30 text-accent-blue backdrop-blur-sm`}
-                title="Installed only as a dependency of another package, not directly"
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void window.api.packages.promote(pkg.filename).then(() => {
+                    useLibraryStore.getState().fetchPackages()
+                  })
+                }}
+                className={`${THUMB_OVERLAY_CHIP} bg-accent-blue/30 text-accent-blue backdrop-blur-sm cursor-pointer hover:brightness-125 transition-[filter]`}
+                title="Dependency package. Click to remove from DEP status."
               >
                 DEP
-              </div>
+              </button>
             )}
+            {/* [AddOn] ManualDependencies_End */}
             {pkg.isShadowed && (
               <div
                 className={`${THUMB_OVERLAY_CHIP} bg-warning/20 text-warning backdrop-blur-sm`}
