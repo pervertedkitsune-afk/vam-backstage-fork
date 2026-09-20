@@ -6,6 +6,22 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.5.1.1',
+    date: '2026-09-19',
+    notes: [
+      {
+        kind: 'new',
+        title: 'Move to Original Offload Directory',
+        body: 'Disabling packages can now move them back to their original offload directory from where they were moved, with support for reordering offload directories.',
+      },
+      {
+        kind: 'new',
+        title: 'Multi-Drive Support',
+        body: 'Offload folders can now live on separate drives or filesystems from your main VaM installation, with a toggle setting in Behavior.',
+      },
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-08-05',
     notes: [
