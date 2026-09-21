@@ -6,6 +6,39 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.6.2',
+    date: '2026-10-02',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Sequential Operations Queue',
+        body: 'Package move, enable, disable, and archive operations are now processed sequentially one at a time via a queue system.',
+      },
+    ],
+  },
+  {
+    version: '0.6.1',
+    date: '2026-10-02',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Enhanced Moving Progress & Responsiveness',
+        body: 'Added explicit operation badges for enable/disable/move/archive tasks and decoupled file moving/renaming routines to prevent main program lagging.',
+      },
+    ],
+  },
+  {
+    version: '0.6.0',
+    date: '2026-10-01',
+    notes: [
+      {
+        kind: 'new',
+        title: 'Moving Progress Tracker',
+        body: 'Added a dedicated side panel and progress tracker for package move, activation, and deactivation operations.',
+      },
+    ],
+  },
+  {
     version: '0.5.4',
     date: '2026-09-20',
     notes: [
