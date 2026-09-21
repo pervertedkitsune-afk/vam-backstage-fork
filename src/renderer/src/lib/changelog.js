@@ -6,6 +6,17 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.6.2',
+    date: '2026-10-02',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Sequential Operations Queue',
+        body: 'Package move, enable, disable, and archive operations are now processed sequentially one at a time via a queue system.',
+      },
+    ],
+  },
+  {
     version: '0.6.1',
     date: '2026-10-02',
     notes: [
