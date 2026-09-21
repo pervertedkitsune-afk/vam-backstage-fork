@@ -533,11 +533,12 @@ export default function LibraryView({ onNavigate, navContext }) {
     items = filterPackagesBySelectedTypes(items, selectedTypes)
     items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     items = items.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
-    const counts = FolderFilterAddon.calculateLocationCounts(items)
+    const counts = FolderFilterAddon.calculateLocationCounts(items, packages)
     console.log('[FolderFilter] LibraryView locationFilterCounts:', counts)
     return counts
   }, [
     baseFiltered,
+    packages,
     statusFilter,
     effectiveEnabledFilter,
     selectedTypes,

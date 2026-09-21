@@ -67,5 +67,33 @@ describe('FolderFilterAddon', () => {
       { value: 'offloaded:2', label: 'Offload B', count: 1, level: 1 },
     ])
   })
+
+  it('retains subfolders with 0 count when filtering by Enabled state', () => {
+    const auxDirs = [{ id: 1, label: 'Offload A', path: '/path/offloadA' }]
+
+    const allPackages = [
+      { filename: '1.var', libraryDirId: null, storageState: 'enabled' },
+      { filename: '2.var', libraryDirId: 1, subpath: 'Cloths', storageState: 'offloaded' },
+      { filename: '3.var', libraryDirId: 1, subpath: 'Girls', storageState: 'offloaded' },
+    ]
+
+    // Filtering by Enabled gives only item 1 in filteredPackages
+    const enabledPackages = allPackages.filter((p) => p.storageState === 'enabled')
+
+    const counts = FolderFilterAddon.calculateLocationCounts(enabledPackages, allPackages)
+    expect(counts.all).toBe(1)
+    expect(counts.offloaded).toBe(0)
+    expect(counts.offloadedByDir['1']).toBeUndefined()
+    expect(counts.offloadedBySubfolder['1:Cloths']).toBeUndefined()
+
+    const items = FolderFilterAddon.buildLocationFilterItems(auxDirs, counts)
+    expect(items).toEqual([
+      { value: 'all', label: 'All', count: 1 },
+      { value: 'offloaded', label: 'Offloaded', count: 0 },
+      { value: 'offloaded:1', label: 'Offload A', count: 0, level: 1 },
+      { value: 'offloaded:1:Cloths', label: 'Cloths', count: 0, level: 2 },
+      { value: 'offloaded:1:Girls', label: 'Girls', count: 0, level: 2 },
+    ])
+  })
 })
 // [AddOn] FolderFilter_End

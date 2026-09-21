@@ -528,11 +528,12 @@ export default function ContentView({ onNavigate, navContext }) {
       },
       { location: true },
     )
-    const counts = FolderFilterAddon.calculateLocationCounts(items, governingPackage)
+    const counts = FolderFilterAddon.calculateLocationCounts(items, contents, governingPackage)
     console.log('[FolderFilter] ContentView locationCounts:', counts)
     return counts
   }, [
     baseFiltered,
+    contents,
     selectedTypes,
     selectedPackageTypes,
     packageFilter,

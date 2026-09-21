@@ -21,17 +21,33 @@ export class FolderFilterAddon {
 
   /**
    * Calculate location counts for "All", "Offloaded", each offload directory, and subfolders.
-   * @param {Array<object>} items - List of package objects or content items.
+   * @param {Array<object>} filteredItems - List of package objects or content items after filtering.
+   * @param {Array<object>} [allItems] - Full list of package objects or content items before filtering (to discover all subfolders).
    * @param {function} [getPkgFn] - Optional function to map item to package.
-   * @returns {{ all: number, offloaded: number, offloadedByDir: Record<string, number>, offloadedBySubfolder: Record<string, number> }}
+   * @returns {{ all: number, offloaded: number, offloadedByDir: Record<string, number>, offloadedBySubfolder: Record<string, number>, knownSubfoldersByDir: Record<string, Set<string>> }}
    */
-  static calculateLocationCounts(items = [], getPkgFn) {
+  static calculateLocationCounts(filteredItems = [], allItems = [], getPkgFn) {
     let all = 0
     let offloaded = 0
     const offloadedByDir = {}
     const offloadedBySubfolder = {}
+    const knownSubfoldersByDir = {}
 
-    for (const item of items) {
+    // Collect all known subfolders from allItems (or filteredItems if allItems not provided)
+    const discoverySource = allItems && allItems.length > 0 ? allItems : filteredItems
+    for (const item of discoverySource) {
+      const pkg = getPkgFn ? getPkgFn(item) : item
+      if (pkg && pkg.libraryDirId != null) {
+        const dirId = String(pkg.libraryDirId)
+        if (!knownSubfoldersByDir[dirId]) knownSubfoldersByDir[dirId] = new Set()
+        const subfolder = FolderFilterAddon.getFirstSubfolder(pkg)
+        if (subfolder) {
+          knownSubfoldersByDir[dirId].add(subfolder)
+        }
+      }
+    }
+
+    for (const item of filteredItems) {
       all++
       const pkg = getPkgFn ? getPkgFn(item) : item
 
@@ -50,8 +66,14 @@ export class FolderFilterAddon {
       }
     }
 
-    console.log('[FolderFilter] Calculated location counts:', { all, offloaded, offloadedByDir, offloadedBySubfolder })
-    return { all, offloaded, offloadedByDir, offloadedBySubfolder }
+    console.log('[FolderFilter] Calculated location counts:', {
+      all,
+      offloaded,
+      offloadedByDir,
+      offloadedBySubfolder,
+      knownSubfoldersByDir,
+    })
+    return { all, offloaded, offloadedByDir, offloadedBySubfolder, knownSubfoldersByDir }
   }
 
   /**
@@ -103,7 +125,7 @@ export class FolderFilterAddon {
    * @returns {Array<object>} Filter items list with level properties.
    */
   static buildLocationFilterItems(auxDirs = [], counts = {}) {
-    const { all = 0, offloaded = 0, offloadedByDir = {}, offloadedBySubfolder = {} } = counts
+    const { all = 0, offloaded = 0, offloadedByDir = {}, offloadedBySubfolder = {}, knownSubfoldersByDir = {} } = counts
 
     const items = [
       { value: 'all', label: 'All', count: all },
@@ -124,7 +146,7 @@ export class FolderFilterAddon {
       })
 
       // Collect subfolders for this directory
-      const subfolders = new Set()
+      const subfolders = new Set(knownSubfoldersByDir[dirId] || [])
       const prefix = `${dirId}:`
       for (const key of Object.keys(offloadedBySubfolder)) {
         if (key.startsWith(prefix)) {
