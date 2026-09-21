@@ -75,5 +75,19 @@ describe('Offload Directory Filtering and Sorting with FilterAddon', () => {
     const sorted = [...pkgs].sort((a, b) => FilterAddon.compareByOffloadDirectory(a, b, auxDirs))
     expect(sorted.map((p) => p.filename)).toEqual(['A.var', 'B.var', 'C.var', 'D.var', 'E.var', 'F.var'])
   })
+
+  it('supports dual filtering by storage state and offloaded directory location', () => {
+    // When offloadedFilter is 'offloaded:101' and storage state is 'offloaded'
+    let result = pkgs.filter(
+      (p) => FilterAddon.matchesPackageFilter(p, 'offloaded') && FilterAddon.matchesPackageFilter(p, 'offloaded:101'),
+    )
+    expect(result).toEqual([pkgs[2], pkgs[3], pkgs[4]])
+
+    // When offloadedFilter is 'all', all packages pass offloaded location check
+    result = pkgs.filter(
+      (p) => FilterAddon.matchesPackageFilter(p, 'all') && FilterAddon.matchesPackageFilter(p, 'all'),
+    )
+    expect(result).toHaveLength(6)
+  })
 })
 // [AddOn] Filter_End

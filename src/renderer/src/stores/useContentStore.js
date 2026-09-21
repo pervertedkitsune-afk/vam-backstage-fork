@@ -65,6 +65,7 @@ async function _loadItemDetail(set, get, id) {
   }
 }
 
+// [AddOn] Filter_Begin
 export const FILTER_DEFAULTS = {
   search: '',
   authorSearch: '',
@@ -75,10 +76,10 @@ export const FILTER_DEFAULTS = {
   selectedLabelIds: [],
   packageFilter: 'all',
   packageStatusFilter: 'enabled',
+  offloadedFilter: 'all',
   visibilityFilter: 'visible',
 }
 
-// [AddOn] Filter_Begin
 const asPackageStatusFilter = (v) => {
   if (typeof v !== 'string') return undefined
   if (FilterAddon.isValidFilterValue(v)) {
@@ -86,6 +87,16 @@ const asPackageStatusFilter = (v) => {
     return v
   }
   console.log('[Filter] Invalid packageStatusFilter, falling back:', v)
+  return undefined
+}
+
+const asOffloadedFilter = (v) => {
+  if (typeof v !== 'string') return undefined
+  if (FilterAddon.isValidFilterValue(v)) {
+    console.log('[Filter] Rehydrated valid offloadedFilter:', v)
+    return v
+  }
+  console.log('[Filter] Invalid offloadedFilter, falling back:', v)
   return undefined
 }
 // [AddOn] Filter_End
@@ -152,6 +163,9 @@ export const useContentStore = create(
       setSelectedLabelIds: (selectedLabelIds) => set({ selectedLabelIds }),
       setPackageFilter: (packageFilter) => set({ packageFilter }),
       setPackageStatusFilter: (packageStatusFilter) => set({ packageStatusFilter }),
+      // [AddOn] Filter_Begin
+      setOffloadedFilter: (offloadedFilter) => set({ offloadedFilter }),
+      // [AddOn] Filter_End
       setVisibilityFilter: (visibilityFilter) => set({ visibilityFilter }),
       setPrimarySort: (primarySort) => set({ primarySort }),
       setSecondarySort: (secondarySort) => set({ secondarySort }),
@@ -263,6 +277,7 @@ export const useContentStore = create(
       packageFilter: oneOf(['all', 'installed', 'dependency', 'local']),
       // [AddOn] Filter_Begin
       packageStatusFilter: asPackageStatusFilter,
+      offloadedFilter: asOffloadedFilter,
       // [AddOn] Filter_End
       visibilityFilter: oneOf(['all', 'visible', 'hidden', 'favorites']),
       primarySort: asString,

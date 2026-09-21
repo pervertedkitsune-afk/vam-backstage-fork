@@ -155,19 +155,20 @@ async function _loadDetail(set, get, filename) {
 /** Single source of truth for the content-narrowing filter defaults: spread into the
  *  store's initial state and reused by `resetFilters`. Sort order and view/layout prefs
  *  live outside this — they don't hide content. Mirrors `useContentStore`. */
+// [AddOn] Filter_Begin
 export const FILTER_DEFAULTS = {
   search: '',
   authorSearch: '',
   excludedAuthors: [],
   statusFilter: 'direct',
   enabledFilter: 'all',
+  offloadedFilter: 'all',
   selectedTypes: [],
   selectedTags: [],
   selectedLabelIds: [],
   license: 'Any',
 }
 
-// [AddOn] Filter_Begin
 const asEnabledFilter = (v) => {
   if (typeof v !== 'string') return undefined
   if (FilterAddon.isValidFilterValue(v)) {
@@ -175,6 +176,16 @@ const asEnabledFilter = (v) => {
     return v
   }
   console.log('[Filter] Invalid enabledFilter, falling back:', v)
+  return undefined
+}
+
+const asOffloadedFilter = (v) => {
+  if (typeof v !== 'string') return undefined
+  if (FilterAddon.isValidFilterValue(v)) {
+    console.log('[Filter] Rehydrated valid offloadedFilter:', v)
+    return v
+  }
+  console.log('[Filter] Invalid offloadedFilter, falling back:', v)
   return undefined
 }
 // [AddOn] Filter_End
@@ -237,6 +248,9 @@ export const useLibraryStore = create(
       setExcludedAuthors: (excludedAuthors) => set({ excludedAuthors }),
       setStatusFilter: (statusFilter) => set({ statusFilter }),
       setEnabledFilter: (enabledFilter) => set({ enabledFilter }),
+      // [AddOn] Filter_Begin
+      setOffloadedFilter: (offloadedFilter) => set({ offloadedFilter }),
+      // [AddOn] Filter_End
       setSelectedTags: (selectedTags) => set({ selectedTags }),
       setSelectedLabelIds: (selectedLabelIds) => set({ selectedLabelIds }),
       setPrimarySort: (primarySort) => set({ primarySort }),
@@ -452,6 +466,7 @@ export const useLibraryStore = create(
       statusFilter: oneOf(['direct', 'dependency', 'orphan', 'local', 'broken', 'missing', 'updates', 'archived']),
       // [AddOn] Filter_Begin
       enabledFilter: asEnabledFilter,
+      offloadedFilter: asOffloadedFilter,
       // [AddOn] Filter_End
       selectedTypes: asArray,
       selectedTags: asPolarityList,

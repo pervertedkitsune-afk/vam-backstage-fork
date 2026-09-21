@@ -238,8 +238,14 @@ function filterPackagesBySelectedTypes(items, selectedTypes) {
 // [AddOn] Filter_Begin
 function filterPackagesByEnabledStorage(items, enabledFilter) {
   console.log('[Filter] LibraryView filtering packages by enabled state:', enabledFilter)
-  if (enabledFilter === 'all') return items
+  if (!enabledFilter || enabledFilter === 'all') return items
   return items.filter((p) => FilterAddon.matchesPackageFilter(p, enabledFilter))
+}
+
+function filterPackagesByOffloadedStorage(items, offloadedFilter) {
+  console.log('[Filter] LibraryView filtering packages by offloaded state:', offloadedFilter)
+  if (!offloadedFilter || offloadedFilter === 'all') return items
+  return items.filter((p) => FilterAddon.matchesPackageFilter(p, offloadedFilter))
 }
 // [AddOn] Filter_End
 
@@ -253,6 +259,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     excludedAuthors,
     statusFilter,
     enabledFilter,
+    // [AddOn] Filter_Begin
+    offloadedFilter,
+    // [AddOn] Filter_End
     selectedTypes,
     selectedTags,
     selectedLabelIds,
@@ -277,6 +286,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     setExcludedAuthors,
     setStatusFilter,
     setEnabledFilter,
+    // [AddOn] Filter_Begin
+    setOffloadedFilter,
+    // [AddOn] Filter_End
     toggleType,
     selectSingleType,
     setSelectedTags,
@@ -457,6 +469,9 @@ export default function LibraryView({ onNavigate, navContext }) {
   const typeCounts = useMemo(() => {
     let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
     items = filterPackagesByEnabledStorage(items, effectiveEnabledFilter)
+    // [AddOn] Filter_Begin
+    items = filterPackagesByOffloadedStorage(items, offloadedFilter)
+    // [AddOn] Filter_End
     items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     items = items.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
     const counts = { _total: items.length }
@@ -465,7 +480,15 @@ export default function LibraryView({ onNavigate, navContext }) {
       counts[label] = (counts[label] || 0) + 1
     }
     return counts
-  }, [baseFiltered, statusFilter, effectiveEnabledFilter, selectedTags, selectedLabelIds, updateCheckResults])
+  }, [
+    baseFiltered,
+    statusFilter,
+    effectiveEnabledFilter,
+    offloadedFilter,
+    selectedTags,
+    selectedLabelIds,
+    updateCheckResults,
+  ])
 
   // [AddOn] Filter_Begin
   /** Facet counts for Enabled filter: respects status/type/tags/labels but not enabled itself */
@@ -497,6 +520,9 @@ export default function LibraryView({ onNavigate, navContext }) {
   const filtered = useMemo(() => {
     let result = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
     result = filterPackagesByEnabledStorage(result, effectiveEnabledFilter)
+    // [AddOn] Filter_Begin
+    result = filterPackagesByOffloadedStorage(result, offloadedFilter)
+    // [AddOn] Filter_End
     result = filterPackagesBySelectedTypes(result, selectedTypes)
     result = result.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     result = result.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
@@ -538,6 +564,7 @@ export default function LibraryView({ onNavigate, navContext }) {
     updateCheckResults,
     authorCounts,
     // [AddOn] Filter_Begin
+    offloadedFilter,
     auxDirs,
     // [AddOn] Filter_End
   ])
@@ -636,6 +663,20 @@ export default function LibraryView({ onNavigate, navContext }) {
       },
       // [AddOn] Filter_Begin
       {
+        key: 'offloadedFilter',
+        label: 'Offloaded Packages',
+        type: 'list',
+        value: offloadedFilter,
+        default: FILTER_DEFAULTS.offloadedFilter,
+        onChange: setOffloadedFilter,
+        listCollapsible: false,
+        disabled: statusFilter === 'archived',
+        items: [
+          { value: 'all', label: 'All', count: enabledFilterCounts.offloaded },
+          ...FilterAddon.buildOffloadFilterItems(auxDirs, enabledFilterCounts),
+        ],
+      },
+      {
         key: 'enabled',
         label: 'Filter',
         type: 'list',
@@ -651,7 +692,6 @@ export default function LibraryView({ onNavigate, navContext }) {
           { value: 'enabled', label: 'Enabled', count: enabledFilterCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: enabledFilterCounts.disabled },
           { value: 'offloaded', label: 'Offloaded', count: enabledFilterCounts.offloaded },
-          ...FilterAddon.buildOffloadFilterItems(auxDirs, enabledFilterCounts),
         ],
       },
       // [AddOn] Filter_End
@@ -723,6 +763,10 @@ export default function LibraryView({ onNavigate, navContext }) {
     [
       statusFilter,
       enabledFilter,
+      // [AddOn] Filter_Begin
+      offloadedFilter,
+      setOffloadedFilter,
+      // [AddOn] Filter_End
       hasArchiveDirs,
       selectedTypes,
       typeCounts,
@@ -773,7 +817,7 @@ export default function LibraryView({ onNavigate, navContext }) {
   const bulkAllArchived =
     bulkSelectedPackages.length > 0 && bulkSelectedPackages.every((p) => isPackageArchived(p.storageState))
 
-  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${statusFilter}\0${enabledFilter}\0${selectedTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${primarySort}\0${secondarySort}\0${license}`
+  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${statusFilter}\0${enabledFilter}\0${offloadedFilter}\0${selectedTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${primarySort}\0${secondarySort}\0${license}`
 
   const lastSelectedIdxRef = useRef(0)
   const prevScrollResetKeyRef = useRef(scrollResetKey)

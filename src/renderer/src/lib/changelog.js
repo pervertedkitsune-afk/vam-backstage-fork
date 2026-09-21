@@ -6,6 +6,17 @@
  */
 export const CHANGELOG = [
   {
+    version: '0.7.0',
+    date: '2026-10-02',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Offloaded Packages Filter Section',
+        body: 'Offloaded directory folder filtering has been separated into its own dedicated "Offloaded Packages" category, allowing folder filtering alongside status filters.',
+      },
+    ],
+  },
+  {
     version: '0.6.2',
     date: '2026-10-02',
     notes: [

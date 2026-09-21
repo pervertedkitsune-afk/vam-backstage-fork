@@ -125,13 +125,16 @@ function matchesContentPackageStatus(c, packageStatusFilter) {
   if (packageStatusFilter === 'offloaded') {
     return pkg?.storageState === 'offloaded'
   }
-  if (packageStatusFilter.startsWith('offloaded:')) {
-    return FilterAddon.matchesPackageFilter(pkg, packageStatusFilter)
-  }
 
   const disabled = isPackageDisabled(c)
   if (packageStatusFilter === 'disabled') return disabled
   return !disabled
+}
+
+function matchesContentOffloadedFilter(c, offloadedFilter) {
+  if (!offloadedFilter || offloadedFilter === 'all') return true
+  const pkg = governingPackage(c)
+  return FilterAddon.matchesPackageFilter(pkg, offloadedFilter)
 }
 // [AddOn] Filter_End
 
@@ -194,6 +197,12 @@ function applyContentSidebarFilters(baseItems, ctx, omit = {}) {
     items = items.filter((c) => matchesContentPackageStatus(c, ctx.packageStatusFilter))
   }
 
+  // [AddOn] Filter_Begin
+  if (!omit.offloadedFilter) {
+    items = items.filter((c) => matchesContentOffloadedFilter(c, ctx.offloadedFilter))
+  }
+  // [AddOn] Filter_End
+
   if (!omit.visibility) {
     const vf = ctx.visibilityFilter
     if (vf === 'visible') items = items.filter((c) => !c.hidden)
@@ -223,6 +232,9 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedLabelIds,
     packageFilter,
     packageStatusFilter,
+    // [AddOn] Filter_Begin
+    offloadedFilter,
+    // [AddOn] Filter_End
     visibilityFilter,
     primarySort,
     secondarySort,
@@ -238,6 +250,9 @@ export default function ContentView({ onNavigate, navContext }) {
     setSelectedLabelIds,
     setPackageFilter,
     setPackageStatusFilter,
+    // [AddOn] Filter_Begin
+    setOffloadedFilter,
+    // [AddOn] Filter_End
     setVisibilityFilter,
     setPrimarySort,
     setSecondarySort,
@@ -340,6 +355,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        offloadedFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -355,6 +371,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    offloadedFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -368,6 +385,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        offloadedFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -394,6 +412,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    offloadedFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -407,6 +426,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        offloadedFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -431,6 +451,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    offloadedFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -444,6 +465,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        offloadedFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -486,6 +508,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    offloadedFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -499,6 +522,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        offloadedFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -520,6 +544,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    offloadedFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -531,6 +556,7 @@ export default function ContentView({ onNavigate, navContext }) {
       selectedPackageTypes,
       packageFilter,
       packageStatusFilter,
+      offloadedFilter,
       visibilityFilter,
       selectedTags,
       selectedLabelIds,
@@ -566,6 +592,9 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedLabelIds,
     packageFilter,
     packageStatusFilter,
+    // [AddOn] Filter_Begin
+    offloadedFilter,
+    // [AddOn] Filter_End
     visibilityFilter,
     primarySort,
     secondarySort,
@@ -629,6 +658,19 @@ export default function ContentView({ onNavigate, navContext }) {
           { value: 'favorites', label: 'Favorites', count: visibilityCounts.favorites },
         ],
       },
+      // [AddOn] Filter_Begin
+      {
+        key: 'offloadedFilter',
+        label: 'Offloaded Packages',
+        type: 'list',
+        value: offloadedFilter,
+        default: FILTER_DEFAULTS.offloadedFilter,
+        onChange: setOffloadedFilter,
+        items: [
+          { value: 'all', label: 'All', count: packageStatusCounts.offloaded },
+          ...FilterAddon.buildOffloadFilterItems(auxDirs, packageStatusCounts),
+        ],
+      },
       {
         key: 'packageStatus',
         label: 'Package status',
@@ -636,17 +678,15 @@ export default function ContentView({ onNavigate, navContext }) {
         value: packageStatusFilter,
         default: FILTER_DEFAULTS.packageStatusFilter,
         onChange: setPackageStatusFilter,
-        // [AddOn] Filter_Begin
         items: [
           { value: 'all', label: 'All', count: packageStatusCounts.all },
           { value: 'enabled', label: 'Enabled', count: packageStatusCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: packageStatusCounts.disabled },
           { value: 'offloaded', label: 'Offloaded', count: packageStatusCounts.offloaded },
-          ...FilterAddon.buildOffloadFilterItems(auxDirs, packageStatusCounts),
           ...(hasArchiveDirs ? [{ value: 'archived', label: 'Archived', count: packageStatusCounts.archived }] : []),
         ],
-        // [AddOn] Filter_End
       },
+      // [AddOn] Filter_End
       {
         key: 'package',
         label: 'Package',
@@ -726,6 +766,10 @@ export default function ContentView({ onNavigate, navContext }) {
       packageFilterCounts,
       packageStatusFilter,
       packageStatusCounts,
+      // [AddOn] Filter_Begin
+      offloadedFilter,
+      setOffloadedFilter,
+      // [AddOn] Filter_End
       hasArchiveDirs,
       // [AddOn] Filter_Begin
       auxDirs,
@@ -790,7 +834,7 @@ export default function ContentView({ onNavigate, navContext }) {
   const bulkActive = isBulk(selection)
   const bulkSelectedItems = useMemo(() => resolveContentBulkItems({ selection, contents }), [selection, contents])
 
-  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${selectedTypes.join(',')}\0${selectedPackageTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${packageFilter}\0${packageStatusFilter}\0${visibilityFilter}\0${primarySort}\0${secondarySort}`
+  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${selectedTypes.join(',')}\0${selectedPackageTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${packageFilter}\0${packageStatusFilter}\0${offloadedFilter}\0${visibilityFilter}\0${primarySort}\0${secondarySort}`
 
   const lastSelectedIdxRef = useRef(0)
   const prevScrollResetKeyRef = useRef(scrollResetKey)
