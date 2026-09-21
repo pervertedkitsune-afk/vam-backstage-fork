@@ -2,7 +2,7 @@
 /**
  * Modular AddOn class for Folder / Location Filter operations.
  * Handles building Location section items, counting packages/content by location,
- * and matching packages against location filters.
+ * and matching packages against location filters using current or original offload directory.
  * Prefix debug logs with [FolderFilter].
  */
 export class FolderFilterAddon {
@@ -20,7 +20,20 @@ export class FolderFilterAddon {
   }
 
   /**
+   * Get the effective library directory ID for a package (current libraryDirId or originating originalLibraryDirId).
+   * @param {object} pkg
+   * @returns {number|string|null}
+   */
+  static getEffectiveLibraryDirId(pkg) {
+    if (!pkg) return null
+    if (pkg.libraryDirId != null) return pkg.libraryDirId
+    if (pkg.originalLibraryDirId != null) return pkg.originalLibraryDirId
+    return null
+  }
+
+  /**
    * Calculate location counts for "All", "Offloaded", each offload directory, and subfolders.
+   * Uses originalLibraryDirId when libraryDirId is null (e.g. enabled packages originating from offload dirs).
    * @param {Array<object>} filteredItems - List of package objects or content items after filtering.
    * @param {Array<object>} [allItems] - Full list of package objects or content items before filtering (to discover all subfolders).
    * @param {function} [getPkgFn] - Optional function to map item to package.
@@ -37,8 +50,9 @@ export class FolderFilterAddon {
     const discoverySource = allItems && allItems.length > 0 ? allItems : filteredItems
     for (const item of discoverySource) {
       const pkg = getPkgFn ? getPkgFn(item) : item
-      if (pkg && pkg.libraryDirId != null) {
-        const dirId = String(pkg.libraryDirId)
+      const effDirId = FolderFilterAddon.getEffectiveLibraryDirId(pkg)
+      if (effDirId != null) {
+        const dirId = String(effDirId)
         if (!knownSubfoldersByDir[dirId]) knownSubfoldersByDir[dirId] = new Set()
         const subfolder = FolderFilterAddon.getFirstSubfolder(pkg)
         if (subfolder) {
@@ -50,18 +64,20 @@ export class FolderFilterAddon {
     for (const item of filteredItems) {
       all++
       const pkg = getPkgFn ? getPkgFn(item) : item
+      const effDirId = FolderFilterAddon.getEffectiveLibraryDirId(pkg)
 
-      if (pkg && (pkg.storageState === 'offloaded' || pkg.libraryDirId != null)) {
+      if (pkg && (pkg.storageState === 'offloaded' || effDirId != null)) {
         offloaded++
-        if (pkg.libraryDirId != null) {
-          const dirId = String(pkg.libraryDirId)
-          offloadedByDir[dirId] = (offloadedByDir[dirId] || 0) + 1
+      }
 
-          const subfolder = FolderFilterAddon.getFirstSubfolder(pkg)
-          if (subfolder) {
-            const subKey = `${dirId}:${subfolder}`
-            offloadedBySubfolder[subKey] = (offloadedBySubfolder[subKey] || 0) + 1
-          }
+      if (effDirId != null) {
+        const dirId = String(effDirId)
+        offloadedByDir[dirId] = (offloadedByDir[dirId] || 0) + 1
+
+        const subfolder = FolderFilterAddon.getFirstSubfolder(pkg)
+        if (subfolder) {
+          const subKey = `${dirId}:${subfolder}`
+          offloadedBySubfolder[subKey] = (offloadedBySubfolder[subKey] || 0) + 1
         }
       }
     }
@@ -90,7 +106,7 @@ export class FolderFilterAddon {
   }
 
   /**
-   * Check if a package matches the location filter value.
+   * Check if a package matches the location filter value based on current or originating directory.
    * @param {object} pkg
    * @param {string} filterValue
    * @returns {boolean}
@@ -99,16 +115,18 @@ export class FolderFilterAddon {
     if (!filterValue || filterValue === 'all') return true
 
     if (filterValue === 'offloaded') {
-      return pkg?.storageState === 'offloaded' || pkg?.libraryDirId != null
+      return pkg?.storageState === 'offloaded' || FolderFilterAddon.getEffectiveLibraryDirId(pkg) != null
     }
 
     if (filterValue.startsWith('offloaded:')) {
-      if (pkg?.libraryDirId == null) return false
+      const effDirId = FolderFilterAddon.getEffectiveLibraryDirId(pkg)
+      if (effDirId == null) return false
+
       const parts = filterValue.slice('offloaded:'.length).split(':')
       const dirId = parts[0]
       const subfolder = parts.length > 1 ? parts.slice(1).join(':') : null
 
-      if (String(pkg.libraryDirId) !== String(dirId)) return false
+      if (String(effDirId) !== String(dirId)) return false
       if (subfolder) {
         return FolderFilterAddon.getFirstSubfolder(pkg) === subfolder
       }

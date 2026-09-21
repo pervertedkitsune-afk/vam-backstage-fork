@@ -95,5 +95,34 @@ describe('FolderFilterAddon', () => {
       { value: 'offloaded:1:Girls', label: 'Girls', count: 0, level: 2 },
     ])
   })
+
+  it('counts and matches enabled packages using originalLibraryDirId', () => {
+    const auxDirs = [{ id: 1, label: 'Offload A', path: '/path/offloadA' }]
+
+    const enabledPkgOrig = {
+      filename: 'enabled_orig.var',
+      libraryDirId: null,
+      originalLibraryDirId: 1,
+      subpath: 'Cloths',
+      storageState: 'enabled',
+    }
+
+    expect(FolderFilterAddon.getEffectiveLibraryDirId(enabledPkgOrig)).toBe(1)
+    expect(FolderFilterAddon.matchesLocationFilter(enabledPkgOrig, 'offloaded:1:Cloths')).toBe(true)
+
+    const packages = [enabledPkgOrig]
+    const counts = FolderFilterAddon.calculateLocationCounts(packages, packages)
+    expect(counts.all).toBe(1)
+    expect(counts.offloadedByDir['1']).toBe(1)
+    expect(counts.offloadedBySubfolder['1:Cloths']).toBe(1)
+
+    const items = FolderFilterAddon.buildLocationFilterItems(auxDirs, counts)
+    expect(items).toEqual([
+      { value: 'all', label: 'All', count: 1 },
+      { value: 'offloaded', label: 'Offloaded', count: 1 },
+      { value: 'offloaded:1', label: 'Offload A', count: 1, level: 1 },
+      { value: 'offloaded:1:Cloths', label: 'Cloths', count: 1, level: 2 },
+    ])
+  })
 })
 // [AddOn] FolderFilter_End

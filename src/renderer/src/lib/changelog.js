@@ -7,6 +7,17 @@
 export const CHANGELOG = [
   // [AddOn] FolderFilter_Begin
   {
+    version: '0.7.2',
+    date: '2026-10-03',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Location Folder Filter with Origin Tracking',
+        body: 'Location filtering now uses database package origin records (originalLibraryDirId) to display enabled packages in their originating offloaded directory folders.',
+      },
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-10-03',
     notes: [
