@@ -2,7 +2,7 @@
 import { create } from 'zustand'
 import { MovingProgressAddon } from '@/addons/movingProgressAddon'
 
-export const useMovingProgressStore = create((set, get) => ({
+export const useMovingProgressStore = create((set) => ({
   items: [],
 
   addItem: ({ filename, type = 'move', status = 'active', progress = 0, step = '' }) => {

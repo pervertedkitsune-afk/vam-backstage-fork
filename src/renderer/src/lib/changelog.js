@@ -5,6 +5,19 @@
  * @type {ChangelogEntry[]}
  */
 export const CHANGELOG = [
+  // [AddOn] FolderFilter_Begin
+  {
+    version: '0.7.0',
+    date: '2026-10-03',
+    notes: [
+      {
+        kind: 'new',
+        title: 'Location Folder Filter',
+        body: 'Added a dedicated Location section in Library and Content views to filter packages and content items by offloaded directory and nested subfolders.',
+      },
+    ],
+  },
+  // [AddOn] FolderFilter_End
   {
     version: '0.6.2',
     date: '2026-10-02',

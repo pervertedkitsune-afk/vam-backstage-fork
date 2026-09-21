@@ -138,6 +138,9 @@ import {
 } from '@/lib/hub-availability'
 import { useViewStore } from '@/stores/useViewStore'
 import { FilterAddon } from '@/addons/filterAddon'
+// [AddOn] FolderFilter_Begin
+import { FolderFilterAddon } from '@/addons/folderFilterAddon'
+// [AddOn] FolderFilter_End
 // [AddOn] Progressbar_Begin
 import { MovingProgressAddon } from '@/addons/movingProgressAddon'
 import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
@@ -243,6 +246,14 @@ function filterPackagesByEnabledStorage(items, enabledFilter) {
 }
 // [AddOn] Filter_End
 
+// [AddOn] FolderFilter_Begin
+function filterPackagesByLocation(items, locationFilter) {
+  console.log('[FolderFilter] LibraryView filtering packages by location:', locationFilter)
+  if (!locationFilter || locationFilter === 'all') return items
+  return items.filter((p) => FolderFilterAddon.matchesLocationFilter(p, locationFilter))
+}
+// [AddOn] FolderFilter_End
+
 export default function LibraryView({ onNavigate, navContext }) {
   const {
     packages,
@@ -253,6 +264,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     excludedAuthors,
     statusFilter,
     enabledFilter,
+    // [AddOn] FolderFilter_Begin
+    locationFilter,
+    // [AddOn] FolderFilter_End
     selectedTypes,
     selectedTags,
     selectedLabelIds,
@@ -277,6 +291,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     setExcludedAuthors,
     setStatusFilter,
     setEnabledFilter,
+    // [AddOn] FolderFilter_Begin
+    setLocationFilter,
+    // [AddOn] FolderFilter_End
     toggleType,
     selectSingleType,
     setSelectedTags,
@@ -409,6 +426,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     if (!packagesLoaded) return { direct: '…', dependency: '…', broken: '…', orphan: '…', local: '…', archived: '…' }
     let base = baseFiltered
     base = filterPackagesBySelectedTypes(base, selectedTypes)
+    // [AddOn] FolderFilter_Begin
+    base = filterPackagesByLocation(base, locationFilter)
+    // [AddOn] FolderFilter_End
     base = base.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     base = base.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
     // Archived count ignores the Enabled axis (it doesn't apply to the cold shelf).
@@ -430,13 +450,16 @@ export default function LibraryView({ onNavigate, navContext }) {
       if (p.isLocalOnly) local++
     }
     return { direct, dependency, broken, orphan, local, archived }
-  }, [packagesLoaded, baseFiltered, selectedTypes, enabledFilter, selectedTags, selectedLabelIds])
+  }, [packagesLoaded, baseFiltered, selectedTypes, enabledFilter, locationFilter, selectedTags, selectedLabelIds])
 
   const updateFacetCount = useMemo(() => {
     if (!updateCheckResults) return updateCheckLoading ? '…' : '?'
     let items = baseFiltered
     items = filterPackagesBySelectedTypes(items, selectedTypes)
     items = filterPackagesByEnabledStorage(items, enabledFilter)
+    // [AddOn] FolderFilter_Begin
+    items = filterPackagesByLocation(items, locationFilter)
+    // [AddOn] FolderFilter_End
     items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     items = items.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
     let n = 0
@@ -448,6 +471,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     baseFiltered,
     selectedTypes,
     enabledFilter,
+    // [AddOn] FolderFilter_Begin
+    locationFilter,
+    // [AddOn] FolderFilter_End
     selectedTags,
     selectedLabelIds,
     updateCheckResults,
@@ -457,6 +483,9 @@ export default function LibraryView({ onNavigate, navContext }) {
   const typeCounts = useMemo(() => {
     let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
     items = filterPackagesByEnabledStorage(items, effectiveEnabledFilter)
+    // [AddOn] FolderFilter_Begin
+    items = filterPackagesByLocation(items, locationFilter)
+    // [AddOn] FolderFilter_End
     items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     items = items.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
     const counts = { _total: items.length }
@@ -465,13 +494,24 @@ export default function LibraryView({ onNavigate, navContext }) {
       counts[label] = (counts[label] || 0) + 1
     }
     return counts
-  }, [baseFiltered, statusFilter, effectiveEnabledFilter, selectedTags, selectedLabelIds, updateCheckResults])
+  }, [
+    baseFiltered,
+    statusFilter,
+    effectiveEnabledFilter,
+    locationFilter,
+    selectedTags,
+    selectedLabelIds,
+    updateCheckResults,
+  ])
 
   // [AddOn] Filter_Begin
   /** Facet counts for Enabled filter: respects status/type/tags/labels but not enabled itself */
   const enabledFilterCounts = useMemo(() => {
     let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
     items = filterPackagesBySelectedTypes(items, selectedTypes)
+    // [AddOn] FolderFilter_Begin
+    items = filterPackagesByLocation(items, locationFilter)
+    // [AddOn] FolderFilter_End
     items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     items = items.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
     let enabled = 0,
@@ -482,21 +522,37 @@ export default function LibraryView({ onNavigate, navContext }) {
       else if (p.storageState === 'offloaded') offloaded++
       else if (p.storageState === 'enabled') enabled++
     }
-    const offloadCounts = FilterAddon.calculateOffloadCounts(items)
-    console.log('[Filter] LibraryView enabledFilterCounts:', {
-      all: items.length,
-      enabled,
-      disabled,
-      offloaded,
-      offloadCounts,
-    })
-    return { all: items.length, enabled, disabled, offloaded, ...offloadCounts }
-  }, [baseFiltered, statusFilter, selectedTypes, selectedTags, selectedLabelIds, updateCheckResults])
+    return { all: items.length, enabled, disabled, offloaded }
+  }, [baseFiltered, statusFilter, selectedTypes, locationFilter, selectedTags, selectedLabelIds, updateCheckResults])
   // [AddOn] Filter_End
+
+  // [AddOn] FolderFilter_Begin
+  const locationFilterCounts = useMemo(() => {
+    let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
+    items = filterPackagesByEnabledStorage(items, effectiveEnabledFilter)
+    items = filterPackagesBySelectedTypes(items, selectedTypes)
+    items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
+    items = items.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
+    const counts = FolderFilterAddon.calculateLocationCounts(items)
+    console.log('[FolderFilter] LibraryView locationFilterCounts:', counts)
+    return counts
+  }, [
+    baseFiltered,
+    statusFilter,
+    effectiveEnabledFilter,
+    selectedTypes,
+    selectedTags,
+    selectedLabelIds,
+    updateCheckResults,
+  ])
+  // [AddOn] FolderFilter_End
 
   const filtered = useMemo(() => {
     let result = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
     result = filterPackagesByEnabledStorage(result, effectiveEnabledFilter)
+    // [AddOn] FolderFilter_Begin
+    result = filterPackagesByLocation(result, locationFilter)
+    // [AddOn] FolderFilter_End
     result = filterPackagesBySelectedTypes(result, selectedTypes)
     result = result.filter((p) => packageMatchesSelectedTags(p, selectedTags))
     result = result.filter((p) => packageMatchesSelectedLabels(p, selectedLabelIds))
@@ -530,6 +586,9 @@ export default function LibraryView({ onNavigate, navContext }) {
     baseFiltered,
     statusFilter,
     effectiveEnabledFilter,
+    // [AddOn] FolderFilter_Begin
+    locationFilter,
+    // [AddOn] FolderFilter_End
     selectedTypes,
     selectedTags,
     selectedLabelIds,
@@ -634,6 +693,18 @@ export default function LibraryView({ onNavigate, navContext }) {
           })),
         ],
       },
+      // [AddOn] FolderFilter_Begin
+      {
+        key: 'location',
+        label: 'Location',
+        type: 'list',
+        value: locationFilter,
+        default: FILTER_DEFAULTS.locationFilter,
+        onChange: setLocationFilter,
+        listCollapsible: false,
+        items: FolderFilterAddon.buildLocationFilterItems(auxDirs, locationFilterCounts),
+      },
+      // [AddOn] FolderFilter_End
       // [AddOn] Filter_Begin
       {
         key: 'enabled',
@@ -651,7 +722,6 @@ export default function LibraryView({ onNavigate, navContext }) {
           { value: 'enabled', label: 'Enabled', count: enabledFilterCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: enabledFilterCounts.disabled },
           { value: 'offloaded', label: 'Offloaded', count: enabledFilterCounts.offloaded },
-          ...FilterAddon.buildOffloadFilterItems(auxDirs, enabledFilterCounts),
         ],
       },
       // [AddOn] Filter_End
@@ -723,6 +793,11 @@ export default function LibraryView({ onNavigate, navContext }) {
     [
       statusFilter,
       enabledFilter,
+      // [AddOn] FolderFilter_Begin
+      locationFilter,
+      locationFilterCounts,
+      setLocationFilter,
+      // [AddOn] FolderFilter_End
       hasArchiveDirs,
       selectedTypes,
       typeCounts,
@@ -773,7 +848,7 @@ export default function LibraryView({ onNavigate, navContext }) {
   const bulkAllArchived =
     bulkSelectedPackages.length > 0 && bulkSelectedPackages.every((p) => isPackageArchived(p.storageState))
 
-  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${statusFilter}\0${enabledFilter}\0${selectedTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${primarySort}\0${secondarySort}\0${license}`
+  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${statusFilter}\0${enabledFilter}\0${locationFilter}\0${selectedTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${primarySort}\0${secondarySort}\0${license}`
 
   const lastSelectedIdxRef = useRef(0)
   const prevScrollResetKeyRef = useRef(scrollResetKey)

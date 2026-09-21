@@ -6,6 +6,9 @@ import { selectionMutators } from './selection'
 import { useLibraryStore } from './useLibraryStore'
 import { persistViewState, oneOf, asArray, asPolarityList, asString, asCardWidth, asObject } from './persistViewState'
 import { FilterAddon } from '@/addons/filterAddon'
+// [AddOn] FolderFilter_Begin
+import { FolderFilterAddon } from '@/addons/folderFilterAddon'
+// [AddOn] FolderFilter_End
 
 /**
  * Attach `c.package` references onto a fresh content array. Content rows arrive
@@ -75,6 +78,9 @@ export const FILTER_DEFAULTS = {
   selectedLabelIds: [],
   packageFilter: 'all',
   packageStatusFilter: 'enabled',
+  // [AddOn] FolderFilter_Begin
+  locationFilter: 'all',
+  // [AddOn] FolderFilter_End
   visibilityFilter: 'visible',
 }
 
@@ -89,6 +95,18 @@ const asPackageStatusFilter = (v) => {
   return undefined
 }
 // [AddOn] Filter_End
+
+// [AddOn] FolderFilter_Begin
+const asLocationFilter = (v) => {
+  if (typeof v !== 'string') return undefined
+  if (FolderFilterAddon.isValidLocationFilter(v)) {
+    console.log('[FolderFilter] Rehydrated valid locationFilter:', v)
+    return v
+  }
+  console.log('[FolderFilter] Invalid locationFilter, falling back:', v)
+  return undefined
+}
+// [AddOn] FolderFilter_End
 
 export const useContentStore = create(
   persist(
@@ -152,6 +170,9 @@ export const useContentStore = create(
       setSelectedLabelIds: (selectedLabelIds) => set({ selectedLabelIds }),
       setPackageFilter: (packageFilter) => set({ packageFilter }),
       setPackageStatusFilter: (packageStatusFilter) => set({ packageStatusFilter }),
+      // [AddOn] FolderFilter_Begin
+      setLocationFilter: (locationFilter) => set({ locationFilter }),
+      // [AddOn] FolderFilter_End
       setVisibilityFilter: (visibilityFilter) => set({ visibilityFilter }),
       setPrimarySort: (primarySort) => set({ primarySort }),
       setSecondarySort: (secondarySort) => set({ secondarySort }),
@@ -264,6 +285,9 @@ export const useContentStore = create(
       // [AddOn] Filter_Begin
       packageStatusFilter: asPackageStatusFilter,
       // [AddOn] Filter_End
+      // [AddOn] FolderFilter_Begin
+      locationFilter: asLocationFilter,
+      // [AddOn] FolderFilter_End
       visibilityFilter: oneOf(['all', 'visible', 'hidden', 'favorites']),
       primarySort: asString,
       secondarySort: asString,

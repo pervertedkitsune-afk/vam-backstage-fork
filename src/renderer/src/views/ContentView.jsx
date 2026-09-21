@@ -79,6 +79,9 @@ import {
 import { packageNeedsDisableConfirmation } from '@/lib/package-disable-confirm'
 import { StorageStateChip } from '@/components/StorageStateChip'
 import { FilterAddon } from '@/addons/filterAddon'
+// [AddOn] FolderFilter_Begin
+import { FolderFilterAddon } from '@/addons/folderFilterAddon'
+// [AddOn] FolderFilter_End
 
 // [AddOn] Filter_Begin
 const SORT_OPTIONS = ['Recently installed', 'Name A-Z', 'Package', 'Type', 'Offload Directory']
@@ -112,6 +115,14 @@ const contentIsInstalled = (c) => {
 /** Content whose governing package lives in the archive (cold storage). Extracted
  *  presets defer to their source package; plain local content is never archived. */
 const isContentArchived = (c) => isPackageArchived(governingPackage(c)?.storageState ?? 'enabled')
+
+// [AddOn] FolderFilter_Begin
+function matchesContentLocation(c, locationFilter) {
+  if (!locationFilter || locationFilter === 'all') return true
+  const pkg = governingPackage(c)
+  return FolderFilterAddon.matchesLocationFilter(pkg, locationFilter)
+}
+// [AddOn] FolderFilter_End
 
 // [AddOn] Filter_Begin
 function matchesContentPackageStatus(c, packageStatusFilter) {
@@ -194,6 +205,12 @@ function applyContentSidebarFilters(baseItems, ctx, omit = {}) {
     items = items.filter((c) => matchesContentPackageStatus(c, ctx.packageStatusFilter))
   }
 
+  // [AddOn] FolderFilter_Begin
+  if (!omit.location) {
+    items = items.filter((c) => matchesContentLocation(c, ctx.locationFilter))
+  }
+  // [AddOn] FolderFilter_End
+
   if (!omit.visibility) {
     const vf = ctx.visibilityFilter
     if (vf === 'visible') items = items.filter((c) => !c.hidden)
@@ -223,6 +240,9 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedLabelIds,
     packageFilter,
     packageStatusFilter,
+    // [AddOn] FolderFilter_Begin
+    locationFilter,
+    // [AddOn] FolderFilter_End
     visibilityFilter,
     primarySort,
     secondarySort,
@@ -238,6 +258,9 @@ export default function ContentView({ onNavigate, navContext }) {
     setSelectedLabelIds,
     setPackageFilter,
     setPackageStatusFilter,
+    // [AddOn] FolderFilter_Begin
+    setLocationFilter,
+    // [AddOn] FolderFilter_End
     setVisibilityFilter,
     setPrimarySort,
     setSecondarySort,
@@ -340,6 +363,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        locationFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -355,6 +379,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    locationFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -368,6 +393,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        locationFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -394,6 +420,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    locationFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -407,6 +434,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        locationFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -431,6 +459,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    locationFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -444,6 +473,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        locationFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -462,22 +492,12 @@ export default function ContentView({ onNavigate, navContext }) {
       else if (isPackageDisabled(c)) disabled++
       else enabled++
     }
-    const offloadCounts = FilterAddon.calculateOffloadCounts(items, governingPackage)
-    console.log('[Filter] ContentView packageStatusCounts:', {
-      all: enabled + disabled + archived + offloaded,
-      enabled,
-      disabled,
-      archived,
-      offloaded,
-      offloadCounts,
-    })
     return {
       all: enabled + disabled + archived + offloaded,
       enabled,
       disabled,
       archived,
       offloaded,
-      ...offloadCounts,
     }
     // [AddOn] Filter_End
   }, [
@@ -486,10 +506,43 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    locationFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
   ])
+
+  // [AddOn] FolderFilter_Begin
+  const locationCounts = useMemo(() => {
+    const items = applyContentSidebarFilters(
+      baseFiltered,
+      {
+        selectedTypes,
+        selectedPackageTypes,
+        packageFilter,
+        packageStatusFilter,
+        locationFilter,
+        visibilityFilter,
+        selectedTags,
+        selectedLabelIds,
+      },
+      { location: true },
+    )
+    const counts = FolderFilterAddon.calculateLocationCounts(items, governingPackage)
+    console.log('[FolderFilter] ContentView locationCounts:', counts)
+    return counts
+  }, [
+    baseFiltered,
+    selectedTypes,
+    selectedPackageTypes,
+    packageFilter,
+    packageStatusFilter,
+    locationFilter,
+    visibilityFilter,
+    selectedTags,
+    selectedLabelIds,
+  ])
+  // [AddOn] FolderFilter_End
 
   const visibilityCounts = useMemo(() => {
     const items = applyContentSidebarFilters(
@@ -499,6 +552,7 @@ export default function ContentView({ onNavigate, navContext }) {
         selectedPackageTypes,
         packageFilter,
         packageStatusFilter,
+        locationFilter,
         visibilityFilter,
         selectedTags,
         selectedLabelIds,
@@ -520,6 +574,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedPackageTypes,
     packageFilter,
     packageStatusFilter,
+    locationFilter,
     visibilityFilter,
     selectedTags,
     selectedLabelIds,
@@ -531,6 +586,7 @@ export default function ContentView({ onNavigate, navContext }) {
       selectedPackageTypes,
       packageFilter,
       packageStatusFilter,
+      locationFilter,
       visibilityFilter,
       selectedTags,
       selectedLabelIds,
@@ -566,6 +622,7 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedLabelIds,
     packageFilter,
     packageStatusFilter,
+    locationFilter,
     visibilityFilter,
     primarySort,
     secondarySort,
@@ -629,6 +686,18 @@ export default function ContentView({ onNavigate, navContext }) {
           { value: 'favorites', label: 'Favorites', count: visibilityCounts.favorites },
         ],
       },
+      // [AddOn] FolderFilter_Begin
+      {
+        key: 'location',
+        label: 'Location',
+        type: 'list',
+        value: locationFilter,
+        default: FILTER_DEFAULTS.locationFilter,
+        onChange: setLocationFilter,
+        listCollapsible: false,
+        items: FolderFilterAddon.buildLocationFilterItems(auxDirs, locationCounts),
+      },
+      // [AddOn] FolderFilter_End
       {
         key: 'packageStatus',
         label: 'Package status',
@@ -642,7 +711,6 @@ export default function ContentView({ onNavigate, navContext }) {
           { value: 'enabled', label: 'Enabled', count: packageStatusCounts.enabled },
           { value: 'disabled', label: 'Disabled', count: packageStatusCounts.disabled },
           { value: 'offloaded', label: 'Offloaded', count: packageStatusCounts.offloaded },
-          ...FilterAddon.buildOffloadFilterItems(auxDirs, packageStatusCounts),
           ...(hasArchiveDirs ? [{ value: 'archived', label: 'Archived', count: packageStatusCounts.archived }] : []),
         ],
         // [AddOn] Filter_End
@@ -726,6 +794,11 @@ export default function ContentView({ onNavigate, navContext }) {
       packageFilterCounts,
       packageStatusFilter,
       packageStatusCounts,
+      // [AddOn] FolderFilter_Begin
+      locationFilter,
+      locationCounts,
+      setLocationFilter,
+      // [AddOn] FolderFilter_End
       hasArchiveDirs,
       // [AddOn] Filter_Begin
       auxDirs,
@@ -790,7 +863,7 @@ export default function ContentView({ onNavigate, navContext }) {
   const bulkActive = isBulk(selection)
   const bulkSelectedItems = useMemo(() => resolveContentBulkItems({ selection, contents }), [selection, contents])
 
-  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${selectedTypes.join(',')}\0${selectedPackageTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${packageFilter}\0${packageStatusFilter}\0${visibilityFilter}\0${primarySort}\0${secondarySort}`
+  const scrollResetKey = `${search}\0${authorSearch}\0${excludedAuthors.join(',')}\0${selectedTypes.join(',')}\0${selectedPackageTypes.join(',')}\0${polarityScrollKey(selectedTags)}\0${polarityScrollKey(selectedLabelIds)}\0${packageFilter}\0${packageStatusFilter}\0${locationFilter}\0${visibilityFilter}\0${primarySort}\0${secondarySort}`
 
   const lastSelectedIdxRef = useRef(0)
   const prevScrollResetKeyRef = useRef(scrollResetKey)
