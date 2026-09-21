@@ -7,6 +7,9 @@ import { useContentStore } from './useContentStore'
 import { persistViewState, oneOf, asArray, asPolarityList, asString, asBool, asCardWidth } from './persistViewState'
 import { applyUpdateEnrichment, applyDepEnrichment } from '@/lib/hub-availability'
 import { FilterAddon } from '@/addons/filterAddon'
+// [AddOn] FolderFilter_Begin
+import { FolderFilterAddon } from '@/addons/folderFilterAddon'
+// [AddOn] FolderFilter_End
 
 let missingDepsNonce = 0
 let updateCheckNonce = 0
@@ -161,6 +164,9 @@ export const FILTER_DEFAULTS = {
   excludedAuthors: [],
   statusFilter: 'direct',
   enabledFilter: 'all',
+  // [AddOn] FolderFilter_Begin
+  locationFilter: 'all',
+  // [AddOn] FolderFilter_End
   selectedTypes: [],
   selectedTags: [],
   selectedLabelIds: [],
@@ -178,6 +184,18 @@ const asEnabledFilter = (v) => {
   return undefined
 }
 // [AddOn] Filter_End
+
+// [AddOn] FolderFilter_Begin
+const asLocationFilter = (v) => {
+  if (typeof v !== 'string') return undefined
+  if (FolderFilterAddon.isValidLocationFilter(v)) {
+    console.log('[FolderFilter] Rehydrated valid locationFilter:', v)
+    return v
+  }
+  console.log('[FolderFilter] Invalid locationFilter, falling back:', v)
+  return undefined
+}
+// [AddOn] FolderFilter_End
 
 export const useLibraryStore = create(
   persist(
@@ -237,6 +255,9 @@ export const useLibraryStore = create(
       setExcludedAuthors: (excludedAuthors) => set({ excludedAuthors }),
       setStatusFilter: (statusFilter) => set({ statusFilter }),
       setEnabledFilter: (enabledFilter) => set({ enabledFilter }),
+      // [AddOn] FolderFilter_Begin
+      setLocationFilter: (locationFilter) => set({ locationFilter }),
+      // [AddOn] FolderFilter_End
       setSelectedTags: (selectedTags) => set({ selectedTags }),
       setSelectedLabelIds: (selectedLabelIds) => set({ selectedLabelIds }),
       setPrimarySort: (primarySort) => set({ primarySort }),
@@ -453,6 +474,9 @@ export const useLibraryStore = create(
       // [AddOn] Filter_Begin
       enabledFilter: asEnabledFilter,
       // [AddOn] Filter_End
+      // [AddOn] FolderFilter_Begin
+      locationFilter: asLocationFilter,
+      // [AddOn] FolderFilter_End
       selectedTypes: asArray,
       selectedTags: asPolarityList,
       selectedLabelIds: asPolarityList,
