@@ -138,6 +138,9 @@ const api = {
     start: () => invoke('scan:start'),
     applyAutoHide: (ruleId) => invoke('scan:apply-auto-hide', ruleId),
     removeAutoHide: (ruleId) => invoke('scan:remove-auto-hide', ruleId),
+    // [AddOn] DependencyFix_Begin
+    fixDependencies: () => invoke('scan:fix-dependencies'),
+    // [AddOn] DependencyFix_End
   },
   integrity: {
     check: () => invoke('integrity:check'),
