@@ -1,5 +1,7 @@
 import { createWriteStream } from 'fs'
-import { ipcMain, net } from 'electron'
+// [AddOn] MultiProgress_Begin
+import { ipcMain, net, shell } from 'electron'
+// [AddOn] MultiProgress_End
 import { access, rename, unlink, writeFile, utimes, stat } from 'fs/promises'
 import { dirname, join } from 'path'
 import {
@@ -180,8 +182,14 @@ async function unlinkPackagePhysicalAndAliases(pkg, filename) {
     seen.add(p)
     recordOwnedPath(p)
     try {
-      await unlink(p)
-    } catch {}
+      // [AddOn] MultiProgress_Begin
+      await shell.trashItem(p)
+      // [AddOn] MultiProgress_End
+    } catch {
+      try {
+        await unlink(p)
+      } catch {}
+    }
   }
 }
 
@@ -669,6 +677,17 @@ export function registerPackageHandlers() {
           }
         }
 
+        // [AddOn] MultiProgress_Begin
+        let currentPkg = getPackageIndex().get(filename) || pkg
+        if (currentPkg.storage_state === 'enabled') {
+          try {
+            await applyStorageStateChange([filename], () => 'disable')
+          } catch (err) {
+            console.warn(`[MultiProgress] Disable before uninstall failed for ${filename}:`, err.message)
+          }
+        }
+        // [AddOn] MultiProgress_End
+
         const { removableFilenames } = computeRemovableDeps(
           filename,
           getPackageIndex(),
@@ -692,6 +711,16 @@ export function registerPackageHandlers() {
         // rows/index are torn down so candidates still resolve).
         const removedExtracted = await cleanupExtractedPresetsForRemoval(toDelete)
         for (const fn of toDelete) {
+          // [AddOn] MultiProgress_Begin
+          const itemPkg = getPackageIndex().get(fn)
+          if (itemPkg && itemPkg.storage_state === 'enabled') {
+            try {
+              await applyStorageStateChange([fn], () => 'disable')
+            } catch (err) {
+              console.warn(`[MultiProgress] Disable before deletion failed for ${fn}:`, err.message)
+            }
+          }
+          // [AddOn] MultiProgress_End
           await unlinkPackagePhysicalAndAliases(getPackageIndex().get(fn), fn)
           deletePackage(fn)
         }

@@ -30,7 +30,10 @@ import { recordOwnedPath, recordOwnedDirChain } from './watcher.js'
 // [AddOn] Multidrive_Begin
 import { performCrossDriveMove } from './addons/multidrive.js'
 // [AddOn] Multidrive_End
-import { notifyToast } from './notify.js'
+// [AddOn] MultiProgress_Begin
+import { notify, notifyToast } from './notify.js'
+import { basename } from 'path'
+// [AddOn] MultiProgress_End
 import {
   getLibraryDirPath,
   classifyMainVarOnDisk,
@@ -65,7 +68,7 @@ const ACTIVENESS = { enabled: 3, disabled: 2, offloaded: 1, archived: 0 }
  * real content. This guard applies to every relocating rename (enable-from-suffix,
  * offload, restore-from-aux). Records both paths as app-owned.
  */
-async function guardedRename(from, to) {
+async function guardedRename(from, to, filename) {
   const [fromStat, toStat] = await Promise.all([stat(from).catch(() => null), lstat(to).catch(() => null)])
   if (!fromStat) throw new Error(`Source file missing: ${from}`)
   if (toStat) {
@@ -88,6 +91,17 @@ async function guardedRename(from, to) {
       return
     }
   }
+
+  // [AddOn] MultiProgress_Begin
+  const pkgFilename = filename || basename(from).replace(/\.disabled$/, '')
+  notify('moving:progress', {
+    filename: pkgFilename,
+    bytesTransferred: 0,
+    totalBytes: fromStat.size || 1,
+    progressPercent: 0,
+  })
+  // [AddOn] MultiProgress_End
+
   recordOwnedPath(from)
   recordOwnedPath(to)
   const destDir = dirname(to)
@@ -95,13 +109,23 @@ async function guardedRename(from, to) {
   // [AddOn] Multidrive_Begin
   try {
     await rename(from, to)
+    // [AddOn] MultiProgress_Begin
+    notify('moving:progress', {
+      filename: pkgFilename,
+      bytesTransferred: fromStat.size || 1,
+      totalBytes: fromStat.size || 1,
+      progressPercent: 100,
+    })
+    // [AddOn] MultiProgress_End
   } catch (err) {
     if (err.code === 'EXDEV' || err.code === 'EPERM' || err.code === 'EACCES') {
       if (getSetting('multidrive_enabled') === '0') {
         throw new Error(`Multi-Drive support is disabled in Settings. Cannot move across drives: ${err.message}`)
       }
       console.log(`[Multidrive] Rename failed with ${err.code}, attempting cross-drive move for ${from} → ${to}`)
-      await performCrossDriveMove(from, to)
+      // [AddOn] MultiProgress_Begin
+      await performCrossDriveMove(from, to, pkgFilename)
+      // [AddOn] MultiProgress_End
     } else {
       console.error(`[Multidrive] Rename error moving ${from} → ${to}:`, err.message)
       throw err
@@ -282,7 +306,9 @@ export async function applyStorageState(filename, target, opts = {}) {
   // copy (a home-subpath shadow), so co-location dedups instead of duplicating.
   let moved = false
   if (fromPath !== toPath) {
-    await guardedRename(fromPath, toPath)
+    // [AddOn] MultiProgress_Begin
+    await guardedRename(fromPath, toPath, filename)
+    // [AddOn] MultiProgress_End
     moved = true
   }
 

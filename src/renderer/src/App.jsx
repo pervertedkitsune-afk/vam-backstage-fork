@@ -132,6 +132,13 @@ export default function App() {
     const cleanupToast = window.api.onToast(({ message, type, duration }) => {
       toast(message, type, duration)
     })
+    // [AddOn] MultiProgress_Begin
+    const cleanupMovingProgress = window.api.on('moving:progress', (data) => {
+      if (data?.filename && data?.progressPercent != null) {
+        useMovingProgressStore.getState().updateProgressByFilename(data.filename, data.progressPercent)
+      }
+    })
+    // [AddOn] MultiProgress_End
     window.api.startup.consumeUnreadable().then((filenames) => {
       if (!filenames?.length) return
       const head = filenames.slice(0, 3)
@@ -145,6 +152,9 @@ export default function App() {
       cleanupPackagesUpdated()
       cleanupContentsUpdated()
       cleanupToast()
+      // [AddOn] MultiProgress_Begin
+      cleanupMovingProgress?.()
+      // [AddOn] MultiProgress_End
     }
   }, [])
 
