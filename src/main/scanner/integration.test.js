@@ -352,7 +352,7 @@ describe('runScan — archive dirs', () => {
     expect(byFile['Child.C.1.var'].is_direct).toBe(0)
   })
 
-  it('subsequent scan registers new referenced packages as direct (leaf detection is wizard-only)', async () => {
+  it('subsequent scan auto-sorts new packages: packages used by others are DEP', async () => {
     // First scan flips initial_scan_done so the next runScan is non-initial.
     await runScan(tmp.vamDir)
 
@@ -372,9 +372,9 @@ describe('runScan — archive dirs', () => {
     await runScan(tmp.vamDir) // non-initial scan
 
     const byFile = Object.fromEntries(getAllPackages().map((r) => [r.filename, r]))
-    // Both born on a non-initial scan ⇒ direct, even though Child.D is referenced.
+    // Parent is direct (no reverse deps), Child is DEP (used by Parent).
     expect(byFile['Parent.Q.1.var'].is_direct).toBe(1)
-    expect(byFile['Child.D.1.var'].is_direct).toBe(1)
+    expect(byFile['Child.D.1.var'].is_direct).toBe(0)
   })
 
   it('role flip re-derives storage_state for packages already in the dir', async () => {

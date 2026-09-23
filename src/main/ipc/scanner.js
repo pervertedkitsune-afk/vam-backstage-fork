@@ -4,6 +4,9 @@ import { dirname, join } from 'path'
 import { ADDON_PACKAGES } from '@shared/paths.js'
 import { getSetting, clearAllCorrupted, batchSetCorrupted } from '../db.js'
 import { runScan, applyAutoHideRule, removeAutoHideRule } from '../scanner/index.js'
+// [AddOn] DependencyFix_Begin
+import { DependencyFix } from '../addons/dependency-fix.js'
+// [AddOn] DependencyFix_End
 import { runIntegrityCheck } from '../scanner/integrity.js'
 import { buildFromDb } from '../store.js'
 import { startWatcher } from '../watcher.js'
@@ -52,6 +55,12 @@ export function registerScanHandlers() {
     notify('contents:updated')
     return { ok: true }
   })
+
+  // [AddOn] DependencyFix_Begin
+  ipcMain.handle('scan:fix-dependencies', async () => {
+    return await DependencyFix.fixAllDependencies()
+  })
+  // [AddOn] DependencyFix_End
 
   ipcMain.handle('scan:remove-auto-hide', async (_e, ruleId) => {
     const vamDir = getSetting('vam_dir')

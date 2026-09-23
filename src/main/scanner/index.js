@@ -38,6 +38,9 @@ import {
 } from '../library-dirs.js'
 import { normalizeAuxDisabled } from '../watcher.js'
 import { enrichNewPackages } from '../hub/scanner.js'
+// [AddOn] DependencyFix_Begin
+import { DependencyFix } from '../addons/dependency-fix.js'
+// [AddOn] DependencyFix_End
 
 /**
  * Run a full library scan across the main dir and every registered aux dir.
@@ -207,7 +210,10 @@ export async function runScan(vamDir, onProgress = () => {}) {
       // to silently demote things they dropped in; and within a creator-pack hoard,
       // leaf detection would misclassify internally-referenced packages as deps and
       // expose them to cascades. The rev-dep-less sweep still promotes stragglers.
-      const updates = [...newAdditions.keys()].map((fn) => [fn, true])
+      // [AddOn] DependencyFix_Begin
+      const newClassified = DependencyFix.classifyPackages([...newAdditions.keys()], pkgIdx, rev)
+      const updates = [...newClassified]
+      // [AddOn] DependencyFix_End
       for (const fn of pkgIdx.keys()) {
         if (newAdditions.has(fn)) continue
         const hadRevDeps = rev.has(fn) && rev.get(fn).size > 0

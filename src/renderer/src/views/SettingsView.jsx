@@ -87,6 +87,9 @@ export default function SettingsView() {
   const [verifyProgress, setVerifyProgress] = useState(null)
   const [hubScanning, setHubScanning] = useState(false)
   const [hubScanProgress, setHubScanProgress] = useState(null)
+  // [AddOn] DependencyFix_Begin
+  const [fixingDeps, setFixingDeps] = useState(false)
+  // [AddOn] DependencyFix_End
   const [baSyncing, setBaSyncing] = useState(false)
   const [baSyncResult, setBaSyncResult] = useState(null)
   const [wishlistImporting, setWishlistImporting] = useState(null)
@@ -471,6 +474,27 @@ export default function SettingsView() {
       setHubScanProgress(null)
     }
   }, [hubScanning, fetchStats])
+
+  // [AddOn] DependencyFix_Begin
+  const handleFixDependencies = useCallback(async () => {
+    if (fixingDeps || scanning || hubScanning || verifying) return
+    setFixingDeps(true)
+    setScanResult(null)
+    try {
+      const result = await window.api.scan.fixDependencies()
+      fetchStats()
+      if (result?.fixedCount > 0) {
+        setScanResult({ success: `Dependencies fixed. Marked ${result.fixedCount} package(s) as DEP.` })
+      } else {
+        setScanResult({ success: 'All dependencies are already correctly marked.' })
+      }
+    } catch (err) {
+      setScanResult({ error: `Fix dependencies failed: ${err.message}` })
+    } finally {
+      setFixingDeps(false)
+    }
+  }, [fixingDeps, scanning, hubScanning, verifying, fetchStats])
+  // [AddOn] DependencyFix_End
 
   const handleVerifyIntegrity = useCallback(async () => {
     if (verifying || hubScanning) return
@@ -987,6 +1011,27 @@ export default function SettingsView() {
               <Button variant="outline" size="lg" onClick={handleOpenApplicationFolder} className="text-xs">
                 <FolderOpen size={14} /> Show in folder
               </Button>
+              {/* [AddOn] DependencyFix_Begin */}
+              <Tooltip delayDuration={350}>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={handleFixDependencies}
+                      disabled={fixingDeps || scanning || verifying || hubScanning || !vamDir}
+                      className="text-xs"
+                    >
+                      {fixingDeps ? <Loader2 size={14} className="animate-spin" /> : <Boxes size={14} />}
+                      {fixingDeps ? 'Fixing dependencies…' : 'Fix dependencies'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" prose>
+                  Iterate through all known packages and mark packages as DEP if they are used by other packages.
+                </TooltipContent>
+              </Tooltip>
+              {/* [AddOn] DependencyFix_End */}
             </div>
             {hubScanning && hubScanProgress && (
               <div className={META_DENSE}>
