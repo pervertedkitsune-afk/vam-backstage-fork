@@ -7,6 +7,17 @@
 export const CHANGELOG = [
   // [AddOn] FolderFilter_Begin
   {
+    version: '0.9.0',
+    date: '2026-10-04',
+    notes: [
+      {
+        kind: 'improved',
+        title: 'Nested Location Folder View (Depth 2)',
+        body: 'Location folder filtering now supports 2 levels of nested subfolders in offloaded directories.',
+      },
+    ],
+  },
+  {
     version: '0.7.2',
     date: '2026-10-03',
     notes: [
