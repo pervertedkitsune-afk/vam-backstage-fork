@@ -25,6 +25,11 @@ import {
   X,
   ChevronUp,
   ChevronDown,
+  // [AddOn] DBBackup_Begin
+  Database,
+  Download,
+  Upload,
+  // [AddOn] DBBackup_End
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { SettingRow } from '@/components/SettingRow'
@@ -100,6 +105,12 @@ export default function SettingsView() {
   const [appVersion, setAppVersion] = useState('')
   const [updateChannel, setUpdateChannel] = useState('stable')
   const [libDirs, setLibDirs] = useState({ main: '', aux: [] })
+  // [AddOn] DBBackup_Begin
+  const [dbBackingUp, setDbBackingUp] = useState(false)
+  const [dbRestoring, setDbRestoring] = useState(false)
+  const [dbBackupResult, setDbBackupResult] = useState(null)
+  const [showRestartDialog, setShowRestartDialog] = useState(false)
+  // [AddOn] DBBackup_End
   // What library-dir operation is in flight: `'add'`, an aux dir id, or null.
   // Scoped rather than a plain boolean so each control reflects only its *own*
   // operation — a shared flag greyed out the whole section (Add button included)
@@ -808,6 +819,57 @@ export default function SettingsView() {
     [patchRemoteConfig],
   )
 
+  // [AddOn] DBBackup_Begin
+  const handleBackupDatabase = useCallback(async () => {
+    if (dbBackingUp || dbRestoring) return
+    setDbBackingUp(true)
+    setDbBackupResult(null)
+    try {
+      const res = await window.api.db.backup()
+      if (res.canceled) {
+        // User canceled file dialog
+      } else if (res.ok) {
+        toast('Database backup created successfully.', 'success')
+        setDbBackupResult({ success: `Database backup created successfully at ${res.path}` })
+      } else {
+        toast(`Backup failed: ${res.error}`, 'error')
+        setDbBackupResult({ error: `Backup failed: ${res.error}` })
+      }
+    } catch (err) {
+      toast(`Backup failed: ${err.message}`, 'error')
+      setDbBackupResult({ error: `Backup failed: ${err.message}` })
+    } finally {
+      setDbBackingUp(false)
+    }
+  }, [dbBackingUp, dbRestoring])
+
+  const handleRestoreDatabase = useCallback(async () => {
+    if (dbBackingUp || dbRestoring) return
+    setDbRestoring(true)
+    setDbBackupResult(null)
+    try {
+      const res = await window.api.db.restore()
+      if (res.canceled) {
+        // User canceled file dialog
+      } else if (res.ok) {
+        setShowRestartDialog(true)
+      } else {
+        toast(`Restore failed: ${res.error}`, 'error')
+        setDbBackupResult({ error: `Restore failed: ${res.error}` })
+      }
+    } catch (err) {
+      toast(`Restore failed: ${err.message}`, 'error')
+      setDbBackupResult({ error: `Restore failed: ${err.message}` })
+    } finally {
+      setDbRestoring(false)
+    }
+  }, [dbBackingUp, dbRestoring])
+
+  const handleConfirmRestart = useCallback(async () => {
+    await window.api.db.relaunch()
+  }, [])
+  // [AddOn] DBBackup_End
+
   const auxDirs = libDirs.aux
   const offloadAuxDirs = useMemo(() => auxDirs.filter((d) => !d.archive), [auxDirs])
 
@@ -1067,6 +1129,66 @@ export default function SettingsView() {
             <ResultBanner result={scanResult} details={scanResult?.corruptedFiles} mono />
           </div>
         </Section>
+
+        {/* [AddOn] DBBackup_Begin */}
+        <Section title="Database" icon={Database} description="Backup or restore your VaM Backstage local database.">
+          <div className="space-y-4">
+            <SettingRow
+              label="Database Backup & Restore"
+              description="Backing up creates a compressed .zip file of your database. Restoring replaces your current database with a backup file."
+            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleBackupDatabase}
+                disabled={dbBackingUp || dbRestoring}
+                className="text-xs shrink-0"
+              >
+                {dbBackingUp ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {dbBackingUp ? 'Backing up…' : 'Backup database'}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleRestoreDatabase}
+                disabled={dbBackingUp || dbRestoring}
+                className="text-xs shrink-0"
+              >
+                {dbRestoring ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {dbRestoring ? 'Restoring…' : 'Restore database'}
+              </Button>
+            </div>
+            <ResultBanner result={dbBackupResult} mono />
+          </div>
+        </Section>
+
+        <AlertDialog open={showRestartDialog} onOpenChange={() => {}}>
+          <AlertDialogContent
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="select-text cursor-text">Database Restored Successfully</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2">
+                  <p>
+                    The database has been successfully restored from your backup file.
+                  </p>
+                  <p className="font-medium text-text-primary">
+                    VaM Backstage will now restart to apply the restored database.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={handleConfirmRestart}>
+                Confirm & Restart
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* [AddOn] DBBackup_End */}
 
         <Section title="Behavior" description="How packages and content are managed.">
           <div className="space-y-5">

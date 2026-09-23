@@ -158,6 +158,13 @@ const api = {
     set: (key, value) => invoke('settings:set', key, value),
     getDatabasePath: () => invoke('settings:getDatabasePath'),
   },
+  // [AddOn] DBBackup_Begin
+  db: {
+    backup: () => invoke('db:backup'),
+    restore: () => invoke('db:restore'),
+    relaunch: () => invoke('db:relaunch'),
+  },
+  // [AddOn] DBBackup_End
   // [AddOn] OrigOffload_Begin
   libraryDirs: {
     list: () => invoke('library-dirs:list'),
