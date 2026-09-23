@@ -110,6 +110,9 @@ export default function SettingsView() {
   // [AddOn] Multidrive_Begin
   const [multidriveEnabled, setMultidriveEnabled] = useState(true)
   // [AddOn] Multidrive_End
+  // [AddOn] MultiProgress_Begin
+  const [concurrentActions, setConcurrentActions] = useState('1')
+  // [AddOn] MultiProgress_End
   const [offloadSuggestions, setOffloadSuggestions] = useState([])
   const [dismissedOffload, setDismissedOffload] = useState(() => new Set())
   const stats = useStatusStore((s) => s.stats)
@@ -198,6 +201,9 @@ export default function SettingsView() {
     // [AddOn] Multidrive_Begin
     window.api.settings.get('multidrive_enabled').then((v) => setMultidriveEnabled(v !== '0'))
     // [AddOn] Multidrive_End
+    // [AddOn] MultiProgress_Begin
+    window.api.settings.get('concurrent_actions').then((v) => setConcurrentActions(v || '1'))
+    // [AddOn] MultiProgress_End
     window.api.settings.get('offload_suggestions_dismissed').then((v) =>
       setDismissedOffload(
         new Set(
@@ -388,6 +394,12 @@ export default function SettingsView() {
     await window.api.settings.set('multidrive_enabled', checked ? '1' : '0')
   }, [])
   // [AddOn] Multidrive_End
+  // [AddOn] MultiProgress_Begin
+  const handleConcurrentActionsChange = useCallback(async (value) => {
+    setConcurrentActions(value)
+    await window.api.settings.set('concurrent_actions', value)
+  }, [])
+  // [AddOn] MultiProgress_End
 
   useEffect(() => {
     let cancelled = false
@@ -1058,6 +1070,26 @@ export default function SettingsView() {
 
         <Section title="Behavior" description="How packages and content are managed.">
           <div className="space-y-5">
+            {/* [AddOn] MultiProgress_Begin */}
+            <SettingRow
+              as="div"
+              label="Concurrent Actions"
+              description="Set how many package actions (moving, deleting, enabling, disabling) can run concurrently (1 to 5)."
+            >
+              <Select value={concurrentActions} onValueChange={handleConcurrentActionsChange}>
+                <SelectTrigger className="shrink-0 min-w-[90px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
+            {/* [AddOn] MultiProgress_End */}
             <AutoHideSwitch
               settingKey="auto_hide_deps"
               label="Auto-hide dependency content"

@@ -332,15 +332,19 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
   const handleArchive = async (archiveDirId, depMode) => {
     setArchiveOpen(false)
     try {
+      // [AddOn] MultiProgress_Begin
+      const packageMap = useLibraryStore.getState().packageByFilename
       const res = await MovingProgressAddon.trackBatchOperations(
         {
           filenames: archiveTargetFilenames,
           type: 'move',
           step: 'Archiving package…',
-          opFn: () => window.api.packages.archive(archiveTargetFilenames, archiveDirId, depMode),
+          singleOpFn: (fn) => window.api.packages.archive([fn], archiveDirId, depMode),
+          packageMap,
         },
         useMovingProgressStore.getState(),
       )
+      // [AddOn] MultiProgress_End
       const parts = []
       if (res?.pruned) parts.push(`${res.pruned} dropped`)
       if (res?.storedToArchive) parts.push(`${res.storedToArchive} stored`)

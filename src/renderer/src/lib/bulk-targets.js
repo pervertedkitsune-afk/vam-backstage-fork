@@ -46,17 +46,23 @@ export async function runLibraryBulkToggleEnabled(items = resolveLibraryBulkPack
   useLibraryStore.setState({ bulkToggleIntent: enabled ? 'enable' : 'disable' })
   const type = enabled ? 'activate' : 'disable'
   const filenames = targets.map((p) => p.filename)
+  // [AddOn] MultiProgress_Begin
+  const packageMap = useLibraryStore.getState().packageByFilename
+  // [AddOn] MultiProgress_End
   try {
     // [AddOn] Progressbar_Begin
+    // [AddOn] MultiProgress_Begin
     const res = await MovingProgressAddon.trackBatchOperations(
       {
         filenames,
         type,
         step: enabled ? 'Activating package…' : 'Disabling package…',
-        opFn: () => window.api.packages.setEnabled(filenames, enabled),
+        singleOpFn: (fn) => window.api.packages.setEnabled([fn], enabled),
+        packageMap,
       },
       useMovingProgressStore.getState(),
     )
+    // [AddOn] MultiProgress_End
     // [AddOn] Progressbar_End
     toastIfBulkToggleFailures(res)
     await useLibraryStore.getState().fetchPackages()
@@ -70,37 +76,46 @@ export async function runLibraryBulkToggleEnabled(items = resolveLibraryBulkPack
 export async function runLibraryBulkRemove(items = resolveLibraryBulkPackages()) {
   const direct = items.filter((p) => p.isDirect)
   const dep = items.filter((p) => !p.isDirect)
+  // [AddOn] MultiProgress_Begin
+  const packageMap = useLibraryStore.getState().packageByFilename
+  // [AddOn] MultiProgress_End
   try {
     let relocated = 0
     if (direct.length) {
       const d = direct.map((p) => p.filename)
       // [AddOn] Progressbar_Begin
+      // [AddOn] MultiProgress_Begin
       const res = await MovingProgressAddon.trackBatchOperations(
         {
           filenames: d,
           type: 'move',
           step: 'Moving / uninstalling package…',
-          opFn: () => window.api.packages.uninstall(d.length === 1 ? d[0] : d),
+          singleOpFn: (fn) => window.api.packages.uninstall(fn),
+          packageMap,
         },
         useMovingProgressStore.getState(),
       )
+      // [AddOn] MultiProgress_End
       // [AddOn] Progressbar_End
       for (const r of res?.results ?? (res ? [res] : [])) {
-        if (r.relocatedToArchive) relocated++
+        if (r?.relocatedToArchive) relocated++
       }
     }
     if (dep.length) {
       const d = dep.map((p) => p.filename)
       // [AddOn] Progressbar_Begin
+      // [AddOn] MultiProgress_Begin
       await MovingProgressAddon.trackBatchOperations(
         {
           filenames: d,
           type: 'move',
           step: 'Removing package…',
-          opFn: () => window.api.packages.forceRemove(d.length === 1 ? d[0] : d),
+          singleOpFn: (fn) => window.api.packages.forceRemove(fn),
+          packageMap,
         },
         useMovingProgressStore.getState(),
       )
+      // [AddOn] MultiProgress_End
       // [AddOn] Progressbar_End
     }
     useLibraryStore.getState().clearSelection()
@@ -138,17 +153,23 @@ export async function runLibraryBulkDemote(items = resolveLibraryBulkPackages())
 export async function runLibraryBulkInstallFromArchive(items = resolveLibraryBulkPackages()) {
   const fnames = items.filter((p) => isPackageArchived(p.storageState)).map((p) => p.filename)
   if (!fnames.length) return
+  // [AddOn] MultiProgress_Begin
+  const packageMap = useLibraryStore.getState().packageByFilename
+  // [AddOn] MultiProgress_End
   try {
     // [AddOn] Progressbar_Begin
+    // [AddOn] MultiProgress_Begin
     const res = await MovingProgressAddon.trackBatchOperations(
       {
         filenames: fnames,
         type: 'activate',
         step: 'Restoring & activating package from archive…',
-        opFn: () => window.api.packages.installFromArchive(fnames),
+        singleOpFn: (fn) => window.api.packages.installFromArchive([fn]),
+        packageMap,
       },
       useMovingProgressStore.getState(),
     )
+    // [AddOn] MultiProgress_End
     // [AddOn] Progressbar_End
     if (res?.queued > 0) toast(`Installing: ${res.queued} dependenc${res.queued === 1 ? 'y' : 'ies'} queued`, 'success')
     useLibraryStore.getState().clearSelection()
@@ -162,13 +183,25 @@ export async function runLibraryBulkInstallFromArchive(items = resolveLibraryBul
 export async function runLibraryBulkRemoveFromArchive(items = resolveLibraryBulkPackages()) {
   const fnames = items.filter((p) => isPackageArchived(p.storageState)).map((p) => p.filename)
   if (!fnames.length) return
+  // [AddOn] MultiProgress_Begin
+  const packageMap = useLibraryStore.getState().packageByFilename
   try {
-    await window.api.packages.forceRemove(fnames.length === 1 ? fnames[0] : fnames)
+    await MovingProgressAddon.trackBatchOperations(
+      {
+        filenames: fnames,
+        type: 'move',
+        step: 'Deleting package from disk…',
+        singleOpFn: (fn) => window.api.packages.forceRemove(fn),
+        packageMap,
+      },
+      useMovingProgressStore.getState(),
+    )
     useLibraryStore.getState().clearSelection()
     await useLibraryStore.getState().fetchPackages()
   } catch (err) {
     toast(`Delete failed: ${err.message}`)
   }
+  // [AddOn] MultiProgress_End
 }
 
 /** Hide/show UI state for a set of content items. Empty selection => every flag false, `disabled`. */

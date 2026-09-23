@@ -96,6 +96,17 @@ export default function MovingProgressPanel({ onClose }) {
   const hasAny = items.length > 0
   const activeCount = MovingProgressAddon.getActiveCount(items)
 
+  // [AddOn] MultiProgress_Begin
+  const totalWeight = items.reduce((acc, item) => acc + (item.sizeBytes || 1024 * 1024), 0)
+  const completedWeight = items.reduce((acc, item) => {
+    const size = item.sizeBytes || 1024 * 1024
+    if (item.status === 'completed') return acc + size
+    if (item.status === 'active') return acc + (size * (item.progress || 0)) / 100
+    return acc
+  }, 0)
+  const overallProgressPercent = totalWeight > 0 ? Math.min(100, Math.round((completedWeight / totalWeight) * 100)) : 0
+  // [AddOn] MultiProgress_End
+
   return (
     <div className="flex shrink-0" style={{ width: panelWidth }}>
       <div className="flex-1 min-w-0 bg-surface border-r border-border flex flex-col h-full">
@@ -110,16 +121,25 @@ export default function MovingProgressPanel({ onClose }) {
         </div>
 
         {/* Status header if operations active */}
+        {/* [AddOn] MultiProgress_Begin */}
         {activeCount > 0 && (
-          <div className={`flex items-center gap-2 px-4 py-2 border-b border-border shrink-0 ${CLARIFY_DENSE}`}>
-            <Clock size={12} className="text-accent-blue shrink-0 animate-spin" />
-            <span className="min-w-0 truncate">
-              {active.length > 0
-                ? `${active.length} operation${active.length !== 1 ? 's' : ''} in progress`
-                : `${queued.length} queued`}
-            </span>
+          <div className={`flex flex-col gap-1.5 px-4 py-2 border-b border-border shrink-0 ${CLARIFY_DENSE}`}>
+            <div className="flex items-center gap-2">
+              <Clock size={12} className="text-accent-blue shrink-0 animate-spin" />
+              <span className="min-w-0 truncate">
+                {active.length > 0
+                  ? `${active.length} active · ${overallProgressPercent}% transferred overall`
+                  : `${queued.length} queued`}
+              </span>
+            </div>
+            <Progress
+              value={overallProgressPercent}
+              className="h-[3px] bg-elevated"
+              indicatorClassName="progress-bar"
+            />
           </div>
         )}
+        {/* [AddOn] MultiProgress_End */}
 
         <div className="flex-1 overflow-y-auto">
           {/* Active */}
