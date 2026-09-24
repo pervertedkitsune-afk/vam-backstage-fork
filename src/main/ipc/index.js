@@ -15,6 +15,9 @@ import { registerExtractHandlers } from './extract.js'
 import { registerLabelHandlers } from './labels.js'
 import { registerLibraryDirHandlers } from './library-dirs.js'
 import { registerRemoteHandlers } from './remote.js'
+// [AddOn] DBBackup_Begin
+import { registerDBBackupHandlers } from './db-backup.js'
+// [AddOn] DBBackup_End
 
 // Small, unrelated IPC surfaces that are pure delegations to their backing
 // modules live here rather than each getting its own file.
@@ -55,4 +58,7 @@ export function registerAllHandlers() {
   registerLabelHandlers()
   registerLibraryDirHandlers()
   registerRemoteHandlers()
+  // [AddOn] DBBackup_Begin
+  registerDBBackupHandlers()
+  // [AddOn] DBBackup_End
 }
