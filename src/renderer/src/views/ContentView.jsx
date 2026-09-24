@@ -543,6 +543,35 @@ export default function ContentView({ onNavigate, navContext }) {
     selectedTags,
     selectedLabelIds,
   ])
+
+  const locationFilterItems = useMemo(() => {
+    return FolderFilterAddon.buildLocationFilterItems(auxDirs, locationCounts)
+  }, [auxDirs, locationCounts])
+
+  const locationTopControls = useMemo(() => {
+    const hasCollapsible = locationFilterItems.some((i) => i.hasChildren)
+    if (!hasCollapsible) return null
+
+    return (
+      <div className="flex items-center gap-2 mb-1.5 px-2 text-[11px] text-text-tertiary">
+        <button
+          type="button"
+          onClick={() => FolderFilterAddon.expandAllFolders(locationFilterItems)}
+          className="hover:text-text-primary transition-colors cursor-pointer"
+        >
+          Expand all
+        </button>
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => FolderFilterAddon.collapseAllFolders(locationFilterItems)}
+          className="hover:text-text-primary transition-colors cursor-pointer"
+        >
+          Collapse all
+        </button>
+      </div>
+    )
+  }, [locationFilterItems])
   // [AddOn] FolderFilter_End
 
   const visibilityCounts = useMemo(() => {
@@ -696,7 +725,8 @@ export default function ContentView({ onNavigate, navContext }) {
         default: FILTER_DEFAULTS.locationFilter,
         onChange: setLocationFilter,
         listCollapsible: false,
-        items: FolderFilterAddon.buildLocationFilterItems(auxDirs, locationCounts),
+        topControls: locationTopControls,
+        items: locationFilterItems,
       },
       // [AddOn] FolderFilter_End
       {
@@ -797,13 +827,11 @@ export default function ContentView({ onNavigate, navContext }) {
       packageStatusCounts,
       // [AddOn] FolderFilter_Begin
       locationFilter,
-      locationCounts,
+      locationFilterItems,
+      locationTopControls,
       setLocationFilter,
       // [AddOn] FolderFilter_End
       hasArchiveDirs,
-      // [AddOn] Filter_Begin
-      auxDirs,
-      // [AddOn] Filter_End
       visibilityFilter,
       visibilityCounts,
       authorSearch,

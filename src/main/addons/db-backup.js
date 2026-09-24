@@ -160,10 +160,18 @@ export class DBBackup {
       const shmPath = `${targetDbPath}-shm`
 
       if (fs.existsSync(walPath)) {
-        try { fs.unlinkSync(walPath) } catch (e) { console.warn('[DBBackup] Failed removing wal file:', e.message) }
+        try {
+          fs.unlinkSync(walPath)
+        } catch (e) {
+          console.warn('[DBBackup] Failed removing wal file:', e.message)
+        }
       }
       if (fs.existsSync(shmPath)) {
-        try { fs.unlinkSync(shmPath) } catch (e) { console.warn('[DBBackup] Failed removing shm file:', e.message) }
+        try {
+          fs.unlinkSync(shmPath)
+        } catch (e) {
+          console.warn('[DBBackup] Failed removing shm file:', e.message)
+        }
       }
 
       fs.copyFileSync(tempExtractPath, targetDbPath)

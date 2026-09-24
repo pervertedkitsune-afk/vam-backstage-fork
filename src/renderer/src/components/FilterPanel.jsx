@@ -1,5 +1,8 @@
-import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Search, X, ChevronDown, ChevronRight, Check } from 'lucide-react'
+// [AddOn] FolderFilter_Begin
+import { FolderFilterAddon, useFolderCollapsedState } from '@/addons/folderFilterAddon'
+// [AddOn] FolderFilter_End
 import { usePersistedPanelWidth } from '@/hooks/usePersistedPanelWidth'
 import ResizeHandle from './ResizeHandle'
 import { Input } from '@/components/ui/input'
@@ -382,33 +385,64 @@ function SectionWrapper({ section, active, children }) {
 
 const LIST_COLLAPSE_THRESHOLD = 6
 
+// [AddOn] FolderFilter_Begin
 function ListSection({ section }) {
   const [expanded, setExpanded] = useState(false)
-  const collapsible = section.listCollapsible !== false && section.items.length > LIST_COLLAPSE_THRESHOLD
-  const visible = collapsible && !expanded ? section.items.slice(0, LIST_COLLAPSE_THRESHOLD) : section.items
+  useFolderCollapsedState()
+
+  const processedItems = useMemo(() => {
+    return FolderFilterAddon.filterVisibleItems(section.items)
+  }, [section.items])
+
+  const collapsible = section.listCollapsible !== false && processedItems.length > LIST_COLLAPSE_THRESHOLD
+  const visible = collapsible && !expanded ? processedItems.slice(0, LIST_COLLAPSE_THRESHOLD) : processedItems
   const hasActiveHidden =
-    collapsible && !expanded && section.items.slice(LIST_COLLAPSE_THRESHOLD).some((i) => i.value === section.value)
+    collapsible && !expanded && processedItems.slice(LIST_COLLAPSE_THRESHOLD).some((i) => i.value === section.value)
 
   return (
     <div className="space-y-px">
-      {visible.map((item) => (
-        <Fragment key={item.value}>
-          {item.dividerBefore && <div className="my-1.5 border-t border-border" aria-hidden="true" />}
-          <button
-            type="button"
-            title={item.title}
-            onClick={() => section.onChange(item.value)}
-            style={item.level ? { paddingLeft: `${8 + item.level * 16}px` } : undefined}
-            className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-2 transition-colors cursor-pointer
-              ${section.value === item.value ? 'bg-hover text-text-primary' : 'text-text-secondary hover:bg-elevated hover:text-text-primary'}`}
-          >
-            {item.color && <div className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />}
-            {item.icon && <item.icon size={12} className={item.iconClass || ''} />}
-            <span className="truncate">{item.label}</span>
-            {item.count != null && <span className={`${META_DENSE} ml-auto shrink-0`}>{item.count}</span>}
-          </button>
-        </Fragment>
-      ))}
+      {section.topControls}
+      {visible.map((item) => {
+        const isCollapsed = item.hasChildren ? FolderFilterAddon.isFolderCollapsed(item.value, true) : false
+        return (
+          <Fragment key={item.value}>
+            {item.dividerBefore && <div className="my-1.5 border-t border-border" aria-hidden="true" />}
+            <button
+              type="button"
+              title={item.title}
+              onClick={() => section.onChange(item.value)}
+              style={item.level ? { paddingLeft: `${8 + item.level * 12}px` } : undefined}
+              className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors cursor-pointer
+                ${section.value === item.value ? 'bg-hover text-text-primary' : 'text-text-secondary hover:bg-elevated hover:text-text-primary'}`}
+            >
+              {item.hasChildren ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  title={isCollapsed ? 'Expand folder' : 'Collapse folder'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    FolderFilterAddon.toggleFolderCollapsed(item.value)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation()
+                      FolderFilterAddon.toggleFolderCollapsed(item.value)
+                    }
+                  }}
+                  className="p-0.5 rounded hover:bg-hover text-text-tertiary hover:text-text-primary shrink-0 cursor-pointer"
+                >
+                  {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                </span>
+              ) : null}
+              {item.color && <div className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />}
+              {item.icon && <item.icon size={12} className={item.iconClass || ''} />}
+              <span className="truncate">{item.label}</span>
+              {item.count != null && <span className={`${META_DENSE} ml-auto shrink-0`}>{item.count}</span>}
+            </button>
+          </Fragment>
+        )
+      })}
       {collapsible && (
         <button
           type="button"
@@ -418,9 +452,10 @@ function ListSection({ section }) {
           <ChevronDown size={11} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
           {expanded
             ? 'Show less'
-            : `${section.items.length - LIST_COLLAPSE_THRESHOLD} more${hasActiveHidden ? ' (active)' : ''}`}
+            : `${processedItems.length - LIST_COLLAPSE_THRESHOLD} more${hasActiveHidden ? ' (active)' : ''}`}
         </button>
       )}
     </div>
   )
 }
+// [AddOn] FolderFilter_End

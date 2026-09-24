@@ -71,14 +71,42 @@ describe('FolderFilterAddon', () => {
 
     const items = FolderFilterAddon.buildLocationFilterItems(auxDirs, counts)
     expect(items).toEqual([
-      { value: 'all', label: 'All', count: 7 },
-      { value: 'offloaded', label: 'Offloaded', count: 6 },
-      { value: 'offloaded:1', label: 'Offload A', count: 5, level: 1 },
-      { value: 'offloaded:1:Folder1', label: 'Folder1', count: 4, level: 2 },
-      { value: 'offloaded:1:Folder1/SubFolderA', label: 'SubFolderA', count: 2, level: 3 },
-      { value: 'offloaded:1:Folder1/SubFolderB', label: 'SubFolderB', count: 1, level: 3 },
-      { value: 'offloaded:1:Folder2', label: 'Folder2', count: 1, level: 2 },
-      { value: 'offloaded:2', label: 'Offload B', count: 1, level: 1 },
+      { value: 'all', label: 'All', count: 7, level: 0, hasChildren: false, parentValue: null },
+      { value: 'offloaded', label: 'Offloaded', count: 6, level: 0, hasChildren: true, parentValue: null },
+      { value: 'offloaded:1', label: 'Offload A', count: 5, level: 1, hasChildren: true, parentValue: 'offloaded' },
+      {
+        value: 'offloaded:1:Folder1',
+        label: 'Folder1',
+        count: 4,
+        level: 2,
+        hasChildren: true,
+        parentValue: 'offloaded:1',
+      },
+      {
+        value: 'offloaded:1:Folder1/SubFolderA',
+        label: 'SubFolderA',
+        count: 2,
+        level: 3,
+        hasChildren: false,
+        parentValue: 'offloaded:1:Folder1',
+      },
+      {
+        value: 'offloaded:1:Folder1/SubFolderB',
+        label: 'SubFolderB',
+        count: 1,
+        level: 3,
+        hasChildren: false,
+        parentValue: 'offloaded:1:Folder1',
+      },
+      {
+        value: 'offloaded:1:Folder2',
+        label: 'Folder2',
+        count: 1,
+        level: 2,
+        hasChildren: false,
+        parentValue: 'offloaded:1',
+      },
+      { value: 'offloaded:2', label: 'Offload B', count: 1, level: 1, hasChildren: false, parentValue: 'offloaded' },
     ])
   })
 
@@ -103,12 +131,33 @@ describe('FolderFilterAddon', () => {
 
     const items = FolderFilterAddon.buildLocationFilterItems(auxDirs, counts)
     expect(items).toEqual([
-      { value: 'all', label: 'All', count: 1 },
-      { value: 'offloaded', label: 'Offloaded', count: 0 },
-      { value: 'offloaded:1', label: 'Offload A', count: 0, level: 1 },
-      { value: 'offloaded:1:Cloths', label: 'Cloths', count: 0, level: 2 },
-      { value: 'offloaded:1:Cloths/Shirts', label: 'Shirts', count: 0, level: 3 },
-      { value: 'offloaded:1:Girls', label: 'Girls', count: 0, level: 2 },
+      { value: 'all', label: 'All', count: 1, level: 0, hasChildren: false, parentValue: null },
+      { value: 'offloaded', label: 'Offloaded', count: 0, level: 0, hasChildren: true, parentValue: null },
+      { value: 'offloaded:1', label: 'Offload A', count: 0, level: 1, hasChildren: true, parentValue: 'offloaded' },
+      {
+        value: 'offloaded:1:Cloths',
+        label: 'Cloths',
+        count: 0,
+        level: 2,
+        hasChildren: true,
+        parentValue: 'offloaded:1',
+      },
+      {
+        value: 'offloaded:1:Cloths/Shirts',
+        label: 'Shirts',
+        count: 0,
+        level: 3,
+        hasChildren: false,
+        parentValue: 'offloaded:1:Cloths',
+      },
+      {
+        value: 'offloaded:1:Girls',
+        label: 'Girls',
+        count: 0,
+        level: 2,
+        hasChildren: false,
+        parentValue: 'offloaded:1',
+      },
     ])
   })
 
@@ -135,12 +184,65 @@ describe('FolderFilterAddon', () => {
 
     const items = FolderFilterAddon.buildLocationFilterItems(auxDirs, counts)
     expect(items).toEqual([
-      { value: 'all', label: 'All', count: 1 },
-      { value: 'offloaded', label: 'Offloaded', count: 1 },
-      { value: 'offloaded:1', label: 'Offload A', count: 1, level: 1 },
-      { value: 'offloaded:1:Cloths', label: 'Cloths', count: 1, level: 2 },
-      { value: 'offloaded:1:Cloths/Shirts', label: 'Shirts', count: 1, level: 3 },
+      { value: 'all', label: 'All', count: 1, level: 0, hasChildren: false, parentValue: null },
+      { value: 'offloaded', label: 'Offloaded', count: 1, level: 0, hasChildren: true, parentValue: null },
+      { value: 'offloaded:1', label: 'Offload A', count: 1, level: 1, hasChildren: true, parentValue: 'offloaded' },
+      {
+        value: 'offloaded:1:Cloths',
+        label: 'Cloths',
+        count: 1,
+        level: 2,
+        hasChildren: true,
+        parentValue: 'offloaded:1',
+      },
+      {
+        value: 'offloaded:1:Cloths/Shirts',
+        label: 'Shirts',
+        count: 1,
+        level: 3,
+        hasChildren: false,
+        parentValue: 'offloaded:1:Cloths',
+      },
     ])
+  })
+
+  it('handles persistent collapse states and filtering visible items', () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear()
+    }
+
+    const items = [
+      { value: 'all', level: 0, hasChildren: false, parentValue: null },
+      { value: 'offloaded', level: 0, hasChildren: true, parentValue: null },
+      { value: 'offloaded:1', level: 1, hasChildren: true, parentValue: 'offloaded' },
+      { value: 'offloaded:1:Cloths', level: 2, hasChildren: false, parentValue: 'offloaded:1' },
+    ]
+
+    // Default state: all folders collapsed
+    expect(FolderFilterAddon.isFolderCollapsed('offloaded')).toBe(true)
+    expect(FolderFilterAddon.isFolderCollapsed('offloaded:1')).toBe(true)
+
+    // With 'offloaded' collapsed, only top-level items ('all', 'offloaded') are visible
+    let visible = FolderFilterAddon.filterVisibleItems(items)
+    expect(visible.map((i) => i.value)).toEqual(['all', 'offloaded'])
+
+    // Expand 'offloaded'
+    FolderFilterAddon.setFolderCollapsed('offloaded', false)
+    expect(FolderFilterAddon.isFolderCollapsed('offloaded')).toBe(false)
+
+    // Now 'offloaded:1' is visible, but 'offloaded:1:Cloths' is hidden because 'offloaded:1' is still collapsed
+    visible = FolderFilterAddon.filterVisibleItems(items)
+    expect(visible.map((i) => i.value)).toEqual(['all', 'offloaded', 'offloaded:1'])
+
+    // Expand all
+    FolderFilterAddon.expandAllFolders(items)
+    visible = FolderFilterAddon.filterVisibleItems(items)
+    expect(visible.map((i) => i.value)).toEqual(['all', 'offloaded', 'offloaded:1', 'offloaded:1:Cloths'])
+
+    // Collapse all
+    FolderFilterAddon.collapseAllFolders(items)
+    visible = FolderFilterAddon.filterVisibleItems(items)
+    expect(visible.map((i) => i.value)).toEqual(['all', 'offloaded'])
   })
 })
 // [AddOn] FolderFilter_End
