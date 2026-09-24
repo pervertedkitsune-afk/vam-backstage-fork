@@ -436,6 +436,8 @@ function ListSection({ section }) {
                 >
                   {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                 </span>
+              ) : item.level > 0 ? (
+                <span className="w-4 shrink-0" aria-hidden="true" />
               ) : null}
               {item.color && <div className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />}
               {item.icon && <item.icon size={12} className={item.iconClass || ''} />}
