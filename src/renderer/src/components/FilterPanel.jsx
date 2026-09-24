@@ -388,11 +388,13 @@ const LIST_COLLAPSE_THRESHOLD = 6
 // [AddOn] FolderFilter_Begin
 function ListSection({ section }) {
   const [expanded, setExpanded] = useState(false)
-  useFolderCollapsedState()
+  const collapsedVersion = useFolderCollapsedState()
 
   const processedItems = useMemo(() => {
+    // Reference collapsedVersion so useMemo recomputes when folder collapse state changes
+    void collapsedVersion
     return FolderFilterAddon.filterVisibleItems(section.items)
-  }, [section.items])
+  }, [section.items, collapsedVersion])
 
   const collapsible = section.listCollapsible !== false && processedItems.length > LIST_COLLAPSE_THRESHOLD
   const visible = collapsible && !expanded ? processedItems.slice(0, LIST_COLLAPSE_THRESHOLD) : processedItems

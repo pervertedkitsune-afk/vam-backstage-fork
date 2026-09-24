@@ -309,13 +309,12 @@ export class FolderFilterAddon {
     const validAuxDirs = auxDirs.filter((d) => !d.archive)
 
     const items = [
-      { value: 'all', label: 'All', count: all, level: 0, hasChildren: false, parentValue: null },
+      { value: 'all', label: 'All', count: all, level: 0, parentValue: null },
       {
         value: 'offloaded',
         label: 'Offloaded',
         count: offloaded,
         level: 0,
-        hasChildren: validAuxDirs.length > 0,
         parentValue: null,
       },
     ]
@@ -357,25 +356,22 @@ export class FolderFilterAddon {
         label: dirLabel,
         count: offloadedByDir[dirId] || 0,
         level: 1,
-        hasChildren: sortedDepth1.length > 0,
         parentValue: 'offloaded',
       })
 
       for (const f1 of sortedDepth1) {
         const subKey1 = `${dirId}:${f1}`
         const d2Set = depth2Map.get(f1)
-        const hasDepth2 = Boolean(d2Set && d2Set.size > 0)
 
         items.push({
           value: `offloaded:${dir.id}:${f1}`,
           label: f1,
           count: offloadedBySubfolder[subKey1] || 0,
           level: 2,
-          hasChildren: hasDepth2,
           parentValue: `offloaded:${dir.id}`,
         })
 
-        if (hasDepth2) {
+        if (d2Set && d2Set.size > 0) {
           const sortedDepth2 = Array.from(d2Set).sort((a, b) => a.localeCompare(b))
           for (const f2Path of sortedDepth2) {
             const subKey2 = `${dirId}:${f2Path}`
@@ -385,12 +381,16 @@ export class FolderFilterAddon {
               label: f2Name,
               count: offloadedBySubfolder[subKey2] || 0,
               level: 3,
-              hasChildren: false,
               parentValue: `offloaded:${dir.id}:${f1}`,
             })
           }
         }
       }
+    }
+
+    const parentValues = new Set(items.map((i) => i.parentValue).filter(Boolean))
+    for (const item of items) {
+      item.hasChildren = parentValues.has(item.value)
     }
 
     console.log('[FolderFilter] Built location filter items:', items)
