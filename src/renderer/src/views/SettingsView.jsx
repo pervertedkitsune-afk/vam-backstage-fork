@@ -1172,9 +1172,7 @@ export default function SettingsView() {
               <AlertDialogTitle className="select-text cursor-text">Database Restored Successfully</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-2">
-                  <p>
-                    The database has been successfully restored from your backup file.
-                  </p>
+                  <p>The database has been successfully restored from your backup file.</p>
                   <p className="font-medium text-text-primary">
                     VaM Backstage will now restart to apply the restored database.
                   </p>
@@ -1182,9 +1180,7 @@ export default function SettingsView() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogAction onClick={handleConfirmRestart}>
-                Confirm & Restart
-              </AlertDialogAction>
+              <AlertDialogAction onClick={handleConfirmRestart}>Confirm & Restart</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -546,6 +546,35 @@ export default function LibraryView({ onNavigate, navContext }) {
     selectedLabelIds,
     updateCheckResults,
   ])
+
+  const locationFilterItems = useMemo(() => {
+    return FolderFilterAddon.buildLocationFilterItems(auxDirs, locationFilterCounts)
+  }, [auxDirs, locationFilterCounts])
+
+  const locationTopControls = useMemo(() => {
+    const hasCollapsible = locationFilterItems.some((i) => i.hasChildren)
+    if (!hasCollapsible) return null
+
+    return (
+      <div className="flex items-center gap-2 mb-1.5 px-2 text-[11px] text-text-tertiary">
+        <button
+          type="button"
+          onClick={() => FolderFilterAddon.expandAllFolders(locationFilterItems)}
+          className="hover:text-text-primary transition-colors cursor-pointer"
+        >
+          Expand all
+        </button>
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => FolderFilterAddon.collapseAllFolders(locationFilterItems)}
+          className="hover:text-text-primary transition-colors cursor-pointer"
+        >
+          Collapse all
+        </button>
+      </div>
+    )
+  }, [locationFilterItems])
   // [AddOn] FolderFilter_End
 
   const filtered = useMemo(() => {
@@ -703,7 +732,8 @@ export default function LibraryView({ onNavigate, navContext }) {
         default: FILTER_DEFAULTS.locationFilter,
         onChange: setLocationFilter,
         listCollapsible: false,
-        items: FolderFilterAddon.buildLocationFilterItems(auxDirs, locationFilterCounts),
+        topControls: locationTopControls,
+        items: locationFilterItems,
       },
       // [AddOn] FolderFilter_End
       // [AddOn] Filter_Begin
@@ -796,7 +826,8 @@ export default function LibraryView({ onNavigate, navContext }) {
       enabledFilter,
       // [AddOn] FolderFilter_Begin
       locationFilter,
-      locationFilterCounts,
+      locationFilterItems,
+      locationTopControls,
       setLocationFilter,
       // [AddOn] FolderFilter_End
       hasArchiveDirs,
@@ -805,9 +836,6 @@ export default function LibraryView({ onNavigate, navContext }) {
       statusCounts,
       enabledFilterCounts,
       backendCounts,
-      // [AddOn] Filter_Begin
-      auxDirs,
-      // [AddOn] Filter_End
       updateFacetCount,
       authorSearch,
       excludedAuthors,
