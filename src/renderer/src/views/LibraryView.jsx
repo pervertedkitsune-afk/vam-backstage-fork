@@ -145,6 +145,9 @@ import { FolderFilterAddon } from '@/addons/folderFilterAddon'
 import { MovingProgressAddon } from '@/addons/movingProgressAddon'
 import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
 // [AddOn] Progressbar_End
+// [AddOn] MissingSorting_Begin
+import { MissingSortingAddon } from '@/addons/missingSortingAddon'
+// [AddOn] MissingSorting_End
 
 // [AddOn] Filter_Begin
 const SORT_OPTIONS = [
@@ -1665,6 +1668,24 @@ function ToolbarActions({
 // --- Missing Deps Table ---
 
 function MissingDepsTable({ data, loading, hubDetailsLoading, scrollResetKey, onNavigateBroken }) {
+  // [AddOn] MissingSorting_Begin
+  const [sortColumn, setSortColumn] = useState(null)
+  const [sortDirection, setSortDirection] = useState('asc')
+
+  const handleHeaderClick = (col) => {
+    if (sortColumn === col) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortColumn(col)
+      setSortDirection('asc')
+    }
+  }
+
+  const sortedData = useMemo(() => {
+    return MissingSortingAddon.sortMissingDeps(data, sortColumn, sortDirection)
+  }, [data, sortColumn, sortDirection])
+  // [AddOn] MissingSorting_End
+
   if (!data || data.length === 0) {
     if (loading) {
       return (
@@ -1676,22 +1697,66 @@ function MissingDepsTable({ data, loading, hubDetailsLoading, scrollResetKey, on
     return <EmptyState className="flex-1 flex items-center justify-center py-0">No missing dependencies</EmptyState>
   }
 
+  // [AddOn] MissingSorting_Begin
+  const missingScrollResetKey = `${scrollResetKey}\0${sortColumn}\0${sortDirection}`
+  // [AddOn] MissingSorting_End
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-4">
       <div className="border border-border rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
         <div className={`bg-elevated ${SECTION_LABEL} flex border-b border-border shrink-0`}>
-          <div className="flex-3 py-2 px-3 font-medium">Package</div>
+          {/* [AddOn] MissingSorting_Begin */}
+          <button
+            type="button"
+            onClick={() => handleHeaderClick('package')}
+            className="flex-3 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+          >
+            Package
+            {sortColumn === 'package' &&
+              (sortDirection === 'asc' ? (
+                <ChevronUp size={12} className="shrink-0" />
+              ) : (
+                <ChevronDown size={12} className="shrink-0" />
+              ))}
+          </button>
+          {/* [AddOn] MissingSorting_End */}
           <div className="w-32 shrink-0 py-2 px-3 font-medium">Version</div>
-          <div className="flex-2 py-2 px-3 font-medium">Author</div>
-          <div className="flex-2 py-2 px-3 font-medium">Needed by</div>
+          {/* [AddOn] MissingSorting_Begin */}
+          <button
+            type="button"
+            onClick={() => handleHeaderClick('author')}
+            className="flex-2 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+          >
+            Author
+            {sortColumn === 'author' &&
+              (sortDirection === 'asc' ? (
+                <ChevronUp size={12} className="shrink-0" />
+              ) : (
+                <ChevronDown size={12} className="shrink-0" />
+              ))}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleHeaderClick('neededBy')}
+            className="flex-2 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+          >
+            Needed by
+            {sortColumn === 'neededBy' &&
+              (sortDirection === 'asc' ? (
+                <ChevronUp size={12} className="shrink-0" />
+              ) : (
+                <ChevronDown size={12} className="shrink-0" />
+              ))}
+          </button>
+          {/* [AddOn] MissingSorting_End */}
           <div className="w-16 py-2 px-3 font-medium text-right">Size</div>
           <div className="w-24 py-2 px-3 font-medium text-right">Status</div>
         </div>
         <VirtualList
-          items={data}
+          items={sortedData}
           rowHeight={37}
           className="flex-1"
-          scrollResetKey={scrollResetKey}
+          scrollResetKey={missingScrollResetKey}
           renderRow={(item) => (
             <MissingDepRow
               key={item.ref}
