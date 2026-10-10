@@ -1117,15 +1117,27 @@ export function getStatusCounts() {
     if (pkg.storage_state === 'offloaded') offloaded++
   }
 
+  // [AddOn] MissingSorting_Begin
   const missingGroups = new Set()
   for (const [filename, pkg] of userPackageEntries()) {
     if (isPackageArchived(pkg.storage_state)) continue // hoard makes no missing-dep demands
-    for (const d of forwardDeps.get(filename) || []) {
-      if (d.resolved && d.resolution !== 'fallback') continue
-      const parsed = parseDepRef(d.ref)
-      missingGroups.add(parsed ? parsed.packageName : d.ref)
+    const visited = new Set([filename])
+    const queue = [filename]
+    while (queue.length > 0) {
+      const current = queue.pop()
+      for (const d of forwardDeps.get(current) || []) {
+        if (!d.resolved || d.resolution === 'fallback') {
+          const parsed = parseDepRef(d.ref)
+          missingGroups.add(parsed ? parsed.packageName : d.ref)
+        }
+        if (d.resolved && !visited.has(d.resolved)) {
+          visited.add(d.resolved)
+          queue.push(d.resolved)
+        }
+      }
     }
   }
+  // [AddOn] MissingSorting_End
 
   return { direct, dependency, broken, orphan, local, offloaded, archived, missingUnique: missingGroups.size }
 }
@@ -1143,6 +1155,7 @@ export function getOrphanTotalSize() {
   return total
 }
 
+// [AddOn] MissingSorting_Begin
 /**
  * Aggregate missing and fallback dep refs across all packages, one row per ref.
  * When `hubPackagesIndex` / `hubFilenameIndex` (from packages.json) are provided,
@@ -1152,22 +1165,33 @@ export function getMissingDeps(hubPackagesIndex, hubFilenameIndex) {
   const groups = new Map() // ref -> { neededBy: Set, parsed, fallbackVersion }
   for (const [filename, pkg] of userPackageEntries()) {
     if (isPackageArchived(pkg.storage_state)) continue // archived dependents don't demand their missing refs
-    for (const d of forwardDeps.get(filename) || []) {
-      if (d.resolved && d.resolution !== 'fallback') continue
-      const parsed = parseDepRef(d.ref)
-      const key = d.ref
-      let group = groups.get(key)
-      if (!group) {
-        group = { neededBy: new Set(), parsed, fallbackVersion: null }
-        groups.set(key, group)
-      }
-      group.neededBy.add(filename)
-      if (d.resolution === 'fallback' && d.resolved && !group.fallbackVersion) {
-        const fb = packageIndex.get(d.resolved)
-        if (fb) group.fallbackVersion = fb.version
+    const visited = new Set([filename])
+    const queue = [filename]
+    while (queue.length > 0) {
+      const current = queue.pop()
+      for (const d of forwardDeps.get(current) || []) {
+        if (!d.resolved || d.resolution === 'fallback') {
+          const parsed = parseDepRef(d.ref)
+          const key = d.ref
+          let group = groups.get(key)
+          if (!group) {
+            group = { neededBy: new Set(), parsed, fallbackVersion: null }
+            groups.set(key, group)
+          }
+          group.neededBy.add(filename)
+          if (d.resolution === 'fallback' && d.resolved && !group.fallbackVersion) {
+            const fb = packageIndex.get(d.resolved)
+            if (fb) group.fallbackVersion = fb.version
+          }
+        }
+        if (d.resolved && !visited.has(d.resolved)) {
+          visited.add(d.resolved)
+          queue.push(d.resolved)
+        }
       }
     }
   }
+  // [AddOn] MissingSorting_End
 
   return [...groups.entries()].map(([ref, g]) => {
     const row = {
