@@ -147,27 +147,6 @@ export class FolderFilterAddon {
   }
 
   /**
-   * Extract the 1st-level subfolder name from a package's subpath.
-   * @param {object} pkg
-   * @returns {string} Top-level subfolder name, or '' if root/empty.
-   */
-  static getFirstSubfolder(pkg) {
-    const parts = FolderFilterAddon.getSubpathParts(pkg)
-    return parts[0] || ''
-  }
-
-  /**
-   * Extract the 2nd-level subfolder path (Folder1/SubFolder2) from a package's subpath.
-   * @param {object} pkg
-   * @returns {string} 2nd-level subfolder path, or '' if depth < 2.
-   */
-  static getSecondSubfolder(pkg) {
-    const parts = FolderFilterAddon.getSubpathParts(pkg)
-    if (parts.length < 2) return ''
-    return `${parts[0]}/${parts[1]}`
-  }
-
-  /**
    * Get the effective library directory ID for a package (current libraryDirId or originating originalLibraryDirId).
    * @param {object} pkg
    * @returns {number|string|null}
@@ -179,8 +158,9 @@ export class FolderFilterAddon {
     return null
   }
 
+  // [AddOn] Folder_Begin
   /**
-   * Calculate location counts for "All", "Offloaded", each offload directory, and nested subfolders (up to depth 2).
+   * Calculate location counts for "All", "Offloaded", each offload directory, and nested subfolders down to full depth.
    * Uses originalLibraryDirId when libraryDirId is null (e.g. enabled packages originating from offload dirs).
    * @param {Array<object>} filteredItems - List of package objects or content items after filtering.
    * @param {Array<object>} [allItems] - Full list of package objects or content items before filtering (to discover all subfolders).
@@ -194,7 +174,7 @@ export class FolderFilterAddon {
     const offloadedBySubfolder = {}
     const knownSubfoldersByDir = {}
 
-    // Collect all known subfolders from allItems (or filteredItems if allItems not provided)
+    // Collect all known subfolders at all depths from allItems (or filteredItems if allItems not provided)
     const discoverySource = allItems && allItems.length > 0 ? allItems : filteredItems
     for (const item of discoverySource) {
       const pkg = getPkgFn ? getPkgFn(item) : item
@@ -203,11 +183,10 @@ export class FolderFilterAddon {
         const dirId = String(effDirId)
         if (!knownSubfoldersByDir[dirId]) knownSubfoldersByDir[dirId] = new Set()
         const parts = FolderFilterAddon.getSubpathParts(pkg)
-        if (parts.length >= 1) {
-          knownSubfoldersByDir[dirId].add(parts[0])
-        }
-        if (parts.length >= 2) {
-          knownSubfoldersByDir[dirId].add(`${parts[0]}/${parts[1]}`)
+        let accumulatedPath = ''
+        for (let i = 0; i < parts.length; i++) {
+          accumulatedPath = accumulatedPath ? `${accumulatedPath}/${parts[i]}` : parts[i]
+          knownSubfoldersByDir[dirId].add(accumulatedPath)
         }
       }
     }
@@ -226,13 +205,11 @@ export class FolderFilterAddon {
         offloadedByDir[dirId] = (offloadedByDir[dirId] || 0) + 1
 
         const parts = FolderFilterAddon.getSubpathParts(pkg)
-        if (parts.length >= 1) {
-          const subKey1 = `${dirId}:${parts[0]}`
-          offloadedBySubfolder[subKey1] = (offloadedBySubfolder[subKey1] || 0) + 1
-        }
-        if (parts.length >= 2) {
-          const subKey2 = `${dirId}:${parts[0]}/${parts[1]}`
-          offloadedBySubfolder[subKey2] = (offloadedBySubfolder[subKey2] || 0) + 1
+        let accumulatedPath = ''
+        for (let i = 0; i < parts.length; i++) {
+          accumulatedPath = accumulatedPath ? `${accumulatedPath}/${parts[i]}` : parts[i]
+          const subKey = `${dirId}:${accumulatedPath}`
+          offloadedBySubfolder[subKey] = (offloadedBySubfolder[subKey] || 0) + 1
         }
       }
     }
@@ -246,6 +223,7 @@ export class FolderFilterAddon {
     })
     return { all, offloaded, offloadedByDir, offloadedBySubfolder, knownSubfoldersByDir }
   }
+  // [AddOn] Folder_Begin
 
   /**
    * Check if a filter string is a valid location filter value.
@@ -260,8 +238,9 @@ export class FolderFilterAddon {
     return false
   }
 
+  // [AddOn] Folder_Begin
   /**
-   * Check if a package matches the location filter value based on current or originating directory.
+   * Check if a package matches the location filter value based on current or originating directory at any folder depth.
    * @param {object} pkg
    * @param {string} filterValue
    * @returns {boolean}
@@ -285,10 +264,9 @@ export class FolderFilterAddon {
       if (subfolder) {
         const subpathParts = FolderFilterAddon.getSubpathParts(pkg)
         const subfolderParts = subfolder.split('/').filter(Boolean)
-        if (subfolderParts.length === 1) {
-          return subpathParts[0] === subfolderParts[0]
-        } else if (subfolderParts.length >= 2) {
-          return subpathParts[0] === subfolderParts[0] && subpathParts[1] === subfolderParts[1]
+        if (subpathParts.length < subfolderParts.length) return false
+        for (let i = 0; i < subfolderParts.length; i++) {
+          if (subpathParts[i] !== subfolderParts[i]) return false
         }
       }
       return true
@@ -296,9 +274,11 @@ export class FolderFilterAddon {
 
     return true
   }
+  // [AddOn] Folder_Begin
 
+  // [AddOn] Folder_Begin
   /**
-   * Build Location FilterPanel section items for "All", "Offloaded", offloaded directories, and nested subfolders (depth 1 & 2).
+   * Build Location FilterPanel section items for "All", "Offloaded", offloaded directories, and nested subfolders down to full depth.
    * @param {Array<object>} auxDirs - List of auxiliary library directories.
    * @param {object} counts - Counts from calculateLocationCounts.
    * @returns {Array<object>} Filter items list with level properties.
@@ -323,33 +303,38 @@ export class FolderFilterAddon {
       const dirId = String(dir.id)
       const dirLabel = dir.label || (dir.path ? dir.path.split(/[/\\]/).pop() : `Offload ${dir.id}`)
 
-      // Collect subfolders for this directory
-      const subfolders = new Set(knownSubfoldersByDir[dirId] || [])
+      // Collect all subfolder paths for this directory
+      const folderPaths = new Set(knownSubfoldersByDir[dirId] || [])
       const prefix = `${dirId}:`
       for (const key of Object.keys(offloadedBySubfolder)) {
         if (key.startsWith(prefix)) {
           const folderName = key.slice(prefix.length)
-          if (folderName) subfolders.add(folderName)
+          if (folderName) folderPaths.add(folderName)
         }
       }
 
-      // Separate into depth 1 (e.g. "Folder1") and depth 2 (e.g. "Folder1/SubFolder2")
-      const depth1Folders = new Set()
-      const depth2Map = new Map() // parentFolder1 -> Set of depth2 folder paths ("Folder1/SubFolder2")
-
-      for (const folderPath of subfolders) {
-        const parts = folderPath.split('/').filter(Boolean)
-        if (parts.length >= 1) {
-          const parent = parts[0]
-          depth1Folders.add(parent)
-          if (parts.length >= 2) {
-            if (!depth2Map.has(parent)) depth2Map.set(parent, new Set())
-            depth2Map.get(parent).add(`${parts[0]}/${parts[1]}`)
-          }
+      // Ensure all parent paths for every subfolder are included in folderPaths
+      const allPaths = new Set()
+      for (const fPath of folderPaths) {
+        const parts = fPath.split('/').filter(Boolean)
+        let acc = ''
+        for (let i = 0; i < parts.length; i++) {
+          acc = acc ? `${acc}/${parts[i]}` : parts[i]
+          allPaths.add(acc)
         }
       }
 
-      const sortedDepth1 = Array.from(depth1Folders).sort((a, b) => a.localeCompare(b))
+      // Build tree map: parentPath -> Set of child folder names
+      const childrenMap = new Map() // parentPath ("" for top level) -> Set<childFolderName>
+      for (const fPath of allPaths) {
+        const parts = fPath.split('/').filter(Boolean)
+        const parentPath = parts.slice(0, -1).join('/')
+        const childName = parts[parts.length - 1]
+        if (!childrenMap.has(parentPath)) {
+          childrenMap.set(parentPath, new Set())
+        }
+        childrenMap.get(parentPath).add(childName)
+      }
 
       items.push({
         value: `offloaded:${dir.id}`,
@@ -359,33 +344,31 @@ export class FolderFilterAddon {
         parentValue: 'offloaded',
       })
 
-      for (const f1 of sortedDepth1) {
-        const subKey1 = `${dirId}:${f1}`
-        const d2Set = depth2Map.get(f1)
+      // Recursive function to append items in tree order down to full depth
+      const appendChildren = (parentPath, depth) => {
+        const childSet = childrenMap.get(parentPath)
+        if (!childSet || childSet.size === 0) return
 
-        items.push({
-          value: `offloaded:${dir.id}:${f1}`,
-          label: f1,
-          count: offloadedBySubfolder[subKey1] || 0,
-          level: 2,
-          parentValue: `offloaded:${dir.id}`,
-        })
+        const sortedChildren = Array.from(childSet).sort((a, b) => a.localeCompare(b))
+        for (const childName of sortedChildren) {
+          const fullPath = parentPath ? `${parentPath}/${childName}` : childName
+          const subKey = `${dirId}:${fullPath}`
+          const itemValue = `offloaded:${dir.id}:${fullPath}`
+          const itemParentValue = parentPath ? `offloaded:${dir.id}:${parentPath}` : `offloaded:${dir.id}`
 
-        if (d2Set && d2Set.size > 0) {
-          const sortedDepth2 = Array.from(d2Set).sort((a, b) => a.localeCompare(b))
-          for (const f2Path of sortedDepth2) {
-            const subKey2 = `${dirId}:${f2Path}`
-            const f2Name = f2Path.split('/').pop()
-            items.push({
-              value: `offloaded:${dir.id}:${f2Path}`,
-              label: f2Name,
-              count: offloadedBySubfolder[subKey2] || 0,
-              level: 3,
-              parentValue: `offloaded:${dir.id}:${f1}`,
-            })
-          }
+          items.push({
+            value: itemValue,
+            label: childName,
+            count: offloadedBySubfolder[subKey] || 0,
+            level: 2 + depth,
+            parentValue: itemParentValue,
+          })
+
+          appendChildren(fullPath, depth + 1)
         }
       }
+
+      appendChildren('', 0)
     }
 
     const parentValues = new Set(items.map((i) => i.parentValue).filter(Boolean))
@@ -396,5 +379,6 @@ export class FolderFilterAddon {
     console.log('[FolderFilter] Built location filter items:', items)
     return items
   }
+  // [AddOn] Folder_Begin
 }
 // [AddOn] FolderFilter_End
