@@ -124,6 +124,9 @@ export default function SettingsView() {
   // [AddOn] MultiProgress_Begin
   const [concurrentActions, setConcurrentActions] = useState('1')
   // [AddOn] MultiProgress_End
+  // [AddOn] MissingDownload_Begin
+  const [downloadDirectory, setDownloadDirectory] = useState('')
+  // [AddOn] MissingDownload_End
   const [offloadSuggestions, setOffloadSuggestions] = useState([])
   const [dismissedOffload, setDismissedOffload] = useState(() => new Set())
   const stats = useStatusStore((s) => s.stats)
@@ -215,6 +218,9 @@ export default function SettingsView() {
     // [AddOn] MultiProgress_Begin
     window.api.settings.get('concurrent_actions').then((v) => setConcurrentActions(v || '1'))
     // [AddOn] MultiProgress_End
+    // [AddOn] MissingDownload_Begin
+    window.api.settings.get('download_directory').then((v) => setDownloadDirectory(v || ''))
+    // [AddOn] MissingDownload_End
     window.api.settings.get('offload_suggestions_dismissed').then((v) =>
       setDismissedOffload(
         new Set(
@@ -319,6 +325,23 @@ export default function SettingsView() {
     },
     [beginLibDirsOp, endLibDirsOp, refreshLibDirs, fetchStats, libDirs.aux],
   )
+
+  // [AddOn] MissingDownload_Begin
+  const handleBrowseDownloadDirectory = useCallback(async () => {
+    const browseResult = await window.api.libraryDirs.browse()
+    if (browseResult?.cancelled || !browseResult?.path) return
+    const path = browseResult.path
+    await window.api.settings.set('download_directory', path)
+    setDownloadDirectory(path)
+    toast('Download directory updated', 'success')
+  }, [])
+
+  const handleClearDownloadDirectory = useCallback(async () => {
+    await window.api.settings.set('download_directory', '')
+    setDownloadDirectory('')
+    toast('Download directory cleared', 'success')
+  }, [])
+  // [AddOn] MissingDownload_End
 
   const dismissOffloadSuggestion = useCallback((id) => {
     setDismissedOffload((prev) => {
@@ -986,6 +1009,42 @@ export default function SettingsView() {
               )}
             </div>
           </div>
+
+          {/* [AddOn] MissingDownload_Begin */}
+          <SettingRow
+            as="div"
+            label="Download Directory"
+            description="Folder where downloaded packages and missing dependencies will be placed. If left empty, defaults to the main library folder."
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs text-text-secondary font-mono max-w-[200px] sm:max-w-[300px] truncate"
+                title={downloadDirectory || 'Default (AddonPackages)'}
+              >
+                {downloadDirectory || 'Default'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleBrowseDownloadDirectory()}
+                className="text-xs shrink-0"
+              >
+                <FolderOpen size={14} className="mr-1" />
+                Change
+              </Button>
+              {downloadDirectory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleClearDownloadDirectory()}
+                  className="text-xs shrink-0 text-text-muted hover:text-text-primary"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </SettingRow>
+          {/* [AddOn] MissingDownload_End */}
 
           {offloadAuxDirs.length > 0 && (
             <SettingRow

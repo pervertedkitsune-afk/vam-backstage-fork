@@ -53,7 +53,10 @@ import { syncAutoHideAfterDirectChange } from '../auto-hide-sync.js'
 import { recordOwnedPath } from '../watcher.js'
 import { resolvePackageThumbnails } from '../thumb-resolver.js'
 import { applyStorageState, computeInstallTarget, parseDisableBehavior } from '../storage-state.js'
-import { getMainLibraryDirPath, getAuxLibraryDirs } from '../library-dirs.js'
+import { getAuxLibraryDirs } from '../library-dirs.js'
+// [AddOn] MissingDownload_Begin
+import { MissingDownloadAddon } from '../addons/missingDownloadAddon.js'
+// [AddOn] MissingDownload_End
 
 const MAX_CONCURRENT = 5
 const PROGRESS_INTERVAL_MS = 250
@@ -820,7 +823,9 @@ async function startDownload(entry) {
     return
   }
 
-  const addonDir = getMainLibraryDirPath()
+  // [AddOn] MissingDownload_Begin
+  const addonDir = MissingDownloadAddon.getDownloadDirectory()
+  // [AddOn] MissingDownload_End
   if (!addonDir) {
     updateDownloadStatus(id, 'failed', { error: 'Main library directory not configured' })
     emitFailed(entry, 'Main library directory not configured')
