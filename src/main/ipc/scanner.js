@@ -7,6 +7,9 @@ import { runScan, applyAutoHideRule, removeAutoHideRule } from '../scanner/index
 // [AddOn] DependencyFix_Begin
 import { DependencyFix } from '../addons/dependency-fix.js'
 // [AddOn] DependencyFix_End
+// [AddOn] ArchiveUniquePackages_Begin
+import { ArchiveUniquePackagesAddon } from '../addons/archiveUniquePackagesAddon.js'
+// [AddOn] ArchiveUniquePackages_End
 import { runIntegrityCheck } from '../scanner/integrity.js'
 import { buildFromDb } from '../store.js'
 import { startWatcher } from '../watcher.js'
@@ -61,6 +64,13 @@ export function registerScanHandlers() {
     return await DependencyFix.fixAllDependencies()
   })
   // [AddOn] DependencyFix_End
+
+  // [AddOn] ArchiveUniquePackages_Begin
+  ipcMain.handle('scan:cleanup-database', async () => {
+    const vamDir = getSetting('vam_dir')
+    return await ArchiveUniquePackagesAddon.cleanupDatabase(vamDir)
+  })
+  // [AddOn] ArchiveUniquePackages_End
 
   ipcMain.handle('scan:remove-auto-hide', async (_e, ruleId) => {
     const vamDir = getSetting('vam_dir')

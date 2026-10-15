@@ -141,6 +141,9 @@ const api = {
     // [AddOn] DependencyFix_Begin
     fixDependencies: () => invoke('scan:fix-dependencies'),
     // [AddOn] DependencyFix_End
+    // [AddOn] ArchiveUniquePackages_Begin
+    cleanupDatabase: () => invoke('scan:cleanup-database'),
+    // [AddOn] ArchiveUniquePackages_End
   },
   integrity: {
     check: () => invoke('integrity:check'),
