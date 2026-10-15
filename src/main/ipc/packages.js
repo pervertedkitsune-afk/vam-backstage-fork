@@ -79,6 +79,9 @@ import { resolveOriginalOffloadDirId } from '../addons/orig-offload.js'
 // [AddOn] ManualDependencies_Begin
 import { ManualDependencies } from '../addons/manual-dependencies.js'
 // [AddOn] ManualDependencies_End
+// [AddOn] ArchiveUniquePackages_Begin
+import { ArchiveUniquePackagesAddon } from '../addons/archiveUniquePackagesAddon.js'
+// [AddOn] ArchiveUniquePackages_End
 import { buildHomeSubpathMapForIndex, buildHomeSubpathMapFor } from '../home-subpath.js'
 import {
   enqueueInstall,
@@ -688,6 +691,22 @@ export function registerPackageHandlers() {
         }
         // [AddOn] MultiProgress_End
 
+        // [AddOn] ArchiveUniquePackages_Begin
+        const nonHubDir = ArchiveUniquePackagesAddon.getNonHubDirectory()
+        if (nonHubDir && ArchiveUniquePackagesAddon.isNonHubPackage(filename, replaceableSet)) {
+          const relocRes = await ArchiveUniquePackagesAddon.relocateNonHubPackage(
+            getPackageIndex().get(filename) || pkg,
+            filename,
+            nonHubDir,
+          )
+          if (relocRes.ok) {
+            buildFromDb()
+            results.push({ ok: true, relocatedNonHub: true, movedTo: relocRes.movedTo })
+            continue
+          }
+        }
+        // [AddOn] ArchiveUniquePackages_End
+
         const { removableFilenames } = computeRemovableDeps(
           filename,
           getPackageIndex(),
@@ -711,6 +730,15 @@ export function registerPackageHandlers() {
         // rows/index are torn down so candidates still resolve).
         const removedExtracted = await cleanupExtractedPresetsForRemoval(toDelete)
         for (const fn of toDelete) {
+          // [AddOn] ArchiveUniquePackages_Begin
+          if (nonHubDir && ArchiveUniquePackagesAddon.isNonHubPackage(fn, replaceableSet)) {
+            const itemPkg = getPackageIndex().get(fn)
+            if (itemPkg) {
+              const relocRes = await ArchiveUniquePackagesAddon.relocateNonHubPackage(itemPkg, fn, nonHubDir)
+              if (relocRes.ok) continue
+            }
+          }
+          // [AddOn] ArchiveUniquePackages_End
           // [AddOn] MultiProgress_Begin
           const itemPkg = getPackageIndex().get(fn)
           if (itemPkg && itemPkg.storage_state === 'enabled') {

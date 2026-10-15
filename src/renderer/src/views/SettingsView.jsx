@@ -127,6 +127,10 @@ export default function SettingsView() {
   // [AddOn] MissingDownload_Begin
   const [downloadDirectory, setDownloadDirectory] = useState('')
   // [AddOn] MissingDownload_End
+  // [AddOn] ArchiveUniquePackages_Begin
+  const [nonHubDirectory, setNonHubDirectory] = useState('')
+  const [cleaningDb, setCleaningDb] = useState(false)
+  // [AddOn] ArchiveUniquePackages_End
   const [offloadSuggestions, setOffloadSuggestions] = useState([])
   const [dismissedOffload, setDismissedOffload] = useState(() => new Set())
   const stats = useStatusStore((s) => s.stats)
@@ -221,6 +225,9 @@ export default function SettingsView() {
     // [AddOn] MissingDownload_Begin
     window.api.settings.get('download_directory').then((v) => setDownloadDirectory(v || ''))
     // [AddOn] MissingDownload_End
+    // [AddOn] ArchiveUniquePackages_Begin
+    window.api.settings.get('non_hub_packages_directory').then((v) => setNonHubDirectory(v || ''))
+    // [AddOn] ArchiveUniquePackages_End
     window.api.settings.get('offload_suggestions_dismissed').then((v) =>
       setDismissedOffload(
         new Set(
@@ -342,6 +349,40 @@ export default function SettingsView() {
     toast('Download directory cleared', 'success')
   }, [])
   // [AddOn] MissingDownload_End
+
+  // [AddOn] ArchiveUniquePackages_Begin
+  const handleBrowseNonHubDirectory = useCallback(async () => {
+    const browseResult = await window.api.libraryDirs.browse()
+    if (browseResult?.cancelled || !browseResult?.path) return
+    const path = browseResult.path
+    await window.api.settings.set('non_hub_packages_directory', path)
+    setNonHubDirectory(path)
+    toast('Non-Hub packages directory updated', 'success')
+  }, [])
+
+  const handleClearNonHubDirectory = useCallback(async () => {
+    await window.api.settings.set('non_hub_packages_directory', '')
+    setNonHubDirectory('')
+    toast('Non-Hub packages directory cleared', 'success')
+  }, [])
+
+  const handleCleanupDatabase = useCallback(async () => {
+    if (cleaningDb || scanning || hubScanning || verifying) return
+    setCleaningDb(true)
+    setScanResult(null)
+    try {
+      const result = await window.api.scan.cleanupDatabase()
+      fetchStats()
+      setScanResult({
+        success: `Database cleanup complete. Removed ${result.removedPackages} missing package(s) and ${result.removedContentLabels} orphaned content label(s).`,
+      })
+    } catch (err) {
+      setScanResult({ error: `Database cleanup failed: ${err.message}` })
+    } finally {
+      setCleaningDb(false)
+    }
+  }, [cleaningDb, scanning, hubScanning, verifying, fetchStats])
+  // [AddOn] ArchiveUniquePackages_End
 
   const dismissOffloadSuggestion = useCallback((id) => {
     setDismissedOffload((prev) => {
@@ -1011,11 +1052,11 @@ export default function SettingsView() {
           </div>
 
           {/* [AddOn] MissingDownload_Begin */}
-          <SettingRow
-            as="div"
-            label="Download Directory"
-            description="Folder where downloaded packages and missing dependencies will be placed. If left empty, defaults to the main library folder."
-          >
+          <div className="space-y-1.5">
+            <SettingRow
+              label="Download Directory"
+              description="Folder where downloaded packages and missing dependencies will be placed. If left empty, defaults to the main library folder."
+            />
             <div className="flex items-center gap-2">
               <span
                 className="text-xs text-text-secondary font-mono max-w-[200px] sm:max-w-[300px] truncate"
@@ -1043,8 +1084,44 @@ export default function SettingsView() {
                 </Button>
               )}
             </div>
-          </SettingRow>
+          </div>
           {/* [AddOn] MissingDownload_End */}
+
+          {/* [AddOn] ArchiveUniquePackages_Begin */}
+          <div className="space-y-1.5">
+            <SettingRow
+              label="Non-Hub Packages Directory"
+              description="Folder where non-Hub (unique or irreplaceable) packages will be moved when uninstalled. If left empty, defaults to sending them to the recycling bin."
+            />
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs text-text-secondary font-mono max-w-[200px] sm:max-w-[300px] truncate"
+                title={nonHubDirectory || 'Default (Recycling Bin)'}
+              >
+                {nonHubDirectory || 'Default (Recycling Bin)'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleBrowseNonHubDirectory()}
+                className="text-xs shrink-0"
+              >
+                <FolderOpen size={14} className="mr-1" />
+                Change
+              </Button>
+              {nonHubDirectory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleClearNonHubDirectory()}
+                  className="text-xs shrink-0 text-text-muted hover:text-text-primary"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+          {/* [AddOn] ArchiveUniquePackages_End */}
 
           {offloadAuxDirs.length > 0 && (
             <SettingRow
@@ -1165,6 +1242,28 @@ export default function SettingsView() {
                 </TooltipContent>
               </Tooltip>
               {/* [AddOn] DependencyFix_End */}
+              {/* [AddOn] ArchiveUniquePackages_Begin */}
+              <Tooltip delayDuration={350}>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={handleCleanupDatabase}
+                      disabled={cleaningDb || scanning || verifying || hubScanning || !vamDir}
+                      className="text-xs"
+                    >
+                      {cleaningDb ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      {cleaningDb ? 'Cleaning up database…' : 'Clean up database'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" prose>
+                  Scan for missing files on disk and remove database records for packages that have been manually
+                  deleted outside Backstage.
+                </TooltipContent>
+              </Tooltip>
+              {/* [AddOn] ArchiveUniquePackages_End */}
             </div>
             {hubScanning && hubScanProgress && (
               <div className={META_DENSE}>
