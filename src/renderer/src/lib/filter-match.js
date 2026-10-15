@@ -21,8 +21,15 @@ export function matchesPolarityList(selected, haystack, { normalize = false } = 
     let value = typeof item === 'object' ? item.value : item
     if (normalize) value = String(value).toLowerCase()
     const negate = typeof item === 'object' && !!item.negate
-    const has = hay.includes(value)
-    if (negate ? has : !has) return false
+    // [AddOn] DependencySort_notagfilter_Begin
+    if (value === 'no tag' || value === 'notag') {
+      const hasNoTags = hay.length === 0
+      if (negate ? hasNoTags : !hasNoTags) return false
+    } else {
+      const has = hay.includes(value)
+      if (negate ? has : !has) return false
+    }
+    // [AddOn] DependencySort_notagfilter_End
   }
   return true
 }

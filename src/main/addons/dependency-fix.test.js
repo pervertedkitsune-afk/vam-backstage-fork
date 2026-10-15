@@ -67,5 +67,32 @@ describe('DependencyFix AddOn', () => {
     expect(res.fixedFilenames).toEqual(['used_pkg.var'])
     expect(setPackageDirect).toHaveBeenCalledWith('used_pkg.var', false)
   })
+
+  // [AddOn] DependencySort_notagfilter_Begin
+  it('skips packages that were manually set by the user', async () => {
+    vi.clearAllMocks()
+    const pkgIndex = new Map([
+      ['manually_promoted.var', { filename: 'manually_promoted.var', is_direct: 1, is_manual_direct: 1 }],
+      ['manually_demoted.var', { filename: 'manually_demoted.var', is_direct: 0, is_manual_direct: 0 }],
+      ['auto_pkg.var', { filename: 'auto_pkg.var', is_direct: 1, is_manual_direct: null }],
+    ])
+    const revDeps = new Map([
+      ['manually_promoted.var', new Set(['consumer.var'])],
+      ['manually_demoted.var', new Set(['consumer.var'])],
+      ['auto_pkg.var', new Set(['consumer.var'])],
+    ])
+
+    vi.mocked(getPackageIndex).mockReturnValue(pkgIndex)
+    vi.mocked(getReverseDeps).mockReturnValue(revDeps)
+
+    const res = await DependencyFix.fixAllDependencies()
+
+    expect(res.ok).toBe(true)
+    expect(res.fixedCount).toBe(1)
+    expect(res.fixedFilenames).toEqual(['auto_pkg.var'])
+    expect(setPackageDirect).toHaveBeenCalledWith('auto_pkg.var', false)
+    expect(setPackageDirect).not.toHaveBeenCalledWith('manually_promoted.var', false)
+  })
+  // [AddOn] DependencySort_notagfilter_End
 })
 // [AddOn] DependencyFix_End

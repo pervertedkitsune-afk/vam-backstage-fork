@@ -549,7 +549,9 @@ export function registerPackageHandlers() {
 
       // Unmarking DEP only flips the direct flag and does NOT modify the storage state (enable/activate).
       for (const filename of list) {
-        setPackageDirect(filename, true)
+        // [AddOn] DependencySort_notagfilter_Begin
+        setPackageDirect(filename, true, true)
+        // [AddOn] DependencySort_notagfilter_End
         await syncAutoHideAfterDirectChange(vamDir, filename, true)
       }
       const prefs = await readAllPrefs(vamDir)
@@ -584,7 +586,9 @@ export function registerPackageHandlers() {
       for (const filename of list) {
         const pkg = getPackageIndex().get(filename)
         if (!pkg) throw new Error(`Package not found: ${filename}`)
-        setPackageDirect(filename, false)
+        // [AddOn] DependencySort_notagfilter_Begin
+        setPackageDirect(filename, false, true)
+        // [AddOn] DependencySort_notagfilter_End
         await syncAutoHideAfterDirectChange(vamDir, filename, false)
       }
       const prefs = await readAllPrefs(vamDir)
