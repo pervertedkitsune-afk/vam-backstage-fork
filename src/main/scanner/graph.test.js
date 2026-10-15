@@ -23,6 +23,9 @@ function pkg(filename, opts = {}) {
     is_direct: opts.is_direct ?? 0,
     size_bytes: opts.size_bytes ?? 100,
     storage_state: opts.storage_state ?? 'enabled',
+    // [AddOn] DependencySort_notagfilter_Begin
+    is_manual_direct: opts.is_manual_direct ?? null,
+    // [AddOn] DependencySort_notagfilter_End
   }
 }
 
@@ -939,6 +942,25 @@ describe('computeRemovableDeps', () => {
     expect(removableFilenames).toEqual(new Set(['B.var', 'C.var', 'D.var', 'E.var']))
     expect(removableSize).toBe(100)
   })
+
+  // [AddOn] DependencySort_notagfilter_Begin
+  it('excludes manually marked packages from computeRemovableDeps', () => {
+    const pi = new Map([
+      ['A.var', pkg('A.var', { is_direct: 1 })],
+      ['B.var', pkg('B.var', { size_bytes: 100, is_manual_direct: 0 })],
+      ['C.var', pkg('C.var', { size_bytes: 200 })],
+    ])
+    const forward = new Map([
+      ['A.var', [{ ref: 'B.Lib.1', resolved: 'B.var', resolution: 'exact' }]],
+      ['B.var', [{ ref: 'C.Lib.1', resolved: 'C.var', resolution: 'exact' }]],
+      ['C.var', []],
+    ])
+    const reverse = buildReverseDeps(forward)
+
+    const { removableFilenames } = computeRemovableDeps('A.var', pi, forward, reverse)
+    expect(removableFilenames.has('B.var')).toBe(false)
+  })
+  // [AddOn] DependencySort_notagfilter_End
 })
 
 // ── Demand Rule 1: archived dependents & replaceability ─────────
