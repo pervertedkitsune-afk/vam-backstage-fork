@@ -79,6 +79,9 @@ import { resolveOriginalOffloadDirId } from '../addons/orig-offload.js'
 // [AddOn] ManualDependencies_Begin
 import { ManualDependencies } from '../addons/manual-dependencies.js'
 // [AddOn] ManualDependencies_End
+// [AddOn] DependencySort_notagfilter_Begin
+import { DependencyFix } from '../addons/dependency-fix.js'
+// [AddOn] DependencySort_notagfilter_End
 // [AddOn] ArchiveUniquePackages_Begin
 import { ArchiveUniquePackagesAddon } from '../addons/archiveUniquePackagesAddon.js'
 // [AddOn] ArchiveUniquePackages_End
@@ -550,7 +553,11 @@ export function registerPackageHandlers() {
       // Unmarking DEP only flips the direct flag and does NOT modify the storage state (enable/activate).
       for (const filename of list) {
         // [AddOn] DependencySort_notagfilter_Begin
-        setPackageDirect(filename, true, true)
+        const revDeps = getReverseDeps()
+        const isUsed = DependencyFix.isUsedByOthers(filename, revDeps)
+        const isNaturalDirect = !isUsed
+        const isManual = !isNaturalDirect
+        setPackageDirect(filename, true, isManual)
         // [AddOn] DependencySort_notagfilter_End
         await syncAutoHideAfterDirectChange(vamDir, filename, true)
       }
@@ -587,7 +594,11 @@ export function registerPackageHandlers() {
         const pkg = getPackageIndex().get(filename)
         if (!pkg) throw new Error(`Package not found: ${filename}`)
         // [AddOn] DependencySort_notagfilter_Begin
-        setPackageDirect(filename, false, true)
+        const revDeps = getReverseDeps()
+        const isUsed = DependencyFix.isUsedByOthers(filename, revDeps)
+        const isNaturalDirect = !isUsed
+        const isManual = isNaturalDirect
+        setPackageDirect(filename, false, isManual)
         // [AddOn] DependencySort_notagfilter_End
         await syncAutoHideAfterDirectChange(vamDir, filename, false)
       }
