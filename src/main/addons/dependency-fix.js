@@ -36,7 +36,9 @@ export class DependencyFix {
     for (const [filename, pkg] of pkgIndex) {
       // [AddOn] DependencySort_notagfilter_Begin
       if (pkg.is_manual_direct !== null && pkg.is_manual_direct !== undefined) {
-        console.log(`[DependencyFix] Skipping manually set package: ${filename} (is_manual_direct = ${pkg.is_manual_direct})`)
+        console.log(
+          `[DependencyFix] Skipping manually set package: ${filename} (is_manual_direct = ${pkg.is_manual_direct})`,
+        )
         continue
       }
       // [AddOn] DependencySort_notagfilter_End

@@ -554,6 +554,29 @@ export default function LibraryView({ onNavigate, navContext }) {
     return FolderFilterAddon.buildLocationFilterItems(auxDirs, locationFilterCounts)
   }, [auxDirs, locationFilterCounts])
 
+  // [AddOn] NoLabels_Begin
+  const unlabelledPackageCount = useMemo(() => {
+    let items = filterPackagesByStatus(baseFiltered, statusFilter, updateCheckResults)
+    items = filterPackagesByEnabledStorage(items, effectiveEnabledFilter)
+    items = filterPackagesByLocation(items, locationFilter)
+    items = filterPackagesBySelectedTypes(items, selectedTypes)
+    items = items.filter((p) => packageMatchesSelectedTags(p, selectedTags))
+    let count = 0
+    for (const p of items) {
+      if (!p.labelIds || p.labelIds.length === 0) count++
+    }
+    return count
+  }, [
+    baseFiltered,
+    statusFilter,
+    effectiveEnabledFilter,
+    locationFilter,
+    selectedTypes,
+    selectedTags,
+    updateCheckResults,
+  ])
+  // [AddOn] NoLabels_End
+
   const locationTopControls = useMemo(() => {
     const hasCollapsible = locationFilterItems.some((i) => i.hasChildren)
     if (!hasCollapsible) return null
@@ -759,21 +782,20 @@ export default function LibraryView({ onNavigate, navContext }) {
         ],
       },
       // [AddOn] Filter_End
-      ...(labels.length
-        ? [
-            {
-              key: 'labels',
-              label: 'Labels',
-              type: 'labels-autocomplete',
-              value: selectedLabelIds,
-              default: FILTER_DEFAULTS.selectedLabelIds,
-              onChange: setSelectedLabelIds,
-              labels,
-              placeholder: 'Filter by label…',
-              allowNegate: true,
-            },
-          ]
-        : []),
+      // [AddOn] NoLabels_Begin
+      {
+        key: 'labels',
+        label: 'Labels',
+        type: 'labels-autocomplete',
+        value: selectedLabelIds,
+        default: FILTER_DEFAULTS.selectedLabelIds,
+        onChange: setSelectedLabelIds,
+        labels,
+        unlabelledCount: unlabelledPackageCount,
+        placeholder: 'Filter by label…',
+        allowNegate: true,
+      },
+      // [AddOn] NoLabels_End
       {
         key: 'hubTags',
         label: 'Tags',
@@ -845,6 +867,9 @@ export default function LibraryView({ onNavigate, navContext }) {
       selectedTags,
       selectedLabelIds,
       labels,
+      // [AddOn] NoLabels_Begin
+      unlabelledPackageCount,
+      // [AddOn] NoLabels_End
       tagCounts,
       authorCounts,
       license,

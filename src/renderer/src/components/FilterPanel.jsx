@@ -257,6 +257,9 @@ export default function FilterPanel({
                   labels={section.labels}
                   placeholder={section.placeholder}
                   allowNegate={!!section.allowNegate}
+                  // [AddOn] NoLabels_Begin
+                  unlabelledCount={section.unlabelledCount}
+                  // [AddOn] NoLabels_End
                 />
               )}
 
