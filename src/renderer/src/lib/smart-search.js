@@ -191,7 +191,14 @@ export function matchesSmartQuery(tokens, get) {
     } else if (field === 'author') {
       hit = (get.author?.() || '').toLowerCase().includes(value)
     } else if (field === 'tag') {
-      hit = (get.tags?.() || []).includes(value)
+      // [AddOn] DependencySort_notagfilter_Begin
+      const tagList = get.tags?.() || []
+      if (value === 'no tag' || value === 'notag') {
+        hit = tagList.length === 0
+      } else {
+        hit = tagList.includes(value)
+      }
+      // [AddOn] DependencySort_notagfilter_End
     } else if (field === 'label') {
       hit = (get.labels?.() || []).some((n) => (n || '').toLowerCase() === value)
     } else if (field === 'type') {

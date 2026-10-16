@@ -13,6 +13,9 @@ import {
   getAllPackages,
   getDb,
   getNotFoundHubResourceIds,
+  // [AddOn] DependencySort_notagfilter_Begin
+  setPackageDirect,
+  // [AddOn] DependencySort_notagfilter_End
   getPackagesNeedingHubNameLookup,
   insertDownload,
   markPackageMissing,
@@ -119,6 +122,36 @@ describe('fresh database', () => {
 //
 // Seeds a complete v22 DB with the bogus string ids that affinity used to allow,
 // runs the real migrate() via openDatabase, and asserts the cleanup + guardrail.
+
+// [AddOn] DependencySort_notagfilter_Begin
+describe('setPackageDirect (manual override flag)', () => {
+  beforeEach(async () => {
+    tmp = await mkTempVamDir()
+    await openTestDatabase(tmp.dbPath)
+  })
+
+  it('sets and clears is_manual_direct correctly', () => {
+    const db = getDb()
+    db.prepare(`INSERT INTO packages (filename, creator, package_name, version, size_bytes, file_mtime) VALUES ('Test.Pkg.1.var', 'Author', 'Test.Pkg', '1', 100, 0)`).run()
+
+    // Initially is_manual_direct is NULL
+    let row = db.prepare('SELECT is_direct, is_manual_direct FROM packages WHERE filename = ?').get('Test.Pkg.1.var')
+    expect(row.is_manual_direct).toBeNull()
+
+    // Mark as manual direct (isManual = true)
+    setPackageDirect('Test.Pkg.1.var', true, true)
+    row = db.prepare('SELECT is_direct, is_manual_direct FROM packages WHERE filename = ?').get('Test.Pkg.1.var')
+    expect(row.is_direct).toBe(1)
+    expect(row.is_manual_direct).toBe(1)
+
+    // Clear manual override (isManual = false)
+    setPackageDirect('Test.Pkg.1.var', false, false)
+    row = db.prepare('SELECT is_direct, is_manual_direct FROM packages WHERE filename = ?').get('Test.Pkg.1.var')
+    expect(row.is_direct).toBe(0)
+    expect(row.is_manual_direct).toBeNull()
+  })
+})
+// [AddOn] DependencySort_notagfilter_End
 
 describe('migrate v23 (hub-id cleanup)', () => {
   beforeEach(async () => {

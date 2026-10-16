@@ -28,7 +28,9 @@ describe('suggestionCounts', () => {
       }),
     ).toEqual({
       authors: { Alice: 2, Bob: 1 },
-      tags: { nsfw: 1, clothing: 2, solo: 1 },
+      // [AddOn] DependencySort_notagfilter_Begin
+      tags: { nsfw: 1, clothing: 2, solo: 1, 'no tag': 1 },
+      // [AddOn] DependencySort_notagfilter_End
     })
   })
 
@@ -42,7 +44,9 @@ describe('suggestionCounts', () => {
   })
 
   it('tolerates missing getters', () => {
-    expect(suggestionCounts([{ creator: 'A' }])).toEqual({ authors: {}, tags: {} })
+    // [AddOn] DependencySort_notagfilter_Begin
+    expect(suggestionCounts([{ creator: 'A' }])).toEqual({ authors: {}, tags: { 'no tag': 1 } })
+    // [AddOn] DependencySort_notagfilter_End
   })
 })
 

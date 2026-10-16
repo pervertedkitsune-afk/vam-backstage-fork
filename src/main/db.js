@@ -4,7 +4,9 @@ import { app } from 'electron'
 import { join } from 'path'
 import { LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME } from '@shared/local-package.js'
 
-export const SCHEMA_VERSION = 31
+// [AddOn] DependencySort_notagfilter_Begin
+export const SCHEMA_VERSION = 32
+// [AddOn] DependencySort_notagfilter_End
 
 /**
  * Normalize a value to a non-negative integer string, or null. Hub resource/user
@@ -152,6 +154,9 @@ export const MIGRATIONS = [
   // [AddOn] OrigOffload_Begin
   [31, applyV31],
   // [AddOn] OrigOffload_End
+  // [AddOn] DependencySort_notagfilter_Begin
+  [32, applyV32],
+  // [AddOn] DependencySort_notagfilter_End
 ]
 
 function migrate() {
@@ -536,6 +541,21 @@ function applyV31() {
 }
 // [AddOn] OrigOffload_End
 
+// [AddOn] DependencySort_notagfilter_Begin
+/**
+ * v32 — Manual dependency override tracking.
+ */
+function applyV32() {
+  const pkgCols = db
+    .prepare(`PRAGMA table_info(packages)`)
+    .all()
+    .map((c) => c.name)
+  if (!pkgCols.includes('is_manual_direct')) {
+    db.exec('ALTER TABLE packages ADD COLUMN is_manual_direct INTEGER NULL DEFAULT NULL')
+  }
+}
+// [AddOn] DependencySort_notagfilter_End
+
 /**
  * Ensure the synthetic "local content" package row exists. Loose files under
  * `vamDir/Saves` and `vamDir/Custom` are stored as `contents` rows that point
@@ -554,7 +574,9 @@ export function ensureLocalPackage() {
   ).run(LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME)
 }
 
+// [AddOn] DependencySort_notagfilter_Begin
 /** Full schema as of current SCHEMA_VERSION — new installs skip incremental migrations. */
+// [AddOn] DependencySort_notagfilter_End
 function createSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS library_dirs (
@@ -596,7 +618,8 @@ function createSchema() {
       is_corrupted INTEGER NOT NULL DEFAULT 0,
       hub_detail_applied_at INTEGER,
       hub_name_checked_at INTEGER,
-      missing_since INTEGER
+      missing_since INTEGER,
+      is_manual_direct INTEGER NULL DEFAULT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_packages_package_name ON packages(package_name);
@@ -750,9 +773,24 @@ export function markPackageMissing(filename) {
   ).changes
 }
 
-export function setPackageDirect(filename, isDirect) {
-  stmt('UPDATE packages SET is_direct = ? WHERE filename = ?').run(isDirect ? 1 : 0, filename)
+// [AddOn] DependencySort_notagfilter_Begin
+export function setPackageDirect(filename, isDirect, isManual = undefined) {
+  if (isManual === true) {
+    stmt('UPDATE packages SET is_direct = ?, is_manual_direct = ? WHERE filename = ?').run(
+      isDirect ? 1 : 0,
+      isDirect ? 1 : 0,
+      filename,
+    )
+  } else if (isManual === false) {
+    stmt('UPDATE packages SET is_direct = ?, is_manual_direct = NULL WHERE filename = ?').run(
+      isDirect ? 1 : 0,
+      filename,
+    )
+  } else {
+    stmt('UPDATE packages SET is_direct = ? WHERE filename = ?').run(isDirect ? 1 : 0, filename)
+  }
 }
+// [AddOn] DependencySort_notagfilter_End
 
 /** Stamp `first_seen_at` (promote / install-from-archive). Same clock source as `markPackageRecent`. */
 export function touchPackageFirstSeen(filename, at = Math.floor(Date.now() / 1000)) {

@@ -30,6 +30,15 @@ describe('matchesPolarityList', () => {
     expect(matchesPolarityList(['NSFW'], ['nsfw'], { normalize: true })).toBe(true)
     expect(matchesPolarityList([{ value: 'NSFW', negate: true }], ['nsfw'], { normalize: true })).toBe(false)
   })
+
+  // [AddOn] DependencySort_notagfilter_Begin
+  it('handles "no tag" filter correctly', () => {
+    expect(matchesPolarityList(['no tag'], [], { normalize: true })).toBe(true)
+    expect(matchesPolarityList(['no tag'], ['clothing'], { normalize: true })).toBe(false)
+    expect(matchesPolarityList([{ value: 'no tag', negate: true }], [], { normalize: true })).toBe(false)
+    expect(matchesPolarityList([{ value: 'no tag', negate: true }], ['clothing'], { normalize: true })).toBe(true)
+  })
+  // [AddOn] DependencySort_notagfilter_End
 })
 
 describe('matchesAuthorFilter', () => {

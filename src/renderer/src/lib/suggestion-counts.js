@@ -25,6 +25,9 @@ export function parseCommaTags(raw) {
 export function suggestionCounts(items, get = {}) {
   const authors = {}
   const tags = {}
+  // [AddOn] DependencySort_notagfilter_Begin
+  let noTagCount = 0
+  // [AddOn] DependencySort_notagfilter_End
   for (const item of items) {
     const a = get.author?.(item)
     const author = typeof a === 'string' ? a.trim() : ''
@@ -33,8 +36,19 @@ export function suggestionCounts(items, get = {}) {
     // the accessor returns a pre-split list.
     const raw = get.tags?.(item)
     const list = parseCommaTags(Array.isArray(raw) ? raw.join(',') : raw)
-    for (const t of list) tags[t] = (tags[t] || 0) + 1
+    // [AddOn] DependencySort_notagfilter_Begin
+    if (list.length === 0) {
+      noTagCount++
+    } else {
+      for (const t of list) tags[t] = (tags[t] || 0) + 1
+    }
+    // [AddOn] DependencySort_notagfilter_End
   }
+  // [AddOn] DependencySort_notagfilter_Begin
+  if (noTagCount > 0) {
+    tags['no tag'] = noTagCount
+  }
+  // [AddOn] DependencySort_notagfilter_End
   return { authors, tags }
 }
 

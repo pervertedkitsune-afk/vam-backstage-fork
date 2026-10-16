@@ -34,6 +34,12 @@ export class DependencyFix {
     const fixedFilenames = []
 
     for (const [filename, pkg] of pkgIndex) {
+      // [AddOn] DependencySort_notagfilter_Begin
+      if (pkg.is_manual_direct !== null && pkg.is_manual_direct !== undefined) {
+        console.log(`[DependencyFix] Skipping manually set package: ${filename} (is_manual_direct = ${pkg.is_manual_direct})`)
+        continue
+      }
+      // [AddOn] DependencySort_notagfilter_End
       if (this.isUsedByOthers(filename, revDeps)) {
         // If it is currently direct (is_direct = 1), mark as DEP (is_direct = 0)
         if (pkg.is_direct) {
