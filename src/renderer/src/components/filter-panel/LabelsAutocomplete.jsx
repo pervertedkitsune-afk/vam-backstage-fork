@@ -17,23 +17,35 @@ import { ChipRow, ComboboxField, ComboboxLabel, ComboboxPopup, ComboboxRow } fro
  * row opens the management menu (rename / recolor / delete + enable/disable
  * all packages).
  */
+// [AddOn] NoLabels_Begin
+import { NoLabelsAddon } from '@/addons/noLabelsAddon'
+// [AddOn] NoLabels_End
+
 export function LabelsAutocomplete({
   value = [],
   onChange,
   labels = [],
   placeholder = 'Filter by label…',
   allowNegate = false,
+  // [AddOn] NoLabels_Begin
+  unlabelledCount = 0,
+  // [AddOn] NoLabels_End
 }) {
   const [query, setQuery] = useState('')
   const { renamingId, renameDraft, setRenameDraft, startRename, commitRename, cancelRename } = useLabelRename()
   const { items, selectedSet, add, remove, toggle, clear } = usePolarityList(value, onChange, allowNegate)
   const negateById = useMemo(() => new Map(items.map((i) => [i.value, i.negate])), [items])
 
+  // [AddOn] NoLabels_Begin
+  const noLabelItem = useMemo(() => NoLabelsAddon.getNoLabelItem(unlabelledCount), [unlabelledCount])
+
   const labelMap = useMemo(() => {
     const m = new Map()
     for (const l of labels) m.set(l.id, l)
+    m.set(noLabelItem.id, noLabelItem)
     return m
-  }, [labels])
+  }, [labels, noLabelItem])
+  // [AddOn] NoLabels_End
   const selected = useMemo(() => items.map((item) => labelMap.get(item.value)).filter(Boolean), [items, labelMap])
 
   const { negate: rawPendingNegate, query: matchQuery } = stripNegationPrefix(query)
@@ -41,7 +53,10 @@ export function LabelsAutocomplete({
   const q = (allowNegate ? matchQuery : query).trim().toLowerCase()
 
   const matches = useMemo(() => {
-    const all = labels.filter((l) => !selectedSet.has(l.id))
+    // [AddOn] NoLabels_Begin
+    const allCandidates = [noLabelItem, ...labels]
+    const all = allCandidates.filter((l) => !selectedSet.has(l.id))
+    // [AddOn] NoLabels_End
     if (!q) return all.slice(0, 30)
     const prefix = []
     const rest = []
@@ -51,7 +66,7 @@ export function LabelsAutocomplete({
       else if (lower.includes(q)) rest.push(l)
     }
     return [...prefix, ...rest].slice(0, 30)
-  }, [labels, selectedSet, q])
+  }, [labels, noLabelItem, selectedSet, q])
 
   const addLabel = (id, negate = false) => {
     add(id, negate)

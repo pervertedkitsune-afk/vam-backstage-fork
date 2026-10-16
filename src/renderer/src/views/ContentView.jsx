@@ -574,6 +574,39 @@ export default function ContentView({ onNavigate, navContext }) {
   }, [locationFilterItems])
   // [AddOn] FolderFilter_End
 
+  // [AddOn] NoLabels_Begin
+  const unlabelledContentCount = useMemo(() => {
+    const items = applyContentSidebarFilters(
+      baseFiltered,
+      {
+        selectedTypes,
+        selectedPackageTypes,
+        packageFilter,
+        packageStatusFilter,
+        locationFilter,
+        visibilityFilter,
+        selectedTags,
+        selectedLabelIds: [],
+      },
+      { tagsLabels: false },
+    ).filter((c) => contentMatchesSelectedTags(c, selectedTags))
+    let count = 0
+    for (const c of items) {
+      if (contentLabelIds(c).length === 0) count++
+    }
+    return count
+  }, [
+    baseFiltered,
+    selectedTypes,
+    selectedPackageTypes,
+    packageFilter,
+    packageStatusFilter,
+    locationFilter,
+    visibilityFilter,
+    selectedTags,
+  ])
+  // [AddOn] NoLabels_End
+
   const visibilityCounts = useMemo(() => {
     const items = applyContentSidebarFilters(
       baseFiltered,
@@ -760,21 +793,20 @@ export default function ContentView({ onNavigate, navContext }) {
           { value: 'local', label: 'Local', count: packageFilterCounts.local },
         ],
       },
-      ...(labels.length
-        ? [
-            {
-              key: 'labels',
-              label: 'Labels',
-              type: 'labels-autocomplete',
-              value: selectedLabelIds,
-              default: FILTER_DEFAULTS.selectedLabelIds,
-              onChange: setSelectedLabelIds,
-              labels,
-              placeholder: 'Filter by label…',
-              allowNegate: true,
-            },
-          ]
-        : []),
+      // [AddOn] NoLabels_Begin
+      {
+        key: 'labels',
+        label: 'Labels',
+        type: 'labels-autocomplete',
+        value: selectedLabelIds,
+        default: FILTER_DEFAULTS.selectedLabelIds,
+        onChange: setSelectedLabelIds,
+        labels,
+        unlabelledCount: unlabelledContentCount,
+        placeholder: 'Filter by label…',
+        allowNegate: true,
+      },
+      // [AddOn] NoLabels_End
       {
         key: 'hubTags',
         label: 'Tags',
@@ -839,6 +871,9 @@ export default function ContentView({ onNavigate, navContext }) {
       selectedTags,
       selectedLabelIds,
       labels,
+      // [AddOn] NoLabels_Begin
+      unlabelledContentCount,
+      // [AddOn] NoLabels_End
       tagCounts,
       authorCounts,
       primarySort,

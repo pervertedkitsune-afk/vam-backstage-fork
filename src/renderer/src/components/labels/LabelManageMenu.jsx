@@ -36,6 +36,9 @@ export function LabelManageMenu({ label, applicationCount = 0, asChild = true, c
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   if (!label) return children ?? null
+  // [AddOn] NoLabels_Begin
+  if (label.isSynthetic) return children ?? null
+  // [AddOn] NoLabels_End
 
   const currentColor = label.color
   const handleRecolor = async (color) => {

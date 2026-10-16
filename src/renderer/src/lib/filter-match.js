@@ -5,6 +5,9 @@ import {
   isCommercialUseAllowed,
   isNonCommercialUseAllowed,
 } from '@/lib/licenses'
+// [AddOn] NoLabels_Begin
+import { NoLabelsAddon } from '@/addons/noLabelsAddon'
+// [AddOn] NoLabels_End
 
 /**
  * Polarity (include / exclude) list match. Every selected item must pass:
@@ -25,11 +28,16 @@ export function matchesPolarityList(selected, haystack, { normalize = false } = 
     if (value === 'no tag' || value === 'notag') {
       const hasNoTags = hay.length === 0
       if (negate ? hasNoTags : !hasNoTags) return false
+    } else if (NoLabelsAddon.isNoLabelValue(value)) {
+      // [AddOn] DependencySort_notagfilter_End
+      // [AddOn] NoLabels_Begin
+      const hasNoLabels = NoLabelsAddon.isUnlabelled(hay)
+      if (negate ? hasNoLabels : !hasNoLabels) return false
     } else {
       const has = hay.includes(value)
       if (negate ? has : !has) return false
     }
-    // [AddOn] DependencySort_notagfilter_End
+    // [AddOn] NoLabels_End
   }
   return true
 }

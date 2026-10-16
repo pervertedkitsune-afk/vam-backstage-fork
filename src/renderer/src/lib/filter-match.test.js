@@ -39,6 +39,18 @@ describe('matchesPolarityList', () => {
     expect(matchesPolarityList([{ value: 'no tag', negate: true }], ['clothing'], { normalize: true })).toBe(true)
   })
   // [AddOn] DependencySort_notagfilter_End
+
+  // [AddOn] NoLabels_Begin
+  it('handles "no label" filter correctly', () => {
+    expect(matchesPolarityList(['no label'], [])).toBe(true)
+    expect(matchesPolarityList(['nolabel'], [])).toBe(true)
+    expect(matchesPolarityList(['no labels'], [])).toBe(true)
+    expect(matchesPolarityList(['__no_label__'], [])).toBe(true)
+    expect(matchesPolarityList(['no label'], ['label-id-1'])).toBe(false)
+    expect(matchesPolarityList([{ value: 'no label', negate: true }], [])).toBe(false)
+    expect(matchesPolarityList([{ value: 'no label', negate: true }], ['label-id-1'])).toBe(true)
+  })
+  // [AddOn] NoLabels_End
 })
 
 describe('matchesAuthorFilter', () => {

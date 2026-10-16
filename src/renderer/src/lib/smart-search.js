@@ -181,6 +181,10 @@ export function highlightSegments(text) {
  *   flags()    → string[] already-lowercased flag names
  *   path()     → string POSIX subpath within the library dir
  */
+// [AddOn] NoLabels_Begin
+import { NoLabelsAddon } from '@/addons/noLabelsAddon'
+// [AddOn] NoLabels_End
+
 export function matchesSmartQuery(tokens, get) {
   if (!tokens?.length) return true
   for (const { field, value, negate } of tokens) {
@@ -200,7 +204,14 @@ export function matchesSmartQuery(tokens, get) {
       }
       // [AddOn] DependencySort_notagfilter_End
     } else if (field === 'label') {
-      hit = (get.labels?.() || []).some((n) => (n || '').toLowerCase() === value)
+      // [AddOn] NoLabels_Begin
+      const labelList = get.labels?.() || []
+      if (NoLabelsAddon.isNoLabelValue(value)) {
+        hit = NoLabelsAddon.isUnlabelled(labelList)
+      } else {
+        hit = labelList.some((n) => (n || '').toLowerCase() === value)
+      }
+      // [AddOn] NoLabels_End
     } else if (field === 'type') {
       hit = (get.types?.() || []).some((t) => (t || '').toLowerCase() === value)
     } else if (field === 'pkg') {

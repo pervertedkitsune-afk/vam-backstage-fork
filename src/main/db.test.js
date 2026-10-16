@@ -132,7 +132,9 @@ describe('setPackageDirect (manual override flag)', () => {
 
   it('sets and clears is_manual_direct correctly', () => {
     const db = getDb()
-    db.prepare(`INSERT INTO packages (filename, creator, package_name, version, size_bytes, file_mtime) VALUES ('Test.Pkg.1.var', 'Author', 'Test.Pkg', '1', 100, 0)`).run()
+    db.prepare(
+      `INSERT INTO packages (filename, creator, package_name, version, size_bytes, file_mtime) VALUES ('Test.Pkg.1.var', 'Author', 'Test.Pkg', '1', 100, 0)`,
+    ).run()
 
     // Initially is_manual_direct is NULL
     let row = db.prepare('SELECT is_direct, is_manual_direct FROM packages WHERE filename = ?').get('Test.Pkg.1.var')
