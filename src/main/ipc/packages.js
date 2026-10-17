@@ -49,12 +49,7 @@ import { isPackageActive, isPackageArchived } from '@shared/storage-state-predic
 import { extractedDeletePaths, extractedHasSurvivor } from '../scenes/extracted-lifecycle.js'
 import { reconcileExtractedLifecycleAndResync, extractedItemsFor } from '../scenes/extracted-reconcile.js'
 import { readAllPrefs } from '../vam-prefs.js'
-import {
-  computeRemovableDeps,
-  computeCascadeDisable,
-  computeCascadeEnable,
-  getTransitiveDeps,
-} from '../scanner/graph.js'
+import { computeCascadeDisable, computeCascadeEnable, getTransitiveDeps } from '../scanner/graph.js'
 import { LOCAL_PACKAGE_FILENAME } from '@shared/local-package.js'
 import { syncAutoHideAfterDirectChange } from '../auto-hide-sync.js'
 import {
@@ -722,24 +717,13 @@ export function registerPackageHandlers() {
         }
         // [AddOn] ArchiveUniquePackages_End
 
-        const { removableFilenames } = computeRemovableDeps(
-          filename,
-          getPackageIndex(),
-          getForwardDeps(),
-          getReverseDeps(),
-          replaceableSet,
-        )
         // Capture surviving transitive deps *before* deletion so the re-settle pass
         // can settle down any that this package no longer demands.
         const transitive = getTransitiveDeps(filename, getForwardDeps())
-        // Belt-and-suspenders with Rule 1 in computeRemovableDeps: that pass already
-        // keeps archive-soft-pinned local-only deps out of `removableFilenames`. This
-        // filter still drops any remaining non-replaceable members (unknown catalog,
-        // or removable only because *this* uninstall target was their last pin) so
-        // we never delete bytes we can't verifiably restore — they survive for
-        // orphan cleanup / re-settle instead.
-        const filteredRemovable = [...removableFilenames].filter((fn) => replaceableSet.has(fn))
-        const toDelete = [filename, ...filteredRemovable]
+        // [AddOn] DependencyFix_Begin
+        // Only target the uninstalled package itself; separate dependency packages are not uninstalled along with it.
+        const toDelete = [filename]
+        // [AddOn] DependencyFix_End
         const toDeleteSet = new Set(toDelete)
         // Remove extracted presets no surviving version still owns (before the
         // rows/index are torn down so candidates still resolve).

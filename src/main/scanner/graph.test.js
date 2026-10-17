@@ -943,24 +943,46 @@ describe('computeRemovableDeps', () => {
     expect(removableSize).toBe(100)
   })
 
-  // [AddOn] DependencySort_notagfilter_Begin
-  it('excludes manually marked packages from computeRemovableDeps', () => {
+  // [AddOn] DependencyFix_Begin
+  it('includes manually marked dependent packages in computeRemovableDeps and computeOrphanCascade if orphaned', () => {
     const pi = new Map([
       ['A.var', pkg('A.var', { is_direct: 1 })],
-      ['B.var', pkg('B.var', { size_bytes: 100, is_manual_direct: 0 })],
-      ['C.var', pkg('C.var', { size_bytes: 200 })],
+      ['B.var', pkg('B.var', { size_bytes: 100, is_direct: 0, is_manual_direct: 0 })],
+      ['C.var', pkg('C.var', { size_bytes: 200, is_direct: 1, is_manual_direct: 1 })],
     ])
     const forward = new Map([
       ['A.var', [{ ref: 'B.Lib.1', resolved: 'B.var', resolution: 'exact' }]],
-      ['B.var', [{ ref: 'C.Lib.1', resolved: 'C.var', resolution: 'exact' }]],
+      ['B.var', []],
       ['C.var', []],
     ])
     const reverse = buildReverseDeps(forward)
 
+    // B is manually set as dependent (is_manual_direct = 0). When A is removed, B has no other dependents so B is removable.
     const { removableFilenames } = computeRemovableDeps('A.var', pi, forward, reverse)
-    expect(removableFilenames.has('B.var')).toBe(false)
+    expect(removableFilenames.has('B.var')).toBe(true)
+
+    // In computeOrphanCascade:
+    // With A direct, B is needed by A so B is NOT an orphan. C is direct (is_manual_direct = 1) so C is NOT an orphan.
+    const { orphans: orphans1 } = computeOrphanCascade(pi, forward, reverse, new Set())
+    expect(orphans1.has('B.var')).toBe(false)
+    expect(orphans1.has('C.var')).toBe(false)
+
+    // Remove A from packageIndex: now B has zero dependents and is non-direct. So B IS an orphan even though it is manually marked dependent.
+    const piNoA = new Map([
+      ['B.var', pkg('B.var', { size_bytes: 100, is_direct: 0, is_manual_direct: 0 })],
+      ['C.var', pkg('C.var', { size_bytes: 200, is_direct: 1, is_manual_direct: 1 })],
+    ])
+    const forwardNoA = new Map([
+      ['B.var', []],
+      ['C.var', []],
+    ])
+    const reverseNoA = buildReverseDeps(forwardNoA)
+
+    const { orphans: orphans2 } = computeOrphanCascade(piNoA, forwardNoA, reverseNoA, new Set())
+    expect(orphans2.has('B.var')).toBe(true)
+    expect(orphans2.has('C.var')).toBe(false)
   })
-  // [AddOn] DependencySort_notagfilter_End
+  // [AddOn] DependencyFix_End
 })
 
 // ── Demand Rule 1: archived dependents & replaceability ─────────
