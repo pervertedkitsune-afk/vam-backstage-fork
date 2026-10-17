@@ -314,9 +314,9 @@ export function computeOrphanCascade(packageIndex, forwardDeps, reverseDeps, rep
   for (const [filename, pkg] of packageIndex) {
     if (pkg.is_direct) continue
     if (isArchived(pkg)) continue // archived hoard is never auto-orphaned (Rule 1)
-    // [AddOn] DependencySort_notagfilter_Begin
-    if (pkg.is_manual_direct !== null && pkg.is_manual_direct !== undefined) continue // manually marked packages are preserved
-    // [AddOn] DependencySort_notagfilter_End
+    // [AddOn] DependencyFix_Begin
+    if (pkg.is_manual_direct === 1) continue // manually marked direct packages are preserved
+    // [AddOn] DependencyFix_End
     const dependents = reverseDeps.get(filename)
     const hasPin =
       !!dependents && [...dependents].some((d) => dependentPins(packageIndex.get(d), filename, replaceableSet))
@@ -330,9 +330,9 @@ export function computeOrphanCascade(packageIndex, forwardDeps, reverseDeps, rep
     for (const [filename, pkg] of packageIndex) {
       if (pkg.is_direct || toRemove.has(filename)) continue
       if (isArchived(pkg)) continue
-      // [AddOn] DependencySort_notagfilter_Begin
-      if (pkg.is_manual_direct !== null && pkg.is_manual_direct !== undefined) continue
-      // [AddOn] DependencySort_notagfilter_End
+      // [AddOn] DependencyFix_Begin
+      if (pkg.is_manual_direct === 1) continue
+      // [AddOn] DependencyFix_End
       const dependents = reverseDeps.get(filename) || new Set()
       const pinning = [...dependents].filter((d) => dependentPins(packageIndex.get(d), filename, replaceableSet))
       if (pinning.length === 0) continue // no pinning dependents ⇒ already a direct orphan above
@@ -371,9 +371,9 @@ export function computeRemovableDeps(filename, packageIndex, forwardDeps, revers
       const pkg = packageIndex.get(dep)
       if (!pkg || pkg.is_direct) continue
       if (isArchived(pkg)) continue // never prune the archive as a side effect (Rule 1)
-      // [AddOn] DependencySort_notagfilter_Begin
-      if (pkg.is_manual_direct !== null && pkg.is_manual_direct !== undefined) continue // manually set packages are preserved
-      // [AddOn] DependencySort_notagfilter_End
+      // [AddOn] DependencyFix_Begin
+      if (pkg.is_manual_direct === 1) continue // manually set direct packages are preserved
+      // [AddOn] DependencyFix_End
       const dependents = reverseDeps.get(dep) || new Set()
       const pinning = [...dependents].filter((d) => dependentPins(packageIndex.get(d), dep, replaceableSet))
       if (pinning.every((d) => toRemove.has(d))) {

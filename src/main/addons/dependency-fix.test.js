@@ -68,8 +68,8 @@ describe('DependencyFix AddOn', () => {
     expect(setPackageDirect).toHaveBeenCalledWith('used_pkg.var', false)
   })
 
-  // [AddOn] DependencySort_notagfilter_Begin
-  it('skips packages that were manually set by the user', async () => {
+  // [AddOn] DependencyFix_Begin
+  it('skips packages that were manually set by the user during fixAllDependencies', async () => {
     vi.clearAllMocks()
     const pkgIndex = new Map([
       ['manually_promoted.var', { filename: 'manually_promoted.var', is_direct: 1, is_manual_direct: 1 }],
@@ -93,6 +93,6 @@ describe('DependencyFix AddOn', () => {
     expect(setPackageDirect).toHaveBeenCalledWith('auto_pkg.var', false)
     expect(setPackageDirect).not.toHaveBeenCalledWith('manually_promoted.var', false)
   })
-  // [AddOn] DependencySort_notagfilter_End
+  // [AddOn] DependencyFix_End
 })
 // [AddOn] DependencyFix_End
