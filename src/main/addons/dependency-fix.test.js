@@ -20,6 +20,10 @@ vi.mock('../notify.js', () => ({
 import { setPackageDirect } from '../db.js'
 import { getPackageIndex, getReverseDeps } from '../store.js'
 
+vi.mock('fs/promises', () => ({
+  appendFile: vi.fn().mockResolvedValue(undefined),
+}))
+
 describe('DependencyFix AddOn', () => {
   it('correctly checks if package is used by others', () => {
     const revDeps = new Map([
@@ -68,8 +72,8 @@ describe('DependencyFix AddOn', () => {
     expect(setPackageDirect).toHaveBeenCalledWith('used_pkg.var', false)
   })
 
-  // [AddOn] DependencySort_notagfilter_Begin
-  it('skips packages that were manually set by the user', async () => {
+  // [AddOn] DependencyFix_Begin
+  it('skips packages that were manually set by the user during fixAllDependencies', async () => {
     vi.clearAllMocks()
     const pkgIndex = new Map([
       ['manually_promoted.var', { filename: 'manually_promoted.var', is_direct: 1, is_manual_direct: 1 }],
@@ -93,6 +97,20 @@ describe('DependencyFix AddOn', () => {
     expect(setPackageDirect).toHaveBeenCalledWith('auto_pkg.var', false)
     expect(setPackageDirect).not.toHaveBeenCalledWith('manually_promoted.var', false)
   })
-  // [AddOn] DependencySort_notagfilter_End
+
+  it('exports scan errors to log file when errors are provided', async () => {
+    const errors = [
+      { filename: 'corrupted1.var', fullPath: '/path/corrupted1.var', error: 'Zip header error' },
+      'corrupted2.var',
+    ]
+    const logPath = await DependencyFix.exportScanErrorLog(errors, '/tmp')
+    expect(logPath).toBe('/tmp/scan_errors.log')
+  })
+
+  it('returns null when exportScanErrorLog receives no errors', async () => {
+    const logPath = await DependencyFix.exportScanErrorLog([], '/tmp')
+    expect(logPath).toBeNull()
+  })
+  // [AddOn] DependencyFix_End
 })
 // [AddOn] DependencyFix_End

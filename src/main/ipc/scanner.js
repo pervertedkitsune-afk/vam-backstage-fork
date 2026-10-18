@@ -95,6 +95,14 @@ export function registerScanHandlers() {
 
     if (result.corruptedFiles.length > 0) {
       batchSetCorrupted(result.corruptedFiles.map((fn) => [fn, true]))
+      // [AddOn] DependencyFix_Begin
+      await DependencyFix.exportScanErrorLog(
+        result.corruptedFiles.map((fn) => ({
+          filename: fn,
+          error: 'Package failed checksum integrity check / corrupted',
+        })),
+      )
+      // [AddOn] DependencyFix_End
     }
 
     buildFromDb()
