@@ -27,6 +27,20 @@ export class ArchiveUniquePackagesAddon {
     return null
   }
 
+  // [AddOn] DependencyFix_Begin
+  /**
+   * Get the configured Focused Dependency Folder setting.
+   * @returns {string|null}
+   */
+  static getFocusedDependencyFolder() {
+    const dir = getSetting('focused_dependency_folder')
+    if (dir && typeof dir === 'string' && dir.trim() !== '') {
+      return dir.trim()
+    }
+    return null
+  }
+  // [AddOn] DependencyFix_End
+
   /**
    * Check if a package is a non-Hub / irreplaceable package.
    * @param {string} filename - Package filename.

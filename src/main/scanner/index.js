@@ -140,9 +140,15 @@ export async function runScan(vamDir, onProgress = () => {}) {
       }
     } catch (err) {
       console.warn(`Failed to scan ${filename}:`, err.message)
-      unreadable.push(filename)
+      unreadable.push({ filename, fullPath, error: err.message })
     }
   }
+
+  // [AddOn] DependencyFix_Begin
+  if (unreadable.length > 0) {
+    await DependencyFix.exportScanErrorLog(unreadable)
+  }
+  // [AddOn] DependencyFix_End
 
   // Inherit user-set settings (labels, content visibility sidecars, custom
   // category) from the previous version of each freshly-added package — but
@@ -278,7 +284,12 @@ export async function runScan(vamDir, onProgress = () => {}) {
   // this must be the last progress emit (after the reconcile above).
   onProgress({ phase: 'finalizing', step: 1, total: 1, message: 'Done' })
 
-  return { scanned, added, removed: removed.length, unreadable }
+  return {
+    scanned,
+    added,
+    removed: removed.length,
+    unreadable: unreadable.map((u) => (typeof u === 'string' ? u : u.filename)),
+  }
 }
 
 // Default libuv pool is 4 workers; 8 is 2× headroom for transient bursts.

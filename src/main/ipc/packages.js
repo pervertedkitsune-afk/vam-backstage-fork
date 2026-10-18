@@ -701,9 +701,32 @@ export function registerPackageHandlers() {
         }
         // [AddOn] MultiProgress_End
 
-        // [AddOn] ArchiveUniquePackages_Begin
+        // [AddOn] DependencyFix_Begin
+        const focusedDepFolder = ArchiveUniquePackagesAddon.getFocusedDependencyFolder()
+        const currentPath = (await resolveContentPath(pkg)) || pkgVarPath(pkg)
+        const normFile = currentPath ? currentPath.toLowerCase().replace(/\\/g, '/') : ''
+        const normFolder = focusedDepFolder ? focusedDepFolder.toLowerCase().replace(/\\/g, '/') : ''
+        const inFocusedFolder =
+          focusedDepFolder &&
+          currentPath &&
+          (normFile.startsWith(normFolder.endsWith('/') ? normFolder : normFolder + '/') || normFile === normFolder)
+
         const nonHubDir = ArchiveUniquePackagesAddon.getNonHubDirectory()
-        if (nonHubDir && ArchiveUniquePackagesAddon.isNonHubPackage(filename, replaceableSet)) {
+        if (inFocusedFolder && ArchiveUniquePackagesAddon.isNonHubPackage(filename, replaceableSet)) {
+          if (nonHubDir) {
+            const rareDepsDir = join(nonHubDir, 'Rare Dependencies')
+            const relocRes = await ArchiveUniquePackagesAddon.relocateNonHubPackage(
+              getPackageIndex().get(filename) || pkg,
+              filename,
+              rareDepsDir,
+            )
+            if (relocRes.ok) {
+              buildFromDb()
+              results.push({ ok: true, relocatedNonHub: true, movedTo: relocRes.movedTo })
+              continue
+            }
+          }
+        } else if (nonHubDir && ArchiveUniquePackagesAddon.isNonHubPackage(filename, replaceableSet)) {
           const relocRes = await ArchiveUniquePackagesAddon.relocateNonHubPackage(
             getPackageIndex().get(filename) || pkg,
             filename,
@@ -715,7 +738,7 @@ export function registerPackageHandlers() {
             continue
           }
         }
-        // [AddOn] ArchiveUniquePackages_End
+        // [AddOn] DependencyFix_End
 
         // Capture surviving transitive deps *before* deletion so the re-settle pass
         // can settle down any that this package no longer demands.

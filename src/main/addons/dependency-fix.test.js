@@ -20,6 +20,10 @@ vi.mock('../notify.js', () => ({
 import { setPackageDirect } from '../db.js'
 import { getPackageIndex, getReverseDeps } from '../store.js'
 
+vi.mock('fs/promises', () => ({
+  appendFile: vi.fn().mockResolvedValue(undefined),
+}))
+
 describe('DependencyFix AddOn', () => {
   it('correctly checks if package is used by others', () => {
     const revDeps = new Map([
@@ -92,6 +96,20 @@ describe('DependencyFix AddOn', () => {
     expect(res.fixedFilenames).toEqual(['auto_pkg.var'])
     expect(setPackageDirect).toHaveBeenCalledWith('auto_pkg.var', false)
     expect(setPackageDirect).not.toHaveBeenCalledWith('manually_promoted.var', false)
+  })
+
+  it('exports scan errors to log file when errors are provided', async () => {
+    const errors = [
+      { filename: 'corrupted1.var', fullPath: '/path/corrupted1.var', error: 'Zip header error' },
+      'corrupted2.var',
+    ]
+    const logPath = await DependencyFix.exportScanErrorLog(errors, '/tmp')
+    expect(logPath).toBe('/tmp/scan_errors.log')
+  })
+
+  it('returns null when exportScanErrorLog receives no errors', async () => {
+    const logPath = await DependencyFix.exportScanErrorLog([], '/tmp')
+    expect(logPath).toBeNull()
   })
   // [AddOn] DependencyFix_End
 })

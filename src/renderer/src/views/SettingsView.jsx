@@ -131,6 +131,9 @@ export default function SettingsView() {
   const [nonHubDirectory, setNonHubDirectory] = useState('')
   const [cleaningDb, setCleaningDb] = useState(false)
   // [AddOn] ArchiveUniquePackages_End
+  // [AddOn] DependencyFix_Begin
+  const [focusedDependencyFolder, setFocusedDependencyFolder] = useState('')
+  // [AddOn] DependencyFix_End
   const [offloadSuggestions, setOffloadSuggestions] = useState([])
   const [dismissedOffload, setDismissedOffload] = useState(() => new Set())
   const stats = useStatusStore((s) => s.stats)
@@ -228,6 +231,9 @@ export default function SettingsView() {
     // [AddOn] ArchiveUniquePackages_Begin
     window.api.settings.get('non_hub_packages_directory').then((v) => setNonHubDirectory(v || ''))
     // [AddOn] ArchiveUniquePackages_End
+    // [AddOn] DependencyFix_Begin
+    window.api.settings.get('focused_dependency_folder').then((v) => setFocusedDependencyFolder(v || ''))
+    // [AddOn] DependencyFix_End
     window.api.settings.get('offload_suggestions_dismissed').then((v) =>
       setDismissedOffload(
         new Set(
@@ -365,6 +371,23 @@ export default function SettingsView() {
     setNonHubDirectory('')
     toast('Non-Hub packages directory cleared', 'success')
   }, [])
+
+  // [AddOn] DependencyFix_Begin
+  const handleBrowseFocusedDependencyFolder = useCallback(async () => {
+    const browseResult = await window.api.libraryDirs.browse()
+    if (browseResult?.cancelled || !browseResult?.path) return
+    const path = browseResult.path
+    await window.api.settings.set('focused_dependency_folder', path)
+    setFocusedDependencyFolder(path)
+    toast('Focused dependency folder updated', 'success')
+  }, [])
+
+  const handleClearFocusedDependencyFolder = useCallback(async () => {
+    await window.api.settings.set('focused_dependency_folder', '')
+    setFocusedDependencyFolder('')
+    toast('Focused dependency folder cleared', 'success')
+  }, [])
+  // [AddOn] DependencyFix_End
 
   const handleCleanupDatabase = useCallback(async () => {
     if (cleaningDb || scanning || hubScanning || verifying) return
@@ -1122,6 +1145,42 @@ export default function SettingsView() {
             </div>
           </div>
           {/* [AddOn] ArchiveUniquePackages_End */}
+
+          {/* [AddOn] DependencyFix_Begin */}
+          <div className="space-y-1.5">
+            <SettingRow
+              label="Focused Dependency Folder"
+              description="Folder designated as holding dependencies. When uninstalled, non-Hub packages in this folder move to a 'Rare Dependencies' subfolder inside the Non-Hub Directory."
+            />
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs text-text-secondary font-mono max-w-[200px] sm:max-w-[300px] truncate"
+                title={focusedDependencyFolder || 'None (Default behavior)'}
+              >
+                {focusedDependencyFolder || 'None (Default behavior)'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleBrowseFocusedDependencyFolder()}
+                className="text-xs shrink-0"
+              >
+                <FolderOpen size={14} className="mr-1" />
+                Change
+              </Button>
+              {focusedDependencyFolder && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleClearFocusedDependencyFolder()}
+                  className="text-xs shrink-0 text-text-muted hover:text-text-primary"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+          {/* [AddOn] DependencyFix_End */}
 
           {offloadAuxDirs.length > 0 && (
             <SettingRow

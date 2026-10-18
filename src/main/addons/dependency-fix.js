@@ -4,6 +4,8 @@
  * Prefix logs with [DependencyFix].
  */
 
+import { appendFile } from 'fs/promises'
+import { join } from 'path'
 import { setPackageDirect } from '../db.js'
 import { buildGraphOnly, buildFromDb, getPackageIndex, getReverseDeps } from '../store.js'
 import { notify } from '../notify.js'
@@ -80,6 +82,45 @@ export class DependencyFix {
       console.log(`[DependencyFix] Auto-classified ${fn}: isDirect = ${isDirect} (usedBy: ${isUsed})`)
     }
     return updates
+  }
+
+  /**
+   * Export scan errors / corrupted or invalid package errors into a log file where the app is.
+   * @param {Array<{ filename: string, fullPath?: string, error?: string }|string>} errors - Array of error objects or filenames.
+   * @param {string} [targetDir] - Optional directory to save log in, defaults to process.cwd().
+   * @returns {Promise<string|null>} Path to log file if errors were written, else null.
+   */
+  static async exportScanErrorLog(errors, targetDir) {
+    if (!errors || errors.length === 0) return null
+    try {
+      const dir = targetDir || process.cwd()
+      const logPath = join(dir, 'scan_errors.log')
+      const timestamp = new Date().toISOString()
+
+      const lines = [
+        `\n===================================================================`,
+        `Scan Errors & Package Corruption Log - ${timestamp}`,
+        `===================================================================`,
+      ]
+      for (const errItem of errors) {
+        if (typeof errItem === 'string') {
+          lines.push(`File: ${errItem}`)
+          lines.push(`Error: Unreadable or corrupt package`)
+        } else if (errItem && typeof errItem === 'object') {
+          lines.push(`File: ${errItem.fullPath || errItem.filename}`)
+          lines.push(`Error: ${errItem.error || 'Unreadable or corrupt package'}`)
+        }
+        lines.push(`-------------------------------------------------------------------`)
+      }
+      lines.push('\n')
+
+      await appendFile(logPath, lines.join('\n'), 'utf8')
+      console.log(`[DependencyFix] Exported ${errors.length} scan error(s) to ${logPath}`)
+      return logPath
+    } catch (err) {
+      console.error('[DependencyFix] Failed to export scan error log:', err)
+      return null
+    }
   }
 }
 // [AddOn] DependencyFix_End

@@ -61,6 +61,20 @@ describe('ArchiveUniquePackagesAddon', () => {
     })
   })
 
+  // [AddOn] DependencyFix_Begin
+  describe('getFocusedDependencyFolder', () => {
+    it('returns trimmed folder path when setting is configured', () => {
+      vi.mocked(getSetting).mockReturnValue('  /focused/dep_folder  ')
+      expect(ArchiveUniquePackagesAddon.getFocusedDependencyFolder()).toBe('/focused/dep_folder')
+    })
+
+    it('returns null when setting is empty or undefined', () => {
+      vi.mocked(getSetting).mockReturnValue('')
+      expect(ArchiveUniquePackagesAddon.getFocusedDependencyFolder()).toBeNull()
+    })
+  })
+  // [AddOn] DependencyFix_End
+
   describe('isNonHubPackage', () => {
     it('returns true if filename is not in replaceableSet', () => {
       const replaceableSet = new Set(['Downloadable.Pkg.1.var'])
