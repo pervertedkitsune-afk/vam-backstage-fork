@@ -148,9 +148,6 @@ import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
 // [AddOn] MissingSorting_Begin
 import { MissingSortingAddon } from '@/addons/missingSortingAddon'
 // [AddOn] MissingSorting_End
-// [AddOn] PackageSorting_Begin
-import { PackageSortingAddon } from '@/addons/packageSortingAddon'
-// [AddOn] PackageSorting_End
 
 // [AddOn] Filter_Begin
 const SORT_OPTIONS = [
@@ -334,20 +331,11 @@ export default function LibraryView({ onNavigate, navContext }) {
   const selectingRef = useRef(false)
 
   // [AddOn] PackageSorting_Begin
-  const [tableSortColumn, setTableSortColumn] = useState(null)
-  const [tableSortDirection, setTableSortDirection] = useState('asc')
-
-  useEffect(() => {
-    setTableSortColumn(null)
-    setTableSortDirection('asc')
-  }, [primarySort])
-
   const handleTableHeaderClick = (col) => {
-    if (tableSortColumn === col) {
-      setTableSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setTableSortColumn(col)
-      setTableSortDirection('asc')
+    if (col === 'package') {
+      setPrimarySort('Name')
+    } else if (col === 'author') {
+      setPrimarySort('Author')
     }
   }
   // [AddOn] PackageSorting_End
@@ -916,15 +904,6 @@ export default function LibraryView({ onNavigate, navContext }) {
 
   const activeFilterCount = sections.filter((s) => sectionActive(s) === true).length
 
-  // [AddOn] PackageSorting_Begin
-  const tableSortedFiltered = useMemo(() => {
-    if (viewMode === 'table' && tableSortColumn) {
-      return PackageSortingAddon.sortLibraryItems(filtered, tableSortColumn, tableSortDirection)
-    }
-    return filtered
-  }, [filtered, viewMode, tableSortColumn, tableSortDirection])
-  // [AddOn] PackageSorting_End
-
   const orderedLibraryFilenames = useMemo(() => filtered.map((p) => p.filename), [filtered])
   const bulkActive = isBulk(selection)
   const bulkToggleIntent = useLibraryStore((s) => s.bulkToggleIntent)
@@ -1441,12 +1420,7 @@ export default function LibraryView({ onNavigate, navContext }) {
                   className="flex-3 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
                 >
                   Package
-                  {tableSortColumn === 'package' &&
-                    (tableSortDirection === 'asc' ? (
-                      <ChevronUp size={12} className="shrink-0" />
-                    ) : (
-                      <ChevronDown size={12} className="shrink-0" />
-                    ))}
+                  {primarySort === 'Name' && <ChevronUp size={12} className="shrink-0" />}
                 </button>
                 <button
                   type="button"
@@ -1454,12 +1428,7 @@ export default function LibraryView({ onNavigate, navContext }) {
                   className="flex-2 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
                 >
                   Author
-                  {tableSortColumn === 'author' &&
-                    (tableSortDirection === 'asc' ? (
-                      <ChevronUp size={12} className="shrink-0" />
-                    ) : (
-                      <ChevronDown size={12} className="shrink-0" />
-                    ))}
+                  {primarySort === 'Author' && <ChevronUp size={12} className="shrink-0" />}
                 </button>
                 {/* [AddOn] PackageSorting_End */}
                 {selectedTypes.length !== 1 && <div className="flex-1 py-2 px-3 font-medium">Type</div>}
@@ -1469,10 +1438,10 @@ export default function LibraryView({ onNavigate, navContext }) {
                 <div className="w-14 py-2 px-3 font-medium">Deps</div>
               </div>
               <VirtualList
-                items={tableSortedFiltered}
+                items={filtered}
                 rowHeight={37}
                 className="flex-1"
-                scrollResetKey={`${scrollResetKey}\0${tableSortColumn}\0${tableSortDirection}`}
+                scrollResetKey={scrollResetKey}
                 renderRow={(pkg) => {
                   const updateInfo = updateCheckResults?.[pkg.filename]
                   const dimUpdateUnavailable = statusFilter === 'updates' && isUpdateUnavailable(updateInfo)

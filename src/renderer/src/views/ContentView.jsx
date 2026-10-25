@@ -85,9 +85,6 @@ import { FilterAddon } from '@/addons/filterAddon'
 // [AddOn] FolderFilter_Begin
 import { FolderFilterAddon } from '@/addons/folderFilterAddon'
 // [AddOn] FolderFilter_End
-// [AddOn] PackageSorting_Begin
-import { PackageSortingAddon } from '@/addons/packageSortingAddon'
-// [AddOn] PackageSorting_End
 
 // [AddOn] Filter_Begin
 // [AddOn] PackageSorting_Begin
@@ -301,20 +298,11 @@ export default function ContentView({ onNavigate, navContext }) {
   const selectingRef = useRef(false)
 
   // [AddOn] PackageSorting_Begin
-  const [tableSortColumn, setTableSortColumn] = useState(null)
-  const [tableSortDirection, setTableSortDirection] = useState('asc')
-
-  useEffect(() => {
-    setTableSortColumn(null)
-    setTableSortDirection('asc')
-  }, [primarySort])
-
   const handleTableHeaderClick = (col) => {
-    if (tableSortColumn === col) {
-      setTableSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setTableSortColumn(col)
-      setTableSortDirection('asc')
+    if (col === 'package') {
+      setPrimarySort('Package')
+    } else if (col === 'author') {
+      setPrimarySort('Author')
     }
   }
   // [AddOn] PackageSorting_End
@@ -932,15 +920,6 @@ export default function ContentView({ onNavigate, navContext }) {
 
   const activeFilterCount = sections.filter((s) => sectionActive(s) === true).length
 
-  // [AddOn] PackageSorting_Begin
-  const tableSortedFiltered = useMemo(() => {
-    if (viewMode === 'table' && tableSortColumn) {
-      return PackageSortingAddon.sortContentItems(filtered, tableSortColumn, tableSortDirection)
-    }
-    return filtered
-  }, [filtered, viewMode, tableSortColumn, tableSortDirection])
-  // [AddOn] PackageSorting_End
-
   const handleToggleHidden = useCallback(async (item) => {
     try {
       await window.api.contents.toggleHidden({
@@ -1369,12 +1348,7 @@ export default function ContentView({ onNavigate, navContext }) {
                   className="flex-3 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
                 >
                   Content / Package
-                  {tableSortColumn === 'package' &&
-                    (tableSortDirection === 'asc' ? (
-                      <ChevronUp size={12} className="shrink-0" />
-                    ) : (
-                      <ChevronDown size={12} className="shrink-0" />
-                    ))}
+                  {primarySort === 'Package' && <ChevronUp size={12} className="shrink-0" />}
                 </button>
                 <button
                   type="button"
@@ -1382,12 +1356,7 @@ export default function ContentView({ onNavigate, navContext }) {
                   className="flex-2 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
                 >
                   Author
-                  {tableSortColumn === 'author' &&
-                    (tableSortDirection === 'asc' ? (
-                      <ChevronUp size={12} className="shrink-0" />
-                    ) : (
-                      <ChevronDown size={12} className="shrink-0" />
-                    ))}
+                  {primarySort === 'Author' && <ChevronUp size={12} className="shrink-0" />}
                 </button>
                 {/* [AddOn] PackageSorting_End */}
                 {selectedTypes.length !== 1 && <div className="flex-1 min-w-0 py-2 px-3 font-medium">Type</div>}
@@ -1396,10 +1365,10 @@ export default function ContentView({ onNavigate, navContext }) {
                 <div className="w-12 py-2 px-3 font-medium">Fav</div>
               </div>
               <VirtualList
-                items={tableSortedFiltered}
+                items={filtered}
                 rowHeight={37}
                 className="flex-1"
-                scrollResetKey={`${scrollResetKey}\0${tableSortColumn}\0${tableSortDirection}`}
+                scrollResetKey={scrollResetKey}
                 renderRow={(item) => (
                   <ContentItemContextMenu
                     key={item.id}
