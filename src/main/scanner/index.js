@@ -41,6 +41,9 @@ import { enrichNewPackages } from '../hub/scanner.js'
 // [AddOn] DependencyFix_Begin
 import { DependencyFix } from '../addons/dependency-fix.js'
 // [AddOn] DependencyFix_End
+// [AddOn] HidingSubscenes_Begin
+import { HidingSubscenesAddon } from '../addons/hidingSubscenesAddon.js'
+// [AddOn] HidingSubscenes_End
 
 /**
  * Run a full library scan across the main dir and every registered aux dir.
@@ -485,6 +488,13 @@ const AUTO_HIDE_RULES = [
     matches: (ctx, c) =>
       ctx.effective_type !== 'Clothing' && (c.type === 'clothingItem' || c.type === 'clothingPreset'),
   },
+  // [AddOn] HidingSubscenes_Begin
+  {
+    id: 'subscenes',
+    settingKey: 'auto_hide_subscenes',
+    matches: (ctx, c) => HidingSubscenesAddon.matchesRule(ctx, c),
+  },
+  // [AddOn] HidingSubscenes_End
 ]
 
 function makePkgCtx(filename, pkg) {

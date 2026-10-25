@@ -1483,6 +1483,39 @@ export default function SettingsView() {
               description="Hide clothing items bundled inside packages categorized as something else, so only dedicated clothing packs surface in the Clothing view."
               noun="clothing items"
             />
+            {/* [AddOn] HidingSubscenes_Begin */}
+            <AutoHideSwitch
+              settingKey="auto_hide_subscenes"
+              label="Auto-hide subscenes"
+              description="Hide subscene items within packages automatically, without affecting main scenes."
+              descriptionWhenOff="Hide subscene items within packages automatically, without affecting main scenes."
+              apply={() => window.api.scan.applyAutoHide('subscenes')}
+              remove={() => window.api.scan.removeAutoHide('subscenes')}
+              hideTitle="Hide subscenes?"
+              unhideTitle="Unhide subscenes?"
+              progressNoun="subscenes"
+              hideBody={
+                <>
+                  <p>Subscenes in packages added going forward will be hidden automatically.</p>
+                  <p>
+                    Choose <strong className="text-text-primary">Turn on and hide all</strong> to also hide subscenes
+                    in packages you already have. Choose <strong className="text-text-primary">Turn on</strong> to apply
+                    going forward only.
+                  </p>
+                </>
+              }
+              unhideBody={
+                <>
+                  <p>Turning off stops automatically hiding subscenes in packages added going forward.</p>
+                  <p>
+                    Choose <strong className="text-text-primary">Turn off and unhide all</strong> to also unhide all
+                    subscenes currently hidden by this rule.
+                  </p>
+                  <p>Items still claimed by another active auto-hide rule will stay hidden.</p>
+                </>
+              }
+            />
+            {/* [AddOn] HidingSubscenes_End */}
             {/* [AddOn] Multidrive_Begin */}
             <SettingRow
               label="Multi-Drive Support"
