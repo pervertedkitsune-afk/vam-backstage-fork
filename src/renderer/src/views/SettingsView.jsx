@@ -48,6 +48,9 @@ import { DEFAULT_REMOTE_PORT, normalizeConnectUrl } from '@shared/remote-config.
 import { toast } from '@/components/Toast'
 import { useStatusStore } from '@/stores/useStatusStore'
 import { useLibraryStore } from '@/stores/useLibraryStore'
+// [AddOn] PackageSorting_Begin
+import { PackageSortingAddon } from '@/addons/packageSortingAddon'
+// [AddOn] PackageSorting_End
 import { useRemoteUiStore } from '@/stores/useRemoteUiStore'
 import { useCatalogStore } from '@/stores/useCatalogStore'
 import { Button } from '@/components/ui/button'
@@ -549,6 +552,9 @@ export default function SettingsView() {
     try {
       const result = await window.api.scan.start()
       fetchStats()
+      // [AddOn] PackageSorting_Begin
+      PackageSortingAddon.triggerRescanSort()
+      // [AddOn] PackageSorting_End
       if (result?.unreadable?.length > 0) {
         setScanResult({
           error: `Scan complete. ${result.unreadable.length} file${result.unreadable.length !== 1 ? 's' : ''} could not be read (corrupted or invalid).`,
@@ -1498,8 +1504,8 @@ export default function SettingsView() {
                 <>
                   <p>Subscenes in packages added going forward will be hidden automatically.</p>
                   <p>
-                    Choose <strong className="text-text-primary">Turn on and hide all</strong> to also hide subscenes
-                    in packages you already have. Choose <strong className="text-text-primary">Turn on</strong> to apply
+                    Choose <strong className="text-text-primary">Turn on and hide all</strong> to also hide subscenes in
+                    packages you already have. Choose <strong className="text-text-primary">Turn on</strong> to apply
                     going forward only.
                   </p>
                 </>

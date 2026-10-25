@@ -12,6 +12,9 @@ import {
   Loader2,
   FolderOpen,
   ChevronDown,
+  // [AddOn] PackageSorting_Begin
+  ChevronUp,
+  // [AddOn] PackageSorting_End
   Tag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -82,9 +85,14 @@ import { FilterAddon } from '@/addons/filterAddon'
 // [AddOn] FolderFilter_Begin
 import { FolderFilterAddon } from '@/addons/folderFilterAddon'
 // [AddOn] FolderFilter_End
+// [AddOn] PackageSorting_Begin
+import { PackageSortingAddon } from '@/addons/packageSortingAddon'
+// [AddOn] PackageSorting_End
 
 // [AddOn] Filter_Begin
-const SORT_OPTIONS = ['Recently installed', 'Name A-Z', 'Package', 'Type', 'Offload Directory']
+// [AddOn] PackageSorting_Begin
+const SORT_OPTIONS = ['Recently installed', 'Name A-Z', 'Package', 'Author', 'Type', 'Offload Directory']
+// [AddOn] PackageSorting_End
 // [AddOn] Filter_End
 
 const getContentId = (c) => c.id
@@ -291,6 +299,25 @@ export default function ContentView({ onNavigate, navContext }) {
   const [gridLayout, setGridLayout] = useState({ cols: 1, availableWidth: 0 })
   const [detailPanelWidth] = usePersistedPanelWidth('panel_width_detail', { min: 260, max: 500, defaultWidth: 340 })
   const selectingRef = useRef(false)
+
+  // [AddOn] PackageSorting_Begin
+  const [tableSortColumn, setTableSortColumn] = useState(null)
+  const [tableSortDirection, setTableSortDirection] = useState('asc')
+
+  useEffect(() => {
+    setTableSortColumn(null)
+    setTableSortDirection('asc')
+  }, [primarySort])
+
+  const handleTableHeaderClick = (col) => {
+    if (tableSortColumn === col) {
+      setTableSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setTableSortColumn(col)
+      setTableSortDirection('asc')
+    }
+  }
+  // [AddOn] PackageSorting_End
 
   const { authors: authorCounts, tags: tagCounts } = useMemo(() => packageSuggestionCounts(packages), [packages])
 
@@ -663,6 +690,13 @@ export default function ContentView({ onNavigate, navContext }) {
         (b.package?.fileMtime || 0) - (a.package?.fileMtime || 0),
       'Name A-Z': (a, b) => (a.displayName || '').localeCompare(b.displayName || ''),
       Package: (a, b) => contentPackageLabel(a).localeCompare(contentPackageLabel(b)),
+      // [AddOn] PackageSorting_Begin
+      Author: (a, b) => {
+        const authorA = String((a.sourcePackage ?? a.package)?.creator || a.creator || '')
+        const authorB = String((b.sourcePackage ?? b.package)?.creator || b.creator || '')
+        return authorA.localeCompare(authorB)
+      },
+      // [AddOn] PackageSorting_End
       Type: (a, b) => compareContentTypes(a.category, b.category),
       'Offload Directory': (a, b) => {
         console.log('[Filter] ContentView sorting by Offload Directory:', {
@@ -897,6 +931,15 @@ export default function ContentView({ onNavigate, navContext }) {
   )
 
   const activeFilterCount = sections.filter((s) => sectionActive(s) === true).length
+
+  // [AddOn] PackageSorting_Begin
+  const tableSortedFiltered = useMemo(() => {
+    if (viewMode === 'table' && tableSortColumn) {
+      return PackageSortingAddon.sortContentItems(filtered, tableSortColumn, tableSortDirection)
+    }
+    return filtered
+  }, [filtered, viewMode, tableSortColumn, tableSortDirection])
+  // [AddOn] PackageSorting_End
 
   const handleToggleHidden = useCallback(async (item) => {
     try {
@@ -1319,18 +1362,44 @@ export default function ContentView({ onNavigate, navContext }) {
           <div className="flex-1 flex flex-col overflow-hidden p-4">
             <div className="border border-border rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
               <div className={`bg-elevated ${SECTION_LABEL} flex border-b border-border shrink-0`}>
-                <div className="flex-3 py-2 px-3 font-medium">Content</div>
-                <div className="flex-2 py-2 px-3 font-medium">Author</div>
+                {/* [AddOn] PackageSorting_Begin */}
+                <button
+                  type="button"
+                  onClick={() => handleTableHeaderClick('package')}
+                  className="flex-3 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+                >
+                  Content / Package
+                  {tableSortColumn === 'package' &&
+                    (tableSortDirection === 'asc' ? (
+                      <ChevronUp size={12} className="shrink-0" />
+                    ) : (
+                      <ChevronDown size={12} className="shrink-0" />
+                    ))}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTableHeaderClick('author')}
+                  className="flex-2 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+                >
+                  Author
+                  {tableSortColumn === 'author' &&
+                    (tableSortDirection === 'asc' ? (
+                      <ChevronUp size={12} className="shrink-0" />
+                    ) : (
+                      <ChevronDown size={12} className="shrink-0" />
+                    ))}
+                </button>
+                {/* [AddOn] PackageSorting_End */}
                 {selectedTypes.length !== 1 && <div className="flex-1 min-w-0 py-2 px-3 font-medium">Type</div>}
                 <div className="flex-1 min-w-0 py-2 px-3 font-medium">Tags</div>
                 <div className="w-14 py-2 px-3 font-medium">Show</div>
                 <div className="w-12 py-2 px-3 font-medium">Fav</div>
               </div>
               <VirtualList
-                items={filtered}
+                items={tableSortedFiltered}
                 rowHeight={37}
                 className="flex-1"
-                scrollResetKey={scrollResetKey}
+                scrollResetKey={`${scrollResetKey}\0${tableSortColumn}\0${tableSortDirection}`}
                 renderRow={(item) => (
                   <ContentItemContextMenu
                     key={item.id}

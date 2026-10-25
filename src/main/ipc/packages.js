@@ -1191,9 +1191,40 @@ export function registerPackageHandlers() {
           if (!orphans.has(dep)) resettleCandidates.add(dep)
         }
       }
+
+      // [AddOn] PackageSorting_Begin
+      const replaceableSet = getReplaceableSet()
+      const focusedDepFolder = ArchiveUniquePackagesAddon.getFocusedDependencyFolder()
+      const nonHubDir = ArchiveUniquePackagesAddon.getNonHubDirectory()
+      const normFolder = focusedDepFolder ? focusedDepFolder.toLowerCase().replace(/\\/g, '/') : ''
+      // [AddOn] PackageSorting_End
+
       for (const fn of orphans) {
         const pkg = getPackageIndex().get(fn)
         if (pkg) freedBytes += pkg.size_bytes
+
+        // [AddOn] PackageSorting_Begin
+        if (pkg) {
+          const currentPath = (await resolveContentPath(pkg)) || pkgVarPath(pkg)
+          const normFile = currentPath ? currentPath.toLowerCase().replace(/\\/g, '/') : ''
+          const inFocusedFolder =
+            focusedDepFolder &&
+            currentPath &&
+            (normFile.startsWith(normFolder.endsWith('/') ? normFolder : normFolder + '/') || normFile === normFolder)
+
+          if (inFocusedFolder && ArchiveUniquePackagesAddon.isNonHubPackage(fn, replaceableSet)) {
+            if (nonHubDir) {
+              const rareDepsDir = join(nonHubDir, 'Rare Dependencies')
+              const relocRes = await ArchiveUniquePackagesAddon.relocateNonHubPackage(pkg, fn, rareDepsDir)
+              if (relocRes.ok) continue
+            }
+          } else if (nonHubDir && ArchiveUniquePackagesAddon.isNonHubPackage(fn, replaceableSet)) {
+            const relocRes = await ArchiveUniquePackagesAddon.relocateNonHubPackage(pkg, fn, nonHubDir)
+            if (relocRes.ok) continue
+          }
+        }
+        // [AddOn] PackageSorting_End
+
         await unlinkPackagePhysicalAndAliases(pkg, fn)
         deletePackage(fn)
       }
