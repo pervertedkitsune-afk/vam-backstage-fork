@@ -22,8 +22,8 @@ export class PackageSortingAddon {
 
     sorted.sort((a, b) => {
       if (sortColumn === 'package') {
-        const valA = String(a.packageName || displayName(a) || a.filename || '')
-        const valB = String(b.packageName || displayName(b) || b.filename || '')
+        const valA = String(a.packageName || a.title || displayName(a) || '')
+        const valB = String(b.packageName || b.title || displayName(b) || '')
         return valA.localeCompare(valB) * dir
       } else if (sortColumn === 'author') {
         const valA = String(a.creator || '')
@@ -50,12 +50,10 @@ export class PackageSortingAddon {
 
     sorted.sort((a, b) => {
       if (sortColumn === 'package') {
-        const valA = String(
-          (a.sourcePackage ?? a.package)?.packageName || a.packageFilename || contentPackageLabel(a) || '',
-        )
-        const valB = String(
-          (b.sourcePackage ?? b.package)?.packageName || b.packageFilename || contentPackageLabel(b) || '',
-        )
+        const pkgA = a.sourcePackage ?? a.package
+        const pkgB = b.sourcePackage ?? b.package
+        const valA = String(pkgA?.packageName || pkgA?.title || contentPackageLabel(a) || '')
+        const valB = String(pkgB?.packageName || pkgB?.title || contentPackageLabel(b) || '')
         return valA.localeCompare(valB) * dir
       } else if (sortColumn === 'author') {
         const authorA = String((a.sourcePackage ?? a.package)?.creator || a.creator || '')

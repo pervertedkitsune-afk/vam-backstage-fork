@@ -677,7 +677,15 @@ export default function ContentView({ onNavigate, navContext }) {
         (b.fileMtime || b.package?.firstSeenAt || 0) - (a.fileMtime || a.package?.firstSeenAt || 0) ||
         (b.package?.fileMtime || 0) - (a.package?.fileMtime || 0),
       'Name A-Z': (a, b) => (a.displayName || '').localeCompare(b.displayName || ''),
-      Package: (a, b) => contentPackageLabel(a).localeCompare(contentPackageLabel(b)),
+      // [AddOn] PackageSorting_Begin
+      Package: (a, b) => {
+        const pkgA = a.sourcePackage ?? a.package
+        const pkgB = b.sourcePackage ?? b.package
+        const nameA = String(pkgA?.packageName || pkgA?.title || contentPackageLabel(a) || '')
+        const nameB = String(pkgB?.packageName || pkgB?.title || contentPackageLabel(b) || '')
+        return nameA.localeCompare(nameB)
+      },
+      // [AddOn] PackageSorting_End
       // [AddOn] PackageSorting_Begin
       Author: (a, b) => {
         const authorA = String((a.sourcePackage ?? a.package)?.creator || a.creator || '')

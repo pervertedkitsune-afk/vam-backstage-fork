@@ -626,7 +626,12 @@ export default function LibraryView({ onNavigate, navContext }) {
     const sortFns = {
       'Recently installed': (a, b) =>
         (b.firstSeenAt || 0) - (a.firstSeenAt || 0) || (b.fileMtime || 0) - (a.fileMtime || 0),
-      Name: (a, b) => displayName(a).localeCompare(displayName(b)),
+      // [AddOn] PackageSorting_Begin
+      Name: (a, b) =>
+        String(a.packageName || a.title || displayName(a) || '').localeCompare(
+          String(b.packageName || b.title || displayName(b) || ''),
+        ),
+      // [AddOn] PackageSorting_End
       Author: (a, b) =>
         (authorCounts[b.creator] || 0) - (authorCounts[a.creator] || 0) ||
         String(a.creator || '').localeCompare(String(b.creator || '')),
