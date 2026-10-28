@@ -330,6 +330,16 @@ export default function LibraryView({ onNavigate, navContext }) {
   const [detailPanelWidth] = usePersistedPanelWidth('panel_width_detail', { min: 260, max: 500, defaultWidth: 340 })
   const selectingRef = useRef(false)
 
+  // [AddOn] PackageSorting_Begin
+  const handleTableHeaderClick = (col) => {
+    if (col === 'package') {
+      setPrimarySort('Name')
+    } else if (col === 'author') {
+      setPrimarySort('Author')
+    }
+  }
+  // [AddOn] PackageSorting_End
+
   const { authors: authorCounts, tags: tagCounts } = useMemo(() => packageSuggestionCounts(packages), [packages])
 
   useEffect(() => {
@@ -616,7 +626,12 @@ export default function LibraryView({ onNavigate, navContext }) {
     const sortFns = {
       'Recently installed': (a, b) =>
         (b.firstSeenAt || 0) - (a.firstSeenAt || 0) || (b.fileMtime || 0) - (a.fileMtime || 0),
-      Name: (a, b) => displayName(a).localeCompare(displayName(b)),
+      // [AddOn] PackageSorting_Begin
+      Name: (a, b) =>
+        String(a.packageName || a.title || displayName(a) || '').localeCompare(
+          String(b.packageName || b.title || displayName(b) || ''),
+        ),
+      // [AddOn] PackageSorting_End
       Author: (a, b) =>
         (authorCounts[b.creator] || 0) - (authorCounts[a.creator] || 0) ||
         String(a.creator || '').localeCompare(String(b.creator || '')),
@@ -1403,8 +1418,24 @@ export default function LibraryView({ onNavigate, navContext }) {
           <div className="flex-1 flex flex-col overflow-hidden p-4">
             <div className="border border-border rounded-lg overflow-hidden flex flex-col flex-1 min-h-0">
               <div className={`bg-elevated ${SECTION_LABEL} flex border-b border-border shrink-0`}>
-                <div className="flex-3 py-2 px-3 font-medium">Package</div>
-                <div className="flex-2 py-2 px-3 font-medium">Author</div>
+                {/* [AddOn] PackageSorting_Begin */}
+                <button
+                  type="button"
+                  onClick={() => handleTableHeaderClick('package')}
+                  className="flex-3 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+                >
+                  Package
+                  {primarySort === 'Name' && <ChevronUp size={12} className="shrink-0" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTableHeaderClick('author')}
+                  className="flex-2 py-2 px-3 font-medium text-left flex items-center gap-1 cursor-pointer hover:text-text-primary transition-colors"
+                >
+                  Author
+                  {primarySort === 'Author' && <ChevronUp size={12} className="shrink-0" />}
+                </button>
+                {/* [AddOn] PackageSorting_End */}
                 {selectedTypes.length !== 1 && <div className="flex-1 py-2 px-3 font-medium">Type</div>}
                 <div className="flex-1 py-2 px-3 font-medium">Status</div>
                 <div className="flex-1 py-2 px-3 font-medium">Size</div>

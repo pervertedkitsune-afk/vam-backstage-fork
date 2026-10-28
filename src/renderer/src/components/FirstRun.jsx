@@ -17,6 +17,9 @@ import { Dialog, DialogOverlay, DialogPortal } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import { useDepHideOfferStore } from '@/stores/useDepHideOfferStore'
+// [AddOn] PackageSorting_Begin
+import { PackageSortingAddon } from '@/addons/packageSortingAddon'
+// [AddOn] PackageSorting_End
 
 /** Relative time/effort per phase (any positive scale; normalized by sum). Easier to extend than % that must total 100. */
 const SCAN_STEPS = [
@@ -111,6 +114,9 @@ export default function FirstRun({ onDone }) {
     try {
       const scanResult = await window.api.scan.start()
       cleanup()
+      // [AddOn] PackageSorting_Begin
+      PackageSortingAddon.triggerRescanSort()
+      // [AddOn] PackageSorting_End
 
       const skipped = Array.isArray(scanResult?.unreadable) ? scanResult.unreadable : []
       setScanSkippedFiles(skipped)
