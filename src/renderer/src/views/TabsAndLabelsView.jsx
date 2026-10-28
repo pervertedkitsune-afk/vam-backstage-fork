@@ -180,77 +180,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
-        {/* Section 1: Tags */}
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-            <div>
-              <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-                <span>Tags</span>
-                <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
-                  {allTagCounts.length} total
-                </span>
-              </h2>
-              <p className="text-xs text-text-secondary">Package hub tags extracted from package metadata.</p>
-            </div>
-
-            {/* Tag Filter Dropdown (items with > 1 package) */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-text-tertiary">Filter Tag (&gt;1 pkg):</label>
-              <select
-                value={selectedTagDropdown}
-                onChange={(e) => setSelectedTagDropdown(e.target.value)}
-                className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
-              >
-                <option value="">All Tags</option>
-                {dropdownTags.map(({ tag, count }) => (
-                  <option key={tag} value={tag}>
-                    {tag} ({count})
-                  </option>
-                ))}
-              </select>
-              {selectedTagDropdown && (
-                <button onClick={() => setSelectedTagDropdown('')} className="text-xs text-accent-blue hover:underline">
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-
-          {filteredTags.length === 0 ? (
-            <div className="p-6 text-center text-xs text-text-tertiary bg-surface/50 rounded-lg border border-border/40">
-              No tags match the criteria.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-              {filteredTags.map(({ tag, count }) => (
-                <button
-                  key={tag}
-                  onClick={() => handleNavigateTag(tag)}
-                  className="flex items-center justify-between p-2.5 bg-surface hover:bg-hover border border-border/70 rounded-lg text-left transition-all duration-150 group cursor-pointer"
-                >
-                  <span className="text-xs font-medium text-text-primary truncate pr-2 group-hover:text-accent-blue">
-                    {tag}
-                  </span>
-                  <span className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 group-hover:bg-accent-blue/10 group-hover:text-accent-blue">
-                    {count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Divider between Tags and Labels */}
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-border-bright/60" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase tracking-wider">
-            <span className="bg-base px-3 text-text-tertiary font-semibold">Labels &amp; Tabs</span>
-          </div>
-        </div>
-
-        {/* Section 2: Labels */}
+        {/* Section 1: Labels */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
             <div>
@@ -381,6 +311,76 @@ export default function TabsAndLabelsView({ onNavigate }) {
                   </LabelManageMenu>
                 )
               })}
+            </div>
+          )}
+        </section>
+
+        {/* Divider between Labels and Tags */}
+        <div className="relative py-2">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-border-bright/60" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase tracking-wider">
+            <span className="bg-base px-3 text-text-tertiary font-semibold">Tags</span>
+          </div>
+        </div>
+
+        {/* Section 2: Tags */}
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+            <div>
+              <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+                <span>Tags</span>
+                <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
+                  {allTagCounts.length} total
+                </span>
+              </h2>
+              <p className="text-xs text-text-secondary">Package hub tags extracted from package metadata.</p>
+            </div>
+
+            {/* Tag Filter Dropdown (items with > 1 package) */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-text-tertiary">Filter Tag (&gt;1 pkg):</label>
+              <select
+                value={selectedTagDropdown}
+                onChange={(e) => setSelectedTagDropdown(e.target.value)}
+                className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
+              >
+                <option value="">All Tags</option>
+                {dropdownTags.map(({ tag, count }) => (
+                  <option key={tag} value={tag}>
+                    {tag} ({count})
+                  </option>
+                ))}
+              </select>
+              {selectedTagDropdown && (
+                <button onClick={() => setSelectedTagDropdown('')} className="text-xs text-accent-blue hover:underline">
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filteredTags.length === 0 ? (
+            <div className="p-6 text-center text-xs text-text-tertiary bg-surface/50 rounded-lg border border-border/40">
+              No tags match the criteria.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+              {filteredTags.map(({ tag, count }) => (
+                <button
+                  key={tag}
+                  onClick={() => handleNavigateTag(tag)}
+                  className="flex items-center justify-between p-2.5 bg-surface hover:bg-hover border border-border/70 rounded-lg text-left transition-all duration-150 group cursor-pointer"
+                >
+                  <span className="text-xs font-medium text-text-primary truncate pr-2 group-hover:text-accent-blue">
+                    {tag}
+                  </span>
+                  <span className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 group-hover:bg-accent-blue/10 group-hover:text-accent-blue">
+                    {count}
+                  </span>
+                </button>
+              ))}
             </div>
           )}
         </section>
