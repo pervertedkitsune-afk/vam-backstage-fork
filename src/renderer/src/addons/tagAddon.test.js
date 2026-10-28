@@ -1,0 +1,66 @@
+// [AddOn] TagAddon_Begin
+import { describe, it, expect } from 'vitest'
+import { TagAddon } from './tagAddon'
+import { labelColor, LABEL_PALETTE } from '../lib/labels'
+
+describe('TagAddon', () => {
+  it('calculates tag package counts correctly', () => {
+    const packages = [
+      { filename: 'a.var', hubTags: 'clothing, hair, nsfw' },
+      { filename: 'b.var', hubTags: 'clothing, pose' },
+      { filename: 'c.var', hubTags: 'hair' },
+    ]
+
+    const counts = TagAddon.getTagCounts(packages)
+    expect(counts).toEqual([
+      { tag: 'clothing', count: 2 },
+      { tag: 'hair', count: 2 },
+      { tag: 'nsfw', count: 1 },
+      { tag: 'pose', count: 1 },
+    ])
+  })
+
+  it('filters tags for dropdown selection (only count > 1)', () => {
+    const tagList = [
+      { tag: 'clothing', count: 2 },
+      { tag: 'hair', count: 2 },
+      { tag: 'nsfw', count: 1 },
+      { tag: 'pose', count: 1 },
+    ]
+
+    const filtered = TagAddon.filterDropdownTags(tagList)
+    expect(filtered).toEqual([
+      { tag: 'clothing', count: 2 },
+      { tag: 'hair', count: 2 },
+    ])
+  })
+
+  it('filters labels for dropdown selection (only packageCount > 1)', () => {
+    const labels = [
+      { id: 1, name: 'Favs', packageCount: 5 },
+      { id: 2, name: 'Single', packageCount: 1 },
+      { id: 3, name: 'Zero', packageCount: 0 },
+      { id: 4, name: 'Popular', packageCount: 2 },
+    ]
+
+    const filtered = TagAddon.filterDropdownLabels(labels)
+    expect(filtered).toEqual([
+      { id: 1, name: 'Favs', packageCount: 5 },
+      { id: 4, name: 'Popular', packageCount: 2 },
+    ])
+  })
+})
+
+describe('labelColor with custom hex colors and expanded palette', () => {
+  it('resolves custom hex strings', () => {
+    const customLabel = { id: 1, color: '#ff0055' }
+    expect(labelColor(customLabel)).toBe('#ff0055')
+  })
+
+  it('resolves expanded computer design palette entries', () => {
+    const crtAmberLabel = { id: 2, color: 11 }
+    expect(labelColor(crtAmberLabel)).toBe(LABEL_PALETTE[11].hex)
+    expect(LABEL_PALETTE[11].name).toBe('CRT Amber')
+  })
+})
+// [AddOn] TagAddon_End

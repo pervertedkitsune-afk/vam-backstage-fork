@@ -48,6 +48,18 @@ export const LABEL_PALETTE = [
   { hex: '#b78a9a', name: 'Mauve', soft: true }, // 8  replaces rose-pink
   { hex: '#f87171', name: 'Red' }, // 9
   { hex: '#7a8da8', name: 'Slate', soft: true }, // 10 new soft cool
+  // [AddOn] TagAddon_Begin
+  { hex: '#ffb300', name: 'CRT Amber' }, // 11
+  { hex: '#00e5ff', name: 'Digital Cyan' }, // 12
+  { hex: '#6366f1', name: 'Retro Indigo' }, // 13
+  { hex: '#ec4899', name: 'Cyber Pink' }, // 14
+  { hex: '#10b981', name: 'Vintage Green' }, // 15
+  { hex: '#eab308', name: 'Solar Yellow' }, // 16
+  { hex: '#8b5cf6', name: 'Neon Purple' }, // 17
+  { hex: '#06b6d4', name: 'Ocean Teal' }, // 18
+  { hex: '#f97316', name: 'Sunset Orange' }, // 19
+  { hex: '#64748b', name: 'Modern Slate', soft: true }, // 20
+  // [AddOn] TagAddon_End
 ]
 
 // Neutral chrome gray for the "None" dot. Deliberately near-zero chroma and
@@ -78,6 +90,16 @@ function paletteIndexFromId(id) {
 export function labelColor(label) {
   if (!label) return LABEL_NONE_COLOR
   if (label.color === null) return LABEL_NONE_COLOR
+  // [AddOn] TagAddon_Begin
+  if (typeof label.color === 'string') {
+    if (label.color.startsWith('#')) return label.color
+    const parsed = parseInt(label.color, 10)
+    if (!isNaN(parsed) && parsed >= 0 && parsed < LABEL_PALETTE.length) {
+      return LABEL_PALETTE[parsed].hex
+    }
+    return label.color
+  }
+  // [AddOn] TagAddon_End
   if (label.color === COLOR_AUTO || typeof label.color !== 'number')
     return LABEL_PALETTE[paletteIndexFromId(label.id)].hex
   if (label.color >= 0 && label.color < LABEL_PALETTE.length) return LABEL_PALETTE[label.color].hex
