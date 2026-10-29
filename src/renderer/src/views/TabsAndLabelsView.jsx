@@ -1,6 +1,6 @@
 // [AddOn] TagAddon_Begin
 import { useState, useMemo } from 'react'
-import { Search, Plus, Check, X, ArrowRight, Tag } from 'lucide-react'
+import { Search, Plus, Check, X, ArrowRight, Tag, Folder, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from '@/components/Toast'
 import { useLibraryStore } from '@/stores/useLibraryStore'
 import { useLabelsStore } from '@/stores/useLabelsStore'
@@ -14,9 +14,15 @@ export default function TabsAndLabelsView({ onNavigate }) {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [newLabelName, setNewLabelName] = useState('')
+  const [newLabelCategory, setNewLabelCategory] = useState('')
   const [isCreatingLabel, setIsCreatingLabel] = useState(false)
+
   const [editingLabelId, setEditingLabelId] = useState(null)
   const [editingName, setEditingName] = useState('')
+  const [editingCategory, setEditingCategory] = useState('')
+
+  // Collapsed categories map: categoryName -> boolean
+  const [collapsedCategories, setCollapsedCategories] = useState({})
 
   // Dropdown filter selections (only items with >1 package appear in dropdown list)
   const [selectedTagDropdown, setSelectedTagDropdown] = useState('')
@@ -49,19 +55,33 @@ export default function TabsAndLabelsView({ onNavigate }) {
     }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase().trim()
-      list = list.filter((l) => l.name.toLowerCase().includes(q))
+      list = list.filter(
+        (l) => l.name.toLowerCase().includes(q) || (l.category && l.category.toLowerCase().includes(q)),
+      )
     }
     return list
   }, [labels, selectedLabelDropdown, searchTerm])
 
+  // Group labels into Folder Categories
+  const labelCategoryGroups = useMemo(() => TagAddon.groupLabelsByCategory(filteredLabels), [filteredLabels])
+
+  const toggleCategoryCollapse = (catName) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [catName]: !prev[catName],
+    }))
+  }
+
   const handleCreateLabel = async (e) => {
     e?.preventDefault()
-    const trimmed = newLabelName.trim()
-    if (!trimmed) return
+    const trimmedName = newLabelName.trim()
+    const trimmedCat = newLabelCategory.trim()
+    if (!trimmedName) return
     try {
-      await window.api.labels.create({ name: trimmed })
-      toast(`Created label "${trimmed}"`, 'success')
+      await window.api.labels.create({ name: trimmedName, category: trimmedCat || null })
+      toast(`Created label "${trimmedName}"`, 'success')
       setNewLabelName('')
+      setNewLabelCategory('')
       setIsCreatingLabel(false)
     } catch (err) {
       toast(`Failed to create label: ${err.message}`, 'warning')
@@ -71,19 +91,21 @@ export default function TabsAndLabelsView({ onNavigate }) {
   const handleStartRename = (label) => {
     setEditingLabelId(label.id)
     setEditingName(label.name)
+    setEditingCategory(label.category || '')
   }
 
   const handleSaveRename = async (id) => {
-    const trimmed = editingName.trim()
-    if (!trimmed) {
+    const trimmedName = editingName.trim()
+    const trimmedCat = editingCategory.trim()
+    if (!trimmedName) {
       setEditingLabelId(null)
       return
     }
     try {
-      await window.api.labels.rename({ id, name: trimmed })
-      toast(`Renamed label to "${trimmed}"`, 'success')
+      await window.api.labels.rename({ id, name: trimmedName, category: trimmedCat || null })
+      toast(`Updated label "${trimmedName}"`, 'success')
     } catch (err) {
-      toast(`Failed to rename label: ${err.message}`, 'warning')
+      toast(`Failed to update label: ${err.message}`, 'warning')
     } finally {
       setEditingLabelId(null)
     }
@@ -149,14 +171,21 @@ export default function TabsAndLabelsView({ onNavigate }) {
               New Label
             </button>
           ) : (
-            <form onSubmit={handleCreateLabel} className="flex items-center gap-1.5">
+            <form onSubmit={handleCreateLabel} className="flex items-center gap-1.5 flex-wrap">
               <input
                 type="text"
                 autoFocus
                 placeholder="Label name..."
                 value={newLabelName}
                 onChange={(e) => setNewLabelName(e.target.value)}
-                className="bg-elevated border border-accent-blue rounded-md px-2.5 py-1.5 text-xs text-text-primary focus:outline-none"
+                className="bg-elevated border border-accent-blue rounded-md px-2.5 py-1.5 text-xs text-text-primary focus:outline-none w-32"
+              />
+              <input
+                type="text"
+                placeholder="Category (optional)..."
+                value={newLabelCategory}
+                onChange={(e) => setNewLabelCategory(e.target.value)}
+                className="bg-elevated border border-border rounded-md px-2.5 py-1.5 text-xs text-text-primary focus:outline-none w-36"
               />
               <button
                 type="submit"
@@ -190,7 +219,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
                   {labels.length} total
                 </span>
               </h2>
-              <p className="text-xs text-text-secondary">User-defined label tabs with customizable colors.</p>
+              <p className="text-xs text-text-secondary">User-defined label tabs organized into folder categories.</p>
             </div>
 
             {/* Label Filter Dropdown (items with > 1 package) */}
@@ -204,6 +233,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 <option value="">All Labels</option>
                 {dropdownLabels.map((lbl) => (
                   <option key={lbl.id} value={lbl.id}>
+                    {lbl.category ? `[${lbl.category}] ` : ''}
                     {lbl.name} ({lbl.packageCount || 0})
                   </option>
                 ))}
@@ -224,91 +254,136 @@ export default function TabsAndLabelsView({ onNavigate }) {
               No labels found. Click &quot;New Label&quot; to create one.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filteredLabels.map((label) => {
-                const colorHex = labelColor(label)
-                const isEditing = editingLabelId === label.id
+            <div className="space-y-6">
+              {labelCategoryGroups.map(({ category, labels: groupLabels }) => {
+                const isCollapsed = !!collapsedCategories[category]
+                const categoryTotalPkgs = groupLabels.reduce((sum, l) => sum + (l.packageCount || 0), 0)
+
                 return (
-                  <LabelManageMenu
-                    key={label.id}
-                    label={label}
-                    applicationCount={(label.packageCount || 0) + (label.contentCount || 0)}
-                    onStartRename={() => handleStartRename(label)}
-                  >
-                    <div className="flex items-center justify-between p-3 bg-surface hover:bg-hover border border-border rounded-lg transition-all group">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                        {/* Custom Color Wheel / Color Dot */}
-                        <div className="relative group/color shrink-0">
-                          <span
-                            className="w-3.5 h-3.5 rounded-full inline-block border border-white/20 shadow-xs"
-                            style={{ backgroundColor: colorHex }}
-                          />
-                          <input
-                            type="color"
-                            value={colorHex.startsWith('#') ? colorHex : '#ef5bed'}
-                            onChange={(e) => handleRecolor(label.id, e.target.value)}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                            title="Change color wheel"
-                          />
-                        </div>
-
-                        {/* Label Name */}
-                        {isEditing ? (
-                          <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <input
-                              type="text"
-                              autoFocus
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveRename(label.id)
-                                if (e.key === 'Escape') setEditingLabelId(null)
-                              }}
-                              className="w-full bg-elevated border border-accent-blue rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none"
-                            />
-                            <button
-                              onClick={() => handleSaveRename(label.id)}
-                              className="text-accent-blue hover:text-white p-0.5"
-                            >
-                              <Check size={12} />
-                            </button>
-                            <button
-                              onClick={() => setEditingLabelId(null)}
-                              className="text-text-tertiary hover:text-text-primary p-0.5"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
+                  <div key={category} className="border border-border/60 rounded-xl overflow-hidden bg-surface/30">
+                    {/* Folder Category Header */}
+                    <button
+                      onClick={() => toggleCategoryCollapse(category)}
+                      className="w-full flex items-center justify-between p-3 bg-surface hover:bg-hover border-b border-border/40 text-left transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 font-semibold text-xs text-text-primary">
+                        {isCollapsed ? (
+                          <ChevronRight size={14} className="text-text-tertiary" />
                         ) : (
-                          <button
-                            onClick={() => handleNavigateLabel(label.id)}
-                            className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
-                            title={`Filter Library by "${label.name}"`}
-                          >
-                            {label.name}
-                          </button>
+                          <ChevronDown size={14} className="text-text-tertiary" />
                         )}
+                        <Folder size={15} className="text-accent-blue" />
+                        <span>{category}</span>
                       </div>
 
-                      {/* Package Count Badge & Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full"
-                          title={`${label.packageCount || 0} packages, ${label.contentCount || 0} contents`}
-                        >
-                          {label.packageCount || 0}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full border border-border/40">
+                          {groupLabels.length} {groupLabels.length === 1 ? 'label' : 'labels'} ({categoryTotalPkgs}{' '}
+                          pkgs)
                         </span>
-
-                        <button
-                          onClick={() => handleNavigateLabel(label.id)}
-                          className="p-1 text-text-tertiary hover:text-accent-blue transition-colors cursor-pointer"
-                          title="Open in Library"
-                        >
-                          <ArrowRight size={13} />
-                        </button>
                       </div>
-                    </div>
-                  </LabelManageMenu>
+                    </button>
+
+                    {/* Category Label Grid */}
+                    {!isCollapsed && (
+                      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {groupLabels.map((label) => {
+                          const colorHex = labelColor(label)
+                          const isEditing = editingLabelId === label.id
+                          return (
+                            <LabelManageMenu
+                              key={label.id}
+                              label={label}
+                              applicationCount={(label.packageCount || 0) + (label.contentCount || 0)}
+                              onStartRename={() => handleStartRename(label)}
+                            >
+                              <div className="flex items-center justify-between p-3 bg-surface hover:bg-hover border border-border rounded-lg transition-all group">
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                                  {/* Custom Color Wheel / Color Dot */}
+                                  <div className="relative group/color shrink-0">
+                                    <span
+                                      className="w-3.5 h-3.5 rounded-full inline-block border border-white/20 shadow-xs"
+                                      style={{ backgroundColor: colorHex }}
+                                    />
+                                    <input
+                                      type="color"
+                                      value={colorHex.startsWith('#') ? colorHex : '#ef5bed'}
+                                      onChange={(e) => handleRecolor(label.id, e.target.value)}
+                                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                      title="Change color wheel"
+                                    />
+                                  </div>
+
+                                  {/* Label Name & Category Edit */}
+                                  {isEditing ? (
+                                    <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        placeholder="Label name..."
+                                        value={editingName}
+                                        onChange={(e) => setEditingName(e.target.value)}
+                                        className="w-full bg-elevated border border-accent-blue rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none"
+                                      />
+                                      <input
+                                        type="text"
+                                        placeholder="Category..."
+                                        value={editingCategory}
+                                        onChange={(e) => setEditingCategory(e.target.value)}
+                                        className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                      />
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        <button
+                                          onClick={() => handleSaveRename(label.id)}
+                                          className="text-xs bg-accent-blue text-white px-2 py-0.5 rounded cursor-pointer"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingLabelId(null)}
+                                          className="text-xs bg-surface border border-border text-text-tertiary px-2 py-0.5 rounded cursor-pointer"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleNavigateLabel(label.id)}
+                                      className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
+                                      title={`Filter Library by "${label.name}"`}
+                                    >
+                                      {label.name}
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Package Count Badge & Actions */}
+                                {!isEditing && (
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span
+                                      className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full"
+                                      title={`${label.packageCount || 0} packages, ${label.contentCount || 0} contents`}
+                                    >
+                                      {label.packageCount || 0}
+                                    </span>
+
+                                    <button
+                                      onClick={() => handleNavigateLabel(label.id)}
+                                      className="p-1 text-text-tertiary hover:text-accent-blue transition-colors cursor-pointer"
+                                      title="Open in Library"
+                                    >
+                                      <ArrowRight size={13} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </LabelManageMenu>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>

@@ -480,8 +480,17 @@ export function buildFromDb({ skipGraph = false } = {}) {
 function buildLabels() {
   const labels = getAllLabels()
   labelIndex = new Map()
+  // [AddOn] TagAddon_Begin
   for (const l of labels)
-    labelIndex.set(l.id, { id: l.id, name: l.name, color: l.color, packageCount: 0, contentCount: 0 })
+    labelIndex.set(l.id, {
+      id: l.id,
+      name: l.name,
+      color: l.color,
+      category: l.category ?? null,
+      packageCount: 0,
+      contentCount: 0,
+    })
+  // [AddOn] TagAddon_End
 
   labelsByPackage = new Map()
   for (const row of getAllLabelPackages()) {
@@ -1505,8 +1514,20 @@ export function refreshLabelMeta() {
     if (existing) {
       existing.name = l.name
       existing.color = l.color
+      // [AddOn] TagAddon_Begin
+      existing.category = l.category ?? null
+      // [AddOn] TagAddon_End
     } else {
-      labelIndex.set(l.id, { id: l.id, name: l.name, color: l.color, packageCount: 0, contentCount: 0 })
+      // [AddOn] TagAddon_Begin
+      labelIndex.set(l.id, {
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        category: l.category ?? null,
+        packageCount: 0,
+        contentCount: 0,
+      })
+      // [AddOn] TagAddon_End
     }
   }
   for (const id of [...labelIndex.keys()]) if (!seen.has(id)) labelIndex.delete(id)

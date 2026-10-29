@@ -49,6 +49,34 @@ describe('TagAddon', () => {
       { id: 4, name: 'Popular', packageCount: 2 },
     ])
   })
+
+  it('groups labels by folder category correctly', () => {
+    const labels = [
+      { id: 1, name: 'Project A', category: 'Work' },
+      { id: 2, name: 'Project B', category: 'Work' },
+      { id: 3, name: 'Favs', category: null },
+      { id: 4, name: 'Personal 1', category: 'Personal' },
+    ]
+
+    const groups = TagAddon.groupLabelsByCategory(labels)
+    expect(groups).toEqual([
+      {
+        category: 'Personal',
+        labels: [{ id: 4, name: 'Personal 1', category: 'Personal' }],
+      },
+      {
+        category: 'Work',
+        labels: [
+          { id: 1, name: 'Project A', category: 'Work' },
+          { id: 2, name: 'Project B', category: 'Work' },
+        ],
+      },
+      {
+        category: 'Uncategorized',
+        labels: [{ id: 3, name: 'Favs', category: null }],
+      },
+    ])
+  })
 })
 
 describe('labelColor with custom hex colors and expanded palette', () => {

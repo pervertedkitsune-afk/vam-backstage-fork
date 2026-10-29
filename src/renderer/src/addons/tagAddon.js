@@ -41,5 +41,35 @@ export class TagAddon {
     if (!Array.isArray(labels)) return []
     return labels.filter((label) => (label.packageCount || 0) > 1)
   }
+
+  /**
+   * Group labels by their folder category property.
+   * @param {Array} labels
+   * @returns {Array<{ category: string, labels: Array }>}
+   */
+  static groupLabelsByCategory(labels) {
+    if (!Array.isArray(labels)) return []
+    const groups = new Map()
+
+    for (const label of labels) {
+      if (!label) continue
+      const cat = (label.category || '').trim() || 'Uncategorized'
+      if (!groups.has(cat)) {
+        groups.set(cat, [])
+      }
+      groups.get(cat).push(label)
+    }
+
+    return Array.from(groups.entries())
+      .map(([category, items]) => ({
+        category,
+        labels: items.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+      }))
+      .sort((a, b) => {
+        if (a.category === 'Uncategorized') return 1
+        if (b.category === 'Uncategorized') return -1
+        return a.category.localeCompare(b.category, undefined, { sensitivity: 'base' })
+      })
+  }
 }
 // [AddOn] TagAddon_End
