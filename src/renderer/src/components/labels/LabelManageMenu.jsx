@@ -45,7 +45,9 @@ export function LabelManageMenu({ label, applicationCount = 0, asChild = true, c
     try {
       await window.api.labels.recolor({ id: label.id, color })
     } catch (err) {
-      toast(`Failed to change color: ${err.message}`)
+      // [AddOn] TagAddon_Begin
+      toast(`Failed to change color: ${err.message}`, 'warning')
+      // [AddOn] TagAddon_End
     }
   }
   const handleDelete = async () => {
@@ -53,7 +55,9 @@ export function LabelManageMenu({ label, applicationCount = 0, asChild = true, c
       await window.api.labels.delete({ id: label.id })
       onDeleted?.()
     } catch (err) {
-      toast(`Failed to delete label: ${err.message}`)
+      // [AddOn] TagAddon_Begin
+      toast(`Failed to delete label: ${err.message}`, 'warning')
+      // [AddOn] TagAddon_End
     }
   }
 

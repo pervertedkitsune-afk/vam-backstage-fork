@@ -60,11 +60,11 @@ export default function TabsAndLabelsView({ onNavigate }) {
     if (!trimmed) return
     try {
       await window.api.labels.create({ name: trimmed })
-      toast(`Created label "${trimmed}"`)
+      toast(`Created label "${trimmed}"`, 'success')
       setNewLabelName('')
       setIsCreatingLabel(false)
     } catch (err) {
-      toast(`Failed to create label: ${err.message}`, 'error')
+      toast(`Failed to create label: ${err.message}`, 'warning')
     }
   }
 
@@ -81,9 +81,9 @@ export default function TabsAndLabelsView({ onNavigate }) {
     }
     try {
       await window.api.labels.rename({ id, name: trimmed })
-      toast(`Renamed label to "${trimmed}"`)
+      toast(`Renamed label to "${trimmed}"`, 'success')
     } catch (err) {
-      toast(`Failed to rename label: ${err.message}`, 'error')
+      toast(`Failed to rename label: ${err.message}`, 'warning')
     } finally {
       setEditingLabelId(null)
     }
@@ -93,7 +93,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
     try {
       await window.api.labels.recolor({ id, color })
     } catch (err) {
-      toast(`Failed to recolor label: ${err.message}`, 'error')
+      toast(`Failed to recolor label: ${err.message}`, 'warning')
     }
   }
 
