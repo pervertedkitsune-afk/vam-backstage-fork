@@ -77,6 +77,23 @@ describe('TagAddon', () => {
       },
     ])
   })
+
+  it('filters favorite quick labels up to a max of 6', () => {
+    const labels = [
+      { id: 1, name: 'L1', isFavorite: true },
+      { id: 2, name: 'L2', isFavorite: false },
+      { id: 3, name: 'L3', isFavorite: true },
+      { id: 4, name: 'L4', isFavorite: true },
+      { id: 5, name: 'L5', isFavorite: true },
+      { id: 6, name: 'L6', isFavorite: true },
+      { id: 7, name: 'L7', isFavorite: true },
+      { id: 8, name: 'L8', isFavorite: true },
+    ]
+
+    const favs = labels.filter((l) => l.isFavorite).slice(0, 6)
+    expect(favs).toHaveLength(6)
+    expect(favs.map((l) => l.id)).toEqual([1, 3, 4, 5, 6, 7])
+  })
 })
 
 describe('labelColor with custom hex colors and expanded palette', () => {

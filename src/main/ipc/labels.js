@@ -5,6 +5,7 @@ import {
   recolorLabel,
   // [AddOn] TagAddon_Begin
   setLabelCategory,
+  setLabelFavorite,
   // [AddOn] TagAddon_End
   deleteLabel as dbDeleteLabel,
   applyLabelToPackages as dbApplyLabelToPackages,
@@ -52,6 +53,13 @@ export function registerLabelHandlers() {
 
   ipcMain.handle('labels:set-category', (_, { id, category }) => {
     const updated = setLabelCategory(id, category)
+    refreshLabelMeta()
+    notify('labels:updated')
+    return updated
+  })
+
+  ipcMain.handle('labels:set-favorite', (_, { id, isFavorite }) => {
+    const updated = setLabelFavorite(id, isFavorite)
     refreshLabelMeta()
     notify('labels:updated')
     return updated

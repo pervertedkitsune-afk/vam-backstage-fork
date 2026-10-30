@@ -70,6 +70,9 @@ import { useThumbnail } from '@/hooks/createBlobCacheHook'
 import { useLibraryStore, FILTER_DEFAULTS } from '@/stores/useLibraryStore'
 import { isBulk, soleSelected } from '@/stores/selection'
 import { useLabelsStore } from '@/stores/useLabelsStore'
+// [AddOn] TagAddon_Begin
+import { labelColor } from '@/lib/labels'
+// [AddOn] TagAddon_End
 import { useContentStore } from '@/stores/useContentStore'
 import { lookupDownloadByRef, useDownloadStore } from '@/stores/useDownloadStore'
 import { useWishlistStore } from '@/stores/useWishlistStore'
@@ -320,6 +323,23 @@ export default function LibraryView({ onNavigate, navContext }) {
     collapseSelection,
   } = useLibraryStore()
   const labels = useLabelsStore((s) => s.labels)
+  // [AddOn] TagAddon_Begin
+  const favoriteQuickLabels = useMemo(() => labels.filter((l) => l.isFavorite).slice(0, 6), [labels])
+
+  const toggleQuickLabel = (labelId) => {
+    const current = selectedLabelIds || []
+    const has = current.some((it) => (typeof it === 'object' ? it.value === labelId : it === labelId))
+    if (has) {
+      setSelectedLabelIds(current.filter((it) => (typeof it === 'object' ? it.value !== labelId : it !== labelId)))
+    } else {
+      setSelectedLabelIds([...current, { value: labelId, mode: 'include' }])
+    }
+  }
+
+  const isQuickLabelActive = (labelId) => {
+    return (selectedLabelIds || []).some((it) => (typeof it === 'object' ? it.value === labelId : it === labelId))
+  }
+  // [AddOn] TagAddon_End
   const labelNameById = useMemo(() => {
     const m = new Map()
     for (const l of labels) m.set(l.id, l.name)
@@ -1315,6 +1335,32 @@ export default function LibraryView({ onNavigate, navContext }) {
               </span>
             )}
             <SelectionHint bulkActive={bulkActive} />
+            {/* [AddOn] TagAddon_Begin */}
+            {favoriteQuickLabels.length > 0 && (
+              <div className="flex items-center gap-1.5 ml-3 flex-wrap">
+                {favoriteQuickLabels.map((l) => {
+                  const active = isQuickLabelActive(l.id)
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => toggleQuickLabel(l.id)}
+                      className={cn(
+                        'flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer border',
+                        active
+                          ? 'bg-accent-blue/15 border-accent-blue text-text-primary'
+                          : 'bg-elevated/80 border-border/60 text-text-secondary hover:text-text-primary hover:border-border-bright',
+                      )}
+                      title={`Quick filter by label: ${l.name}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
+                      <span className="truncate max-w-24">{l.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {/* [AddOn] TagAddon_End */}
             <div className="flex-1 min-w-0" />
             {statusFilter !== 'missing' && (
               <div className="flex shrink-0 flex-nowrap items-center gap-2">

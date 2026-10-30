@@ -6,7 +6,7 @@ import { LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME } from '@shared/loca
 
 // [AddOn] DependencySort_notagfilter_Begin
 // [AddOn] TagAddon_Begin
-export const SCHEMA_VERSION = 33
+export const SCHEMA_VERSION = 34
 // [AddOn] TagAddon_End
 // [AddOn] DependencySort_notagfilter_End
 
@@ -161,6 +161,7 @@ export const MIGRATIONS = [
   // [AddOn] DependencySort_notagfilter_End
   // [AddOn] TagAddon_Begin
   [33, applyV33],
+  [34, applyV34],
   // [AddOn] TagAddon_End
 ]
 
@@ -574,6 +575,19 @@ function applyV33() {
     db.exec('ALTER TABLE labels ADD COLUMN category TEXT')
   }
 }
+
+/**
+ * v34 — Label quick filter favorite status.
+ */
+function applyV34() {
+  const cols = db
+    .prepare(`PRAGMA table_info(labels)`)
+    .all()
+    .map((c) => c.name)
+  if (!cols.includes('is_favorite')) {
+    db.exec('ALTER TABLE labels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0')
+  }
+}
 // [AddOn] TagAddon_End
 
 /**
@@ -713,6 +727,7 @@ function createSchema() {
       name TEXT NOT NULL UNIQUE COLLATE NOCASE,
       color INTEGER,
       category TEXT,
+      is_favorite INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
@@ -1754,15 +1769,17 @@ export function transact(fn) {
  */
 // [AddOn] TagAddon_Begin
 export function findOrCreateLabel(name, category = null) {
-  const existing = stmt('SELECT id, name, color, category FROM labels WHERE name = ?').get(name)
+  const existing = stmt('SELECT id, name, color, category, is_favorite FROM labels WHERE name = ?').get(name)
   if (existing) return { ...existing, created: false }
   const cat = category != null && String(category).trim() !== '' ? String(category).trim() : null
   const r = stmt('INSERT INTO labels (name, color, category) VALUES (?, -1, ?)').run(name, cat)
-  return { id: r.lastInsertRowid, name, color: -1, category: cat, created: true }
+  return { id: r.lastInsertRowid, name, color: -1, category: cat, is_favorite: 0, created: true }
 }
 
 export function getAllLabels() {
-  return stmt('SELECT id, name, color, category, created_at FROM labels ORDER BY name COLLATE NOCASE').all()
+  return stmt(
+    'SELECT id, name, color, category, is_favorite, created_at FROM labels ORDER BY name COLLATE NOCASE',
+  ).all()
 }
 
 export function getAllLabelPackages() {
@@ -1774,7 +1791,7 @@ export function getAllLabelContents() {
 }
 
 export function getLabelById(id) {
-  return stmt('SELECT id, name, color, category FROM labels WHERE id = ?').get(id)
+  return stmt('SELECT id, name, color, category, is_favorite FROM labels WHERE id = ?').get(id)
 }
 
 /**
@@ -1801,6 +1818,18 @@ export function renameLabel(id, name, category = undefined) {
 export function setLabelCategory(id, category) {
   const cat = category != null && String(category).trim() !== '' ? String(category).trim() : null
   stmt('UPDATE labels SET category = ? WHERE id = ?').run(cat, id)
+  return getLabelById(id)
+}
+
+export function setLabelFavorite(id, isFavorite) {
+  const fav = isFavorite ? 1 : 0
+  if (fav === 1) {
+    const row = stmt('SELECT COUNT(*) AS count FROM labels WHERE is_favorite = 1 AND id != ?').get(id)
+    if ((row?.count || 0) >= 6) {
+      throw new Error('You can only favorite up to 6 labels. Unfavorite one before favoriting this label.')
+    }
+  }
+  stmt('UPDATE labels SET is_favorite = ? WHERE id = ?').run(fav, id)
   return getLabelById(id)
 }
 // [AddOn] TagAddon_End

@@ -1,6 +1,6 @@
 // [AddOn] TagAddon_Begin
 import { useState, useMemo } from 'react'
-import { Search, Plus, Check, X, ArrowRight, Tag, Folder, ChevronDown, ChevronRight } from 'lucide-react'
+import { Search, Plus, Check, X, ArrowRight, Tag, Folder, ChevronDown, ChevronRight, Star } from 'lucide-react'
 import { toast } from '@/components/Toast'
 import { useLibraryStore } from '@/stores/useLibraryStore'
 import { useLabelsStore } from '@/stores/useLabelsStore'
@@ -34,6 +34,9 @@ export default function TabsAndLabelsView({ onNavigate }) {
   // Filter dropdown options: only ones with > 1 package assigned
   const dropdownTags = useMemo(() => TagAddon.filterDropdownTags(allTagCounts), [allTagCounts])
   const dropdownLabels = useMemo(() => TagAddon.filterDropdownLabels(labels), [labels])
+
+  // Count favorited labels (max 6)
+  const favoriteCount = useMemo(() => labels.filter((l) => l.isFavorite).length, [labels])
 
   // Filtered lists according to top search bar / dropdown
   const filteredTags = useMemo(() => {
@@ -70,6 +73,24 @@ export default function TabsAndLabelsView({ onNavigate }) {
       ...prev,
       [catName]: !prev[catName],
     }))
+  }
+
+  const handleToggleFavorite = async (label) => {
+    const willBeFavorite = !label.isFavorite
+    if (willBeFavorite && favoriteCount >= 6) {
+      toast('You need to unfavorite one before you can favorite this.', 'warning')
+      return
+    }
+    try {
+      await window.api.labels.setFavorite({ id: label.id, isFavorite: willBeFavorite })
+      if (willBeFavorite) {
+        toast(`Added "${label.name}" to quick favorites`, 'success')
+      } else {
+        toast(`Removed "${label.name}" from quick favorites`, 'success')
+      }
+    } catch (err) {
+      toast(err.message || 'You need to unfavorite one before you can favorite this.', 'warning')
+    }
   }
 
   const handleCreateLabel = async (e) => {
@@ -138,7 +159,9 @@ export default function TabsAndLabelsView({ onNavigate }) {
             <Tag className="text-accent-blue" size={22} />
             Tabs and Labels
           </h1>
-          <p className="text-xs text-text-secondary mt-0.5">Manage tags and label tabs for your library packages.</p>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Manage tags and label tabs for your library packages. Set up to 6 Favorite labels for top bar quick access.
+          </p>
         </div>
 
         {/* Toolbar & Search Controls */}
@@ -218,8 +241,14 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
                   {labels.length} total
                 </span>
+                <span className="text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
+                  <Star size={11} className="fill-amber-500" />
+                  {favoriteCount}/6 Favorites
+                </span>
               </h2>
-              <p className="text-xs text-text-secondary">User-defined label tabs organized into folder categories.</p>
+              <p className="text-xs text-text-secondary">
+                User-defined label tabs. Click the star to set up to 6 quick filter favorites for the top bar.
+              </p>
             </div>
 
             {/* Label Filter Dropdown (items with > 1 package) */}
@@ -358,9 +387,24 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                   )}
                                 </div>
 
-                                {/* Package Count Badge & Actions */}
+                                {/* Actions: Star Favorite + Package Count + Arrow */}
                                 {!isEditing && (
-                                  <div className="flex items-center gap-2 shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {/* Star Button to toggle Favorite */}
+                                    <button
+                                      onClick={() => handleToggleFavorite(label)}
+                                      className={`p-1 rounded hover:bg-elevated transition-colors cursor-pointer ${
+                                        label.isFavorite ? 'text-amber-500' : 'text-text-tertiary hover:text-amber-500'
+                                      }`}
+                                      title={
+                                        label.isFavorite
+                                          ? 'Remove from top bar quick favorites'
+                                          : 'Add to top bar quick favorites (max 6)'
+                                      }
+                                    >
+                                      <Star size={13} className={label.isFavorite ? 'fill-amber-500' : ''} />
+                                    </button>
+
                                     <span
                                       className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full"
                                       title={`${label.packageCount || 0} packages, ${label.contentCount || 0} contents`}

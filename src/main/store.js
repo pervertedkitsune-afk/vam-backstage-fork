@@ -487,6 +487,7 @@ function buildLabels() {
       name: l.name,
       color: l.color,
       category: l.category ?? null,
+      isFavorite: !!l.is_favorite,
       packageCount: 0,
       contentCount: 0,
     })
@@ -1516,6 +1517,7 @@ export function refreshLabelMeta() {
       existing.color = l.color
       // [AddOn] TagAddon_Begin
       existing.category = l.category ?? null
+      existing.isFavorite = !!l.is_favorite
       // [AddOn] TagAddon_End
     } else {
       // [AddOn] TagAddon_Begin
@@ -1524,6 +1526,7 @@ export function refreshLabelMeta() {
         name: l.name,
         color: l.color,
         category: l.category ?? null,
+        isFavorite: !!l.is_favorite,
         packageCount: 0,
         contentCount: 0,
       })
