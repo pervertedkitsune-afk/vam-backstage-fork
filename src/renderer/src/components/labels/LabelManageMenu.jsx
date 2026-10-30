@@ -45,7 +45,9 @@ export function LabelManageMenu({ label, applicationCount = 0, asChild = true, c
     try {
       await window.api.labels.recolor({ id: label.id, color })
     } catch (err) {
-      toast(`Failed to change color: ${err.message}`)
+      // [AddOn] TagAddon_Begin
+      toast(`Failed to change color: ${err.message}`, 'warning')
+      // [AddOn] TagAddon_End
     }
   }
   const handleDelete = async () => {
@@ -53,7 +55,9 @@ export function LabelManageMenu({ label, applicationCount = 0, asChild = true, c
       await window.api.labels.delete({ id: label.id })
       onDeleted?.()
     } catch (err) {
-      toast(`Failed to delete label: ${err.message}`)
+      // [AddOn] TagAddon_Begin
+      toast(`Failed to delete label: ${err.message}`, 'warning')
+      // [AddOn] TagAddon_End
     }
   }
 
@@ -100,6 +104,30 @@ export function LabelManageMenu({ label, applicationCount = 0, asChild = true, c
                   {currentColor === i && <Check size={11} className="ml-auto" />}
                 </ContextMenuItem>
               ))}
+              {/* [AddOn] TagAddon_Begin */}
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="flex items-center justify-between gap-2 cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={
+                      typeof currentColor === 'string' && currentColor.startsWith('#')
+                        ? currentColor
+                        : labelColor(label) || '#ef5bed'
+                    }
+                    onChange={(e) => handleRecolor(e.target.value)}
+                    className="w-4 h-4 p-0 border-0 rounded cursor-pointer bg-transparent"
+                  />
+                  <span>Custom Color</span>
+                </div>
+                {typeof currentColor === 'string' && currentColor.startsWith('#') && (
+                  <Check size={11} className="ml-auto text-accent-blue" />
+                )}
+              </ContextMenuItem>
+              {/* [AddOn] TagAddon_End */}
             </ContextMenuSubContent>
           </ContextMenuSub>
 

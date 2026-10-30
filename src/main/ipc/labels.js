@@ -3,6 +3,10 @@ import {
   findOrCreateLabel,
   renameLabel,
   recolorLabel,
+  // [AddOn] TagAddon_Begin
+  setLabelCategory,
+  setLabelFavorite,
+  // [AddOn] TagAddon_End
   deleteLabel as dbDeleteLabel,
   applyLabelToPackages as dbApplyLabelToPackages,
   removeLabelFromPackages as dbRemoveLabelFromPackages,
@@ -28,10 +32,11 @@ export function registerLabelHandlers() {
     return getLabelList()
   })
 
-  ipcMain.handle('labels:create', (_, { name }) => {
+  // [AddOn] TagAddon_Begin
+  ipcMain.handle('labels:create', (_, { name, category }) => {
     const trimmed = String(name ?? '').trim()
     if (!trimmed) throw new Error('Label name cannot be empty')
-    const result = findOrCreateLabel(trimmed)
+    const result = findOrCreateLabel(trimmed, category)
     if (result.created) {
       refreshLabelMeta()
       notify('labels:updated')
@@ -39,12 +44,27 @@ export function registerLabelHandlers() {
     return result
   })
 
-  ipcMain.handle('labels:rename', (_, { id, name }) => {
-    const updated = renameLabel(id, name)
+  ipcMain.handle('labels:rename', (_, { id, name, category }) => {
+    const updated = renameLabel(id, name, category)
     refreshLabelMeta()
     notify('labels:updated')
     return updated
   })
+
+  ipcMain.handle('labels:set-category', (_, { id, category }) => {
+    const updated = setLabelCategory(id, category)
+    refreshLabelMeta()
+    notify('labels:updated')
+    return updated
+  })
+
+  ipcMain.handle('labels:set-favorite', (_, { id, isFavorite }) => {
+    const updated = setLabelFavorite(id, isFavorite)
+    refreshLabelMeta()
+    notify('labels:updated')
+    return updated
+  })
+  // [AddOn] TagAddon_End
 
   ipcMain.handle('labels:recolor', (_, { id, color }) => {
     const updated = recolorLabel(id, color ?? null)

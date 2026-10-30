@@ -28,6 +28,10 @@ export const useLabelsStore = create((set, get) => ({
             p.id === n.id &&
             p.name === n.name &&
             p.color === n.color &&
+            // [AddOn] TagAddon_Begin
+            p.category === n.category &&
+            p.isFavorite === n.isFavorite &&
+            // [AddOn] TagAddon_End
             p.packageCount === n.packageCount &&
             p.contentCount === n.contentCount
           )

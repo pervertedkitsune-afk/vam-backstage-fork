@@ -22,11 +22,17 @@ export function toast(message, type = 'error', duration = 5000) {
 
 const ICON = {
   error: AlertTriangle,
+  // [AddOn] TagAddon_Begin
+  warning: AlertTriangle,
+  // [AddOn] TagAddon_End
   success: CheckCircle,
   info: Info,
 }
 const STYLES = {
   error: 'bg-base/55 border-error/30 text-error',
+  // [AddOn] TagAddon_Begin
+  warning: 'bg-base/55 border-amber-500/30 text-amber-500',
+  // [AddOn] TagAddon_End
   success: 'bg-base/55 border-success/30 text-success',
   info: 'bg-base/55 border-accent-blue/30 text-accent-blue',
 }
