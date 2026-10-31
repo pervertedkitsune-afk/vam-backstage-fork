@@ -95,6 +95,15 @@ export default function TabsAndLabelsView({ onNavigate }) {
     }
   }
 
+  const handleDirectPriorityChange = async (id, value) => {
+    const prio = parseInt(value, 10) || 0
+    try {
+      await window.api.labels.setPriority({ id, priority: prio })
+    } catch (err) {
+      toast(`Failed to set priority: ${err.message}`, 'warning')
+    }
+  }
+
   const handleCreateLabel = async (e) => {
     e?.preventDefault()
     const trimmedName = newLabelName.trim()
@@ -170,7 +179,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
             Tabs and Labels
           </h1>
           <p className="text-xs text-text-secondary mt-0.5">
-            Manage tags, folder categories, and label priorities. Higher priority labels show up in front.
+            Manage tags, folder categories, and set label priorities. Higher priority labels show up in front.
           </p>
         </div>
 
@@ -406,26 +415,33 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                       </div>
                                     </div>
                                   ) : (
-                                    <div className="flex flex-col min-w-0">
-                                      <button
-                                        onClick={() => handleNavigateLabel(label.id)}
-                                        className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
-                                        title={`Filter Library by "${label.name}"`}
-                                      >
-                                        {label.name}
-                                      </button>
-                                      {label.priority !== 0 && (
-                                        <span className="text-[10px] text-text-tertiary font-mono">
-                                          Prio: {label.priority}
-                                        </span>
-                                      )}
-                                    </div>
+                                    <button
+                                      onClick={() => handleNavigateLabel(label.id)}
+                                      className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
+                                      title={`Filter Library by "${label.name}"`}
+                                    >
+                                      {label.name}
+                                    </button>
                                   )}
                                 </div>
 
-                                {/* Actions: Star Favorite + Package Count + Arrow */}
+                                {/* Actions: Priority Setter + Star Favorite + Package Count + Arrow */}
                                 {!isEditing && (
                                   <div className="flex items-center gap-1.5 shrink-0">
+                                    {/* Dedicated Priority Setter Control */}
+                                    <div
+                                      className="flex items-center gap-1 bg-elevated/70 px-1 py-0.5 rounded border border-border/50 text-[10px]"
+                                      title="Set Priority (higher number shows in front)"
+                                    >
+                                      <span className="text-text-tertiary font-medium">Prio</span>
+                                      <input
+                                        type="number"
+                                        value={label.priority || 0}
+                                        onChange={(e) => handleDirectPriorityChange(label.id, e.target.value)}
+                                        className="w-9 bg-surface text-center rounded text-[11px] text-text-primary border border-border/70 focus:outline-none focus:border-accent-blue py-0.2"
+                                      />
+                                    </div>
+
                                     {/* Star Button to toggle Favorite */}
                                     <button
                                       onClick={() => handleToggleFavorite(label)}
