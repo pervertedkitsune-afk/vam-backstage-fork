@@ -1825,8 +1825,8 @@ export function setLabelFavorite(id, isFavorite) {
   const fav = isFavorite ? 1 : 0
   if (fav === 1) {
     const row = stmt('SELECT COUNT(*) AS count FROM labels WHERE is_favorite = 1 AND id != ?').get(id)
-    if ((row?.count || 0) >= 6) {
-      throw new Error('You can only favorite up to 6 labels. Unfavorite one before favoriting this label.')
+    if ((row?.count || 0) >= 8) {
+      throw new Error('You can only favorite up to 8 labels. Unfavorite one before favoriting this label.')
     }
   }
   stmt('UPDATE labels SET is_favorite = ? WHERE id = ?').run(fav, id)

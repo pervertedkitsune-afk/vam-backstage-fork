@@ -78,7 +78,7 @@ describe('TagAddon', () => {
     ])
   })
 
-  it('filters favorite quick labels up to a max of 6', () => {
+  it('filters favorite quick labels up to a max of 8', () => {
     const labels = [
       { id: 1, name: 'L1', isFavorite: true },
       { id: 2, name: 'L2', isFavorite: false },
@@ -88,11 +88,13 @@ describe('TagAddon', () => {
       { id: 6, name: 'L6', isFavorite: true },
       { id: 7, name: 'L7', isFavorite: true },
       { id: 8, name: 'L8', isFavorite: true },
+      { id: 9, name: 'L9', isFavorite: true },
+      { id: 10, name: 'L10', isFavorite: true },
     ]
 
-    const favs = labels.filter((l) => l.isFavorite).slice(0, 6)
-    expect(favs).toHaveLength(6)
-    expect(favs.map((l) => l.id)).toEqual([1, 3, 4, 5, 6, 7])
+    const favs = labels.filter((l) => l.isFavorite).slice(0, 8)
+    expect(favs).toHaveLength(8)
+    expect(favs.map((l) => l.id)).toEqual([1, 3, 4, 5, 6, 7, 8, 9])
   })
 })
 

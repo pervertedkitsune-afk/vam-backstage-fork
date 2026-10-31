@@ -35,7 +35,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
   const dropdownTags = useMemo(() => TagAddon.filterDropdownTags(allTagCounts), [allTagCounts])
   const dropdownLabels = useMemo(() => TagAddon.filterDropdownLabels(labels), [labels])
 
-  // Count favorited labels (max 6)
+  // Count favorited labels (max 8)
   const favoriteCount = useMemo(() => labels.filter((l) => l.isFavorite).length, [labels])
 
   // Filtered lists according to top search bar / dropdown
@@ -77,7 +77,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
 
   const handleToggleFavorite = async (label) => {
     const willBeFavorite = !label.isFavorite
-    if (willBeFavorite && favoriteCount >= 6) {
+    if (willBeFavorite && favoriteCount >= 8) {
       toast('You need to unfavorite one before you can favorite this.', 'warning')
       return
     }
@@ -160,7 +160,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
             Tabs and Labels
           </h1>
           <p className="text-xs text-text-secondary mt-0.5">
-            Manage tags and label tabs for your library packages. Set up to 6 Favorite labels for top bar quick access.
+            Manage tags and label tabs for your library packages. Set up to 8 Favorite labels for top bar quick access.
           </p>
         </div>
 
@@ -243,11 +243,11 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 </span>
                 <span className="text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
                   <Star size={11} className="fill-amber-500" />
-                  {favoriteCount}/6 Favorites
+                  {favoriteCount}/8 Favorites
                 </span>
               </h2>
               <p className="text-xs text-text-secondary">
-                User-defined label tabs. Click the star to set up to 6 quick filter favorites for the top bar.
+                User-defined label tabs. Click the star to set up to 8 quick filter favorites for the top bar.
               </p>
             </div>
 
@@ -399,7 +399,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                       title={
                                         label.isFavorite
                                           ? 'Remove from top bar quick favorites'
-                                          : 'Add to top bar quick favorites (max 6)'
+                                          : 'Add to top bar quick favorites (max 8)'
                                       }
                                     >
                                       <Star size={13} className={label.isFavorite ? 'fill-amber-500' : ''} />

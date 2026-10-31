@@ -324,7 +324,7 @@ export default function LibraryView({ onNavigate, navContext }) {
   } = useLibraryStore()
   const labels = useLabelsStore((s) => s.labels)
   // [AddOn] TagAddon_Begin
-  const favoriteQuickLabels = useMemo(() => labels.filter((l) => l.isFavorite).slice(0, 6), [labels])
+  const favoriteQuickLabels = useMemo(() => labels.filter((l) => l.isFavorite).slice(0, 8), [labels])
 
   const toggleQuickLabel = (labelId) => {
     const current = selectedLabelIds || []
