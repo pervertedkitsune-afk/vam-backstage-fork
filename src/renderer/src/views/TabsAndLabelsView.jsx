@@ -15,11 +15,13 @@ export default function TabsAndLabelsView({ onNavigate }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [newLabelName, setNewLabelName] = useState('')
   const [newLabelCategory, setNewLabelCategory] = useState('')
+  const [newLabelPriority, setNewLabelPriority] = useState(0)
   const [isCreatingLabel, setIsCreatingLabel] = useState(false)
 
   const [editingLabelId, setEditingLabelId] = useState(null)
   const [editingName, setEditingName] = useState('')
   const [editingCategory, setEditingCategory] = useState('')
+  const [editingPriority, setEditingPriority] = useState(0)
 
   // Collapsed categories map: categoryName -> boolean
   const [collapsedCategories, setCollapsedCategories] = useState({})
@@ -62,7 +64,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
         (l) => l.name.toLowerCase().includes(q) || (l.category && l.category.toLowerCase().includes(q)),
       )
     }
-    return list
+    return TagAddon.sortLabelsByPriority(list)
   }, [labels, selectedLabelDropdown, searchTerm])
 
   // Group labels into Folder Categories
@@ -97,12 +99,17 @@ export default function TabsAndLabelsView({ onNavigate }) {
     e?.preventDefault()
     const trimmedName = newLabelName.trim()
     const trimmedCat = newLabelCategory.trim()
+    const prio = parseInt(newLabelPriority, 10) || 0
     if (!trimmedName) return
     try {
-      await window.api.labels.create({ name: trimmedName, category: trimmedCat || null })
+      const res = await window.api.labels.create({ name: trimmedName, category: trimmedCat || null })
+      if (res?.id && prio !== 0) {
+        await window.api.labels.setPriority({ id: res.id, priority: prio })
+      }
       toast(`Created label "${trimmedName}"`, 'success')
       setNewLabelName('')
       setNewLabelCategory('')
+      setNewLabelPriority(0)
       setIsCreatingLabel(false)
     } catch (err) {
       toast(`Failed to create label: ${err.message}`, 'warning')
@@ -113,17 +120,20 @@ export default function TabsAndLabelsView({ onNavigate }) {
     setEditingLabelId(label.id)
     setEditingName(label.name)
     setEditingCategory(label.category || '')
+    setEditingPriority(label.priority || 0)
   }
 
   const handleSaveRename = async (id) => {
     const trimmedName = editingName.trim()
     const trimmedCat = editingCategory.trim()
+    const prio = parseInt(editingPriority, 10) || 0
     if (!trimmedName) {
       setEditingLabelId(null)
       return
     }
     try {
       await window.api.labels.rename({ id, name: trimmedName, category: trimmedCat || null })
+      await window.api.labels.setPriority({ id, priority: prio })
       toast(`Updated label "${trimmedName}"`, 'success')
     } catch (err) {
       toast(`Failed to update label: ${err.message}`, 'warning')
@@ -160,7 +170,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
             Tabs and Labels
           </h1>
           <p className="text-xs text-text-secondary mt-0.5">
-            Manage tags and label tabs for your library packages. Set up to 8 Favorite labels for top bar quick access.
+            Manage tags, folder categories, and label priorities. Higher priority labels show up in front.
           </p>
         </div>
 
@@ -208,7 +218,15 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 placeholder="Category (optional)..."
                 value={newLabelCategory}
                 onChange={(e) => setNewLabelCategory(e.target.value)}
-                className="bg-elevated border border-border rounded-md px-2.5 py-1.5 text-xs text-text-primary focus:outline-none w-36"
+                className="bg-elevated border border-border rounded-md px-2.5 py-1.5 text-xs text-text-primary focus:outline-none w-32"
+              />
+              <input
+                type="number"
+                placeholder="Priority"
+                value={newLabelPriority}
+                onChange={(e) => setNewLabelPriority(e.target.value)}
+                className="bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary focus:outline-none w-18"
+                title="Priority (higher number displays first)"
               />
               <button
                 type="submit"
@@ -247,7 +265,8 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 </span>
               </h2>
               <p className="text-xs text-text-secondary">
-                User-defined label tabs. Click the star to set up to 8 quick filter favorites for the top bar.
+                User-defined label tabs. Set Priority so high priority labels show in front and their colour displays
+                first.
               </p>
             </div>
 
@@ -343,9 +362,9 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                     />
                                   </div>
 
-                                  {/* Label Name & Category Edit */}
+                                  {/* Label Name, Category, Priority Edit */}
                                   {isEditing ? (
-                                    <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                                       <input
                                         type="text"
                                         autoFocus
@@ -361,6 +380,16 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                         onChange={(e) => setEditingCategory(e.target.value)}
                                         className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
                                       />
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-text-tertiary">Prio:</span>
+                                        <input
+                                          type="number"
+                                          placeholder="Priority"
+                                          value={editingPriority}
+                                          onChange={(e) => setEditingPriority(e.target.value)}
+                                          className="w-16 bg-elevated border border-border rounded px-1 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                        />
+                                      </div>
                                       <div className="flex items-center gap-1 mt-0.5">
                                         <button
                                           onClick={() => handleSaveRename(label.id)}
@@ -377,13 +406,20 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                       </div>
                                     </div>
                                   ) : (
-                                    <button
-                                      onClick={() => handleNavigateLabel(label.id)}
-                                      className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
-                                      title={`Filter Library by "${label.name}"`}
-                                    >
-                                      {label.name}
-                                    </button>
+                                    <div className="flex flex-col min-w-0">
+                                      <button
+                                        onClick={() => handleNavigateLabel(label.id)}
+                                        className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
+                                        title={`Filter Library by "${label.name}"`}
+                                      >
+                                        {label.name}
+                                      </button>
+                                      {label.priority !== 0 && (
+                                        <span className="text-[10px] text-text-tertiary font-mono">
+                                          Prio: {label.priority}
+                                        </span>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
 

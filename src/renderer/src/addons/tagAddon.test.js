@@ -52,30 +52,47 @@ describe('TagAddon', () => {
 
   it('groups labels by folder category correctly', () => {
     const labels = [
-      { id: 1, name: 'Project A', category: 'Work' },
-      { id: 2, name: 'Project B', category: 'Work' },
-      { id: 3, name: 'Favs', category: null },
-      { id: 4, name: 'Personal 1', category: 'Personal' },
+      { id: 1, name: 'Project A', category: 'Work', priority: 1 },
+      { id: 2, name: 'Project B', category: 'Work', priority: 2 },
+      { id: 3, name: 'Favs', category: null, priority: 0 },
+      { id: 4, name: 'Personal 1', category: 'Personal', priority: 0 },
     ]
 
     const groups = TagAddon.groupLabelsByCategory(labels)
     expect(groups).toEqual([
       {
         category: 'Personal',
-        labels: [{ id: 4, name: 'Personal 1', category: 'Personal' }],
+        labels: [{ id: 4, name: 'Personal 1', category: 'Personal', priority: 0 }],
       },
       {
         category: 'Work',
         labels: [
-          { id: 1, name: 'Project A', category: 'Work' },
-          { id: 2, name: 'Project B', category: 'Work' },
+          { id: 2, name: 'Project B', category: 'Work', priority: 2 },
+          { id: 1, name: 'Project A', category: 'Work', priority: 1 },
         ],
       },
       {
         category: 'Uncategorized',
-        labels: [{ id: 3, name: 'Favs', category: null }],
+        labels: [{ id: 3, name: 'Favs', category: null, priority: 0 }],
       },
     ])
+  })
+
+  it('sorts labels by priority descending, then name descending when priorities match', () => {
+    const labels = [
+      { id: 1, name: 'Alpha', priority: 1 },
+      { id: 2, name: 'Beta', priority: 5 },
+      { id: 3, name: 'Gamma', priority: 1 },
+      { id: 4, name: 'Delta', priority: 10 },
+      { id: 5, name: 'Zeta', priority: 1 },
+    ]
+
+    const sorted = TagAddon.sortLabelsByPriority(labels)
+    // Priority order:
+    // Delta (prio 10)
+    // Beta (prio 5)
+    // Prio 1 labels: Zeta, Gamma, Alpha (descending order by name)
+    expect(sorted.map((l) => l.name)).toEqual(['Delta', 'Beta', 'Zeta', 'Gamma', 'Alpha'])
   })
 
   it('filters favorite quick labels up to a max of 8', () => {

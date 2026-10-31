@@ -488,6 +488,7 @@ function buildLabels() {
       color: l.color,
       category: l.category ?? null,
       isFavorite: !!l.is_favorite,
+      priority: l.priority || 0,
       packageCount: 0,
       contentCount: 0,
     })
@@ -754,9 +755,15 @@ export function getStats() {
 export function getCreatorsNeedingUserId() {
   return creatorsNeedingUserId
 }
+// [AddOn] TagAddon_Begin
 export function getLabelList() {
-  return [...labelIndex.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  return [...labelIndex.values()].sort((a, b) => {
+    const pDiff = (b.priority || 0) - (a.priority || 0)
+    if (pDiff !== 0) return pDiff
+    return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' })
+  })
 }
+// [AddOn] TagAddon_End
 
 /** Live map: package_filename → number[] of label ids. Mutated on label CRUD. */
 export function getLabelsByPackageMap() {
@@ -1518,6 +1525,7 @@ export function refreshLabelMeta() {
       // [AddOn] TagAddon_Begin
       existing.category = l.category ?? null
       existing.isFavorite = !!l.is_favorite
+      existing.priority = l.priority || 0
       // [AddOn] TagAddon_End
     } else {
       // [AddOn] TagAddon_Begin
@@ -1527,6 +1535,7 @@ export function refreshLabelMeta() {
         color: l.color,
         category: l.category ?? null,
         isFavorite: !!l.is_favorite,
+        priority: l.priority || 0,
         packageCount: 0,
         contentCount: 0,
       })

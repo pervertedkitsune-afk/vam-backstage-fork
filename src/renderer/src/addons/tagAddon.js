@@ -43,6 +43,20 @@ export class TagAddon {
   }
 
   /**
+   * Sort labels by priority (descending), breaking ties by name in descending order.
+   * @param {Array} labels
+   * @returns {Array}
+   */
+  static sortLabelsByPriority(labels) {
+    if (!Array.isArray(labels)) return []
+    return [...labels].sort((a, b) => {
+      const pDiff = (b.priority || 0) - (a.priority || 0)
+      if (pDiff !== 0) return pDiff
+      return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' })
+    })
+  }
+
+  /**
    * Group labels by their folder category property.
    * @param {Array} labels
    * @returns {Array<{ category: string, labels: Array }>}
@@ -63,7 +77,7 @@ export class TagAddon {
     return Array.from(groups.entries())
       .map(([category, items]) => ({
         category,
-        labels: items.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+        labels: TagAddon.sortLabelsByPriority(items),
       }))
       .sort((a, b) => {
         if (a.category === 'Uncategorized') return 1

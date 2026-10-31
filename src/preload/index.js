@@ -87,6 +87,7 @@ const api = {
     rename: ({ id, name, category }) => invoke('labels:rename', { id, name, category }),
     setCategory: ({ id, category }) => invoke('labels:set-category', { id, category }),
     setFavorite: ({ id, isFavorite }) => invoke('labels:set-favorite', { id, isFavorite }),
+    setPriority: ({ id, priority }) => invoke('labels:set-priority', { id, priority }),
     // [AddOn] TagAddon_End
     recolor: ({ id, color }) => invoke('labels:recolor', { id, color }),
     delete: ({ id }) => invoke('labels:delete', { id }),

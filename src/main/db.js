@@ -6,7 +6,7 @@ import { LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME } from '@shared/loca
 
 // [AddOn] DependencySort_notagfilter_Begin
 // [AddOn] TagAddon_Begin
-export const SCHEMA_VERSION = 34
+export const SCHEMA_VERSION = 35
 // [AddOn] TagAddon_End
 // [AddOn] DependencySort_notagfilter_End
 
@@ -162,6 +162,7 @@ export const MIGRATIONS = [
   // [AddOn] TagAddon_Begin
   [33, applyV33],
   [34, applyV34],
+  [35, applyV35],
   // [AddOn] TagAddon_End
 ]
 
@@ -588,6 +589,19 @@ function applyV34() {
     db.exec('ALTER TABLE labels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0')
   }
 }
+
+/**
+ * v35 — Label priority sorting.
+ */
+function applyV35() {
+  const cols = db
+    .prepare(`PRAGMA table_info(labels)`)
+    .all()
+    .map((c) => c.name)
+  if (!cols.includes('priority')) {
+    db.exec('ALTER TABLE labels ADD COLUMN priority INTEGER NOT NULL DEFAULT 0')
+  }
+}
 // [AddOn] TagAddon_End
 
 /**
@@ -728,6 +742,7 @@ function createSchema() {
       color INTEGER,
       category TEXT,
       is_favorite INTEGER NOT NULL DEFAULT 0,
+      priority INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
@@ -1768,17 +1783,18 @@ export function transact(fn) {
  * Newly-created labels start with `color = -1` (Auto — derive from id hash).
  */
 // [AddOn] TagAddon_Begin
-export function findOrCreateLabel(name, category = null) {
-  const existing = stmt('SELECT id, name, color, category, is_favorite FROM labels WHERE name = ?').get(name)
+export function findOrCreateLabel(name, category = null, priority = 0) {
+  const existing = stmt('SELECT id, name, color, category, is_favorite, priority FROM labels WHERE name = ?').get(name)
   if (existing) return { ...existing, created: false }
   const cat = category != null && String(category).trim() !== '' ? String(category).trim() : null
-  const r = stmt('INSERT INTO labels (name, color, category) VALUES (?, -1, ?)').run(name, cat)
-  return { id: r.lastInsertRowid, name, color: -1, category: cat, is_favorite: 0, created: true }
+  const prio = parseInt(priority, 10) || 0
+  const r = stmt('INSERT INTO labels (name, color, category, priority) VALUES (?, -1, ?, ?)').run(name, cat, prio)
+  return { id: r.lastInsertRowid, name, color: -1, category: cat, is_favorite: 0, priority: prio, created: true }
 }
 
 export function getAllLabels() {
   return stmt(
-    'SELECT id, name, color, category, is_favorite, created_at FROM labels ORDER BY name COLLATE NOCASE',
+    'SELECT id, name, color, category, is_favorite, priority, created_at FROM labels ORDER BY priority DESC, name DESC',
   ).all()
 }
 
@@ -1791,7 +1807,7 @@ export function getAllLabelContents() {
 }
 
 export function getLabelById(id) {
-  return stmt('SELECT id, name, color, category, is_favorite FROM labels WHERE id = ?').get(id)
+  return stmt('SELECT id, name, color, category, is_favorite, priority FROM labels WHERE id = ?').get(id)
 }
 
 /**
@@ -1830,6 +1846,12 @@ export function setLabelFavorite(id, isFavorite) {
     }
   }
   stmt('UPDATE labels SET is_favorite = ? WHERE id = ?').run(fav, id)
+  return getLabelById(id)
+}
+
+export function setLabelPriority(id, priority) {
+  const prio = parseInt(priority, 10) || 0
+  stmt('UPDATE labels SET priority = ? WHERE id = ?').run(prio, id)
   return getLabelById(id)
 }
 // [AddOn] TagAddon_End

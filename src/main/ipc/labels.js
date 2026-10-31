@@ -6,6 +6,7 @@ import {
   // [AddOn] TagAddon_Begin
   setLabelCategory,
   setLabelFavorite,
+  setLabelPriority,
   // [AddOn] TagAddon_End
   deleteLabel as dbDeleteLabel,
   applyLabelToPackages as dbApplyLabelToPackages,
@@ -60,6 +61,13 @@ export function registerLabelHandlers() {
 
   ipcMain.handle('labels:set-favorite', (_, { id, isFavorite }) => {
     const updated = setLabelFavorite(id, isFavorite)
+    refreshLabelMeta()
+    notify('labels:updated')
+    return updated
+  })
+
+  ipcMain.handle('labels:set-priority', (_, { id, priority }) => {
+    const updated = setLabelPriority(id, priority)
     refreshLabelMeta()
     notify('labels:updated')
     return updated
