@@ -82,8 +82,13 @@ const api = {
   },
   labels: {
     list: () => invoke('labels:list'),
-    create: ({ name }) => invoke('labels:create', { name }),
-    rename: ({ id, name }) => invoke('labels:rename', { id, name }),
+    // [AddOn] TagAddon_Begin
+    create: ({ name, category }) => invoke('labels:create', { name, category }),
+    rename: ({ id, name, category }) => invoke('labels:rename', { id, name, category }),
+    setCategory: ({ id, category }) => invoke('labels:set-category', { id, category }),
+    setFavorite: ({ id, isFavorite }) => invoke('labels:set-favorite', { id, isFavorite }),
+    setPriority: ({ id, priority }) => invoke('labels:set-priority', { id, priority }),
+    // [AddOn] TagAddon_End
     recolor: ({ id, color }) => invoke('labels:recolor', { id, color }),
     delete: ({ id }) => invoke('labels:delete', { id }),
     applyToPackages: ({ id, filenames, applied }) => invoke('labels:apply-packages', { id, filenames, applied }),

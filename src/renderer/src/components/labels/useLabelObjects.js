@@ -1,5 +1,8 @@
 import { useMemo } from 'react'
 import { useLabelsStore } from '@/stores/useLabelsStore'
+// [AddOn] TagAddon_Begin
+import { TagAddon } from '@/addons/tagAddon'
+// [AddOn] TagAddon_End
 
 /**
  * Resolve `[id, ...]` against the cached labels map. Single source — the
@@ -15,6 +18,8 @@ export function useLabelObjects(ids) {
       const l = byId.get(id)
       if (l) out.push(l)
     }
-    return out
+    // [AddOn] TagAddon_Begin
+    return TagAddon.sortLabelsByPriority(out)
+    // [AddOn] TagAddon_End
   }, [ids, byId])
 }

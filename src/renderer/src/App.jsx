@@ -43,6 +43,10 @@ import LibraryView from '@/views/LibraryView'
 import ContentView from '@/views/ContentView'
 import DependencyGraphView from '@/views/DependencyGraphView'
 import SettingsView from '@/views/SettingsView'
+// [AddOn] TagAddon_Begin
+import TabsAndLabelsView from '@/views/TabsAndLabelsView'
+import { Tag } from 'lucide-react'
+// [AddOn] TagAddon_End
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useDownloadStore } from '@/stores/useDownloadStore'
@@ -58,6 +62,9 @@ const NAV_ITEMS = [
   { id: 'hub', icon: Compass, label: 'Hub' },
   { id: 'library', icon: Library, label: 'Library' },
   { id: 'content', icon: LayoutGrid, label: 'Content' },
+  // [AddOn] TagAddon_Begin
+  { id: 'tabs', icon: Tag, label: 'Tabs and Labels' },
+  // [AddOn] TagAddon_End
   { id: 'graph', icon: Network, label: 'Graph' },
 ]
 export default function App() {
@@ -344,6 +351,13 @@ export default function App() {
                   <ContentView onNavigate={navigateTo} navContext={navContextRef} />
                 </Activity>
               )}
+              {/* [AddOn] TagAddon_Begin */}
+              {seenViews.current.has('tabs') && (
+                <Activity mode={view === 'tabs' ? 'visible' : 'hidden'}>
+                  <TabsAndLabelsView onNavigate={navigateTo} />
+                </Activity>
+              )}
+              {/* [AddOn] TagAddon_End */}
               {seenViews.current.has('graph') && (
                 <Activity mode={view === 'graph' ? 'visible' : 'hidden'}>
                   <DependencyGraphView />

@@ -45,17 +45,22 @@ export function LabelApplyPopover({
   const showCreate = !!trimmed && !exact
 
   /** Manual filter so list order is stable; cmdk's default sort would bury the create row. */
+  // [AddOn] TagAddon_Begin
+  // [AddOn] FolderFilter_Begin
   const filteredLabels = useMemo(() => {
     if (!q) return visibleLabels
     const prefix = []
     const rest = []
     for (const l of visibleLabels) {
-      const lower = l.name.toLowerCase()
-      if (lower.startsWith(q)) prefix.push(l)
-      else if (lower.includes(q)) rest.push(l)
+      const lowerName = l.name.toLowerCase()
+      const lowerCat = (l.category || '').toLowerCase()
+      if (lowerName.startsWith(q) || lowerCat.startsWith(q)) prefix.push(l)
+      else if (lowerName.includes(q) || lowerCat.includes(q)) rest.push(l)
     }
     return [...prefix, ...rest]
   }, [visibleLabels, q])
+  // [AddOn] FolderFilter_End
+  // [AddOn] TagAddon_End
 
   const createItemValue = showCreate ? `__create__:${trimmed}` : ''
 
@@ -131,6 +136,15 @@ export function LabelApplyPopover({
                       {isBulk && <LabelStateCheckbox state={state} />}
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
                       <span className="truncate flex-1 text-text-primary">{l.name}</span>
+                      {/* [AddOn] TagAddon_Begin */}
+                      {/* [AddOn] FolderFilter_Begin */}
+                      {l.category && (
+                        <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
+                          {l.category}
+                        </span>
+                      )}
+                      {/* [AddOn] FolderFilter_End */}
+                      {/* [AddOn] TagAddon_End */}
                     </CommandItem>
                   )
                 })}

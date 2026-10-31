@@ -480,8 +480,19 @@ export function buildFromDb({ skipGraph = false } = {}) {
 function buildLabels() {
   const labels = getAllLabels()
   labelIndex = new Map()
+  // [AddOn] TagAddon_Begin
   for (const l of labels)
-    labelIndex.set(l.id, { id: l.id, name: l.name, color: l.color, packageCount: 0, contentCount: 0 })
+    labelIndex.set(l.id, {
+      id: l.id,
+      name: l.name,
+      color: l.color,
+      category: l.category ?? null,
+      isFavorite: !!l.is_favorite,
+      priority: l.priority || 0,
+      packageCount: 0,
+      contentCount: 0,
+    })
+  // [AddOn] TagAddon_End
 
   labelsByPackage = new Map()
   for (const row of getAllLabelPackages()) {
@@ -744,9 +755,15 @@ export function getStats() {
 export function getCreatorsNeedingUserId() {
   return creatorsNeedingUserId
 }
+// [AddOn] TagAddon_Begin
 export function getLabelList() {
-  return [...labelIndex.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  return [...labelIndex.values()].sort((a, b) => {
+    const pDiff = (b.priority || 0) - (a.priority || 0)
+    if (pDiff !== 0) return pDiff
+    return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' })
+  })
 }
+// [AddOn] TagAddon_End
 
 /** Live map: package_filename → number[] of label ids. Mutated on label CRUD. */
 export function getLabelsByPackageMap() {
@@ -1505,8 +1522,24 @@ export function refreshLabelMeta() {
     if (existing) {
       existing.name = l.name
       existing.color = l.color
+      // [AddOn] TagAddon_Begin
+      existing.category = l.category ?? null
+      existing.isFavorite = !!l.is_favorite
+      existing.priority = l.priority || 0
+      // [AddOn] TagAddon_End
     } else {
-      labelIndex.set(l.id, { id: l.id, name: l.name, color: l.color, packageCount: 0, contentCount: 0 })
+      // [AddOn] TagAddon_Begin
+      labelIndex.set(l.id, {
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        category: l.category ?? null,
+        isFavorite: !!l.is_favorite,
+        priority: l.priority || 0,
+        packageCount: 0,
+        contentCount: 0,
+      })
+      // [AddOn] TagAddon_End
     }
   }
   for (const id of [...labelIndex.keys()]) if (!seen.has(id)) labelIndex.delete(id)
