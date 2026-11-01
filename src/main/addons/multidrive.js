@@ -26,7 +26,8 @@ export async function copyFileWithProgress(from, to, customFilename) {
 
     readStream.on('data', (chunk) => {
       bytesTransferred += chunk.length
-      const percent = Math.min(100, Math.round((bytesTransferred / totalBytes) * 100))
+      // [AddOn] LoadingAddon_Begin
+      const percent = Math.min(88, Math.round((bytesTransferred / totalBytes) * 88))
       if (percent !== lastPercent) {
         lastPercent = percent
         notify('moving:progress', {
@@ -34,8 +35,10 @@ export async function copyFileWithProgress(from, to, customFilename) {
           bytesTransferred,
           totalBytes,
           progressPercent: percent,
+          step: `Transferring (${percent}%)…`,
         })
       }
+      // [AddOn] LoadingAddon_End
     })
 
     readStream.on('error', (err) => {
@@ -48,15 +51,18 @@ export async function copyFileWithProgress(from, to, customFilename) {
       reject(err)
     })
 
+    // [AddOn] LoadingAddon_Begin
     writeStream.on('finish', () => {
       notify('moving:progress', {
         filename: pkgFilename,
         bytesTransferred: totalBytes,
         totalBytes,
-        progressPercent: 100,
+        progressPercent: 90,
+        step: 'Finalizing file…',
       })
       resolve()
     })
+    // [AddOn] LoadingAddon_End
 
     readStream.pipe(writeStream)
   })
@@ -82,6 +88,14 @@ export async function performCrossDriveMove(from, to, filename) {
     // [AddOn] MultiProgress_Begin
     await copyFileWithProgress(from, to, filename)
     // [AddOn] MultiProgress_End
+    // [AddOn] LoadingAddon_Begin
+    const pkgFilename = filename || basename(from).replace(/\.disabled$/, '')
+    notify('moving:progress', {
+      filename: pkgFilename,
+      progressPercent: 93,
+      step: 'Cleaning up source…',
+    })
+    // [AddOn] LoadingAddon_End
     await unlink(from)
     console.log(`[Multidrive] Cross-drive move succeeded from ${from} to ${to}`)
   } catch (err) {

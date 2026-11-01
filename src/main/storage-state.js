@@ -98,7 +98,10 @@ async function guardedRename(from, to, filename) {
     filename: pkgFilename,
     bytesTransferred: 0,
     totalBytes: fromStat.size || 1,
-    progressPercent: 0,
+    progressPercent: 10,
+    // [AddOn] LoadingAddon_Begin
+    step: 'Moving file…',
+    // [AddOn] LoadingAddon_End
   })
   // [AddOn] MultiProgress_End
 
@@ -114,7 +117,10 @@ async function guardedRename(from, to, filename) {
       filename: pkgFilename,
       bytesTransferred: fromStat.size || 1,
       totalBytes: fromStat.size || 1,
-      progressPercent: 100,
+      // [AddOn] LoadingAddon_Begin
+      progressPercent: 92,
+      step: 'Finalizing file…',
+      // [AddOn] LoadingAddon_End
     })
     // [AddOn] MultiProgress_End
   } catch (err) {
@@ -340,6 +346,14 @@ export async function applyStorageState(filename, target, opts = {}) {
       notifyToast(`Couldn't write BrowserAssist sidecar for ${filename}: ${err.message}`)
     }
   }
+
+  // [AddOn] LoadingAddon_Begin
+  notify('moving:progress', {
+    filename,
+    progressPercent: 96,
+    step: 'Updating database…',
+  })
+  // [AddOn] LoadingAddon_End
 
   // Every app-driven transition lands content in the bare name, so there is no
   // on-disk-name to record — the physical path is re-derived from disk on demand.
