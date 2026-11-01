@@ -48,10 +48,19 @@ export class MovingProgressAddon {
     store.updateItem(id, { status: 'active', progress: 10, step: step || 'Processing…' })
     try {
       const res = await fn()
-      store.updateItem(id, { status: 'completed', progress: 100, step: 'Done' })
+      // [AddOn] LoadingAddon_Begin
+      store.updateItem(id, { status: 'completed', progress: 100, step: 'Done', completedAt: Date.now() })
+      // [AddOn] LoadingAddon_End
       task.resolve(res)
     } catch (err) {
-      store.updateItem(id, { status: 'failed', error: err?.message || 'Operation failed', step: 'Failed' })
+      // [AddOn] LoadingAddon_Begin
+      store.updateItem(id, {
+        status: 'failed',
+        error: err?.message || 'Operation failed',
+        step: 'Failed',
+        completedAt: Date.now(),
+      })
+      // [AddOn] LoadingAddon_End
       task.reject(err)
     }
   }
