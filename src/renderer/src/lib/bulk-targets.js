@@ -37,15 +37,17 @@ export function libraryBulkEnabledState(items) {
 }
 
 export async function runLibraryBulkToggleEnabled(items = resolveLibraryBulkPackages()) {
-  if (useLibraryStore.getState().bulkToggleIntent) return
+  // [AddOn] LoadingAddon_Begin
   const st = libraryBulkEnabledState(items)
   if (st.disabled) return
   const targets = st.mixed ? items.filter((p) => !isPackageActive(p.storageState)) : items
   if (!targets.length) return
   const enabled = st.allDisabled || st.mixed
-  useLibraryStore.setState({ bulkToggleIntent: enabled ? 'enable' : 'disable' })
   const type = enabled ? 'activate' : 'disable'
   const filenames = targets.map((p) => p.filename)
+  // Clear selection immediately so user can continue to select more packages to enable/disable
+  useLibraryStore.getState().clearSelection()
+  // [AddOn] LoadingAddon_End
   // [AddOn] MultiProgress_Begin
   const packageMap = useLibraryStore.getState().packageByFilename
   // [AddOn] MultiProgress_End
@@ -68,8 +70,6 @@ export async function runLibraryBulkToggleEnabled(items = resolveLibraryBulkPack
     await useLibraryStore.getState().fetchPackages()
   } catch (err) {
     toast(`Failed: ${err.message}`)
-  } finally {
-    useLibraryStore.setState({ bulkToggleIntent: null })
   }
 }
 
