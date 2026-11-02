@@ -9,9 +9,11 @@ export const useMovingProgressStore = create((set) => ({
     // [AddOn] MultiProgress_Begin
     const item = MovingProgressAddon.createItem({ filename, type, status, progress, step, sizeBytes })
     // [AddOn] MultiProgress_End
+    // [AddOn] LoadingAddon_Begin
     set((state) => ({
-      items: [item, ...state.items],
+      items: [...state.items, item],
     }))
+    // [AddOn] LoadingAddon_End
     console.log('[MovingProgress] Added item:', item)
     return item.id
   },

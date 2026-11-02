@@ -29,6 +29,9 @@ import MovingProgressPanel from '@/components/MovingProgressPanel'
 import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
 import { MovingProgressAddon } from '@/addons/movingProgressAddon'
 // [AddOn] Progressbar_End
+// [AddOn] LoadingAddon_Begin
+import { LoadingAddon } from '@/addons/loadingAddon'
+// [AddOn] LoadingAddon_End
 import FirstRun from '@/components/FirstRun'
 import DropImport from '@/components/DropImport'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -78,6 +81,10 @@ export default function App() {
   const movingBadge = MovingProgressAddon.getActiveCount(movingItems)
   const movingErrorBadge = MovingProgressAddon.getErrorCount(movingItems)
   // [AddOn] Progressbar_End
+  // [AddOn] LoadingAddon_Begin
+  const isMovingActive = LoadingAddon.isMovingActive(movingItems)
+  const movingOverallProgress = LoadingAddon.getOverallProgress(movingItems)
+  // [AddOn] LoadingAddon_End
   const [showWizard, setShowWizard] = useState(null) // null=checking, true/false
   const [whatsNew, setWhatsNew] = useState(null) // { entries, current } | null
   const dlItems = useDownloadStore((s) => s.items)
@@ -142,7 +149,9 @@ export default function App() {
     // [AddOn] MultiProgress_Begin
     const cleanupMovingProgress = window.api.on('moving:progress', (data) => {
       if (data?.filename && data?.progressPercent != null) {
-        useMovingProgressStore.getState().updateProgressByFilename(data.filename, data.progressPercent)
+        // [AddOn] LoadingAddon_Begin
+        useMovingProgressStore.getState().updateProgressByFilename(data.filename, data.progressPercent, data.step)
+        // [AddOn] LoadingAddon_End
       }
     })
     // [AddOn] MultiProgress_End
@@ -303,6 +312,9 @@ export default function App() {
                 setDlPanelOpen(false)
                 setMovingPanelOpen(!movingPanelOpen)
               }}
+              // [AddOn] LoadingAddon_Begin
+              progress={isMovingActive ? movingOverallProgress : null}
+              // [AddOn] LoadingAddon_End
             />
             {/* [AddOn] Progressbar_End */}
             <NavButton
@@ -446,18 +458,28 @@ function RemoteGate() {
   )
 }
 
-function NavButton({ item, active, onClick, badge, badgePaused, errorBadge }) {
+function NavButton({ item, active, onClick, badge, badgePaused, errorBadge, progress }) {
   const Icon = item.icon
   return (
     <button
       onClick={onClick}
       title={item.label}
-      className={`relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer ${active ? 'bg-hover text-accent-blue' : 'text-text-aside hover:text-text-secondary hover:bg-elevated'}`}
+      className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center transition-all duration-150 cursor-pointer ${active ? 'bg-hover text-accent-blue' : 'text-text-aside hover:text-text-secondary hover:bg-elevated'}`}
     >
       {active && (
         <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[7px] w-[3px] h-5 rounded-r-full bg-linear-to-b from-accent-blue to-accent-pink" />
       )}
       <Icon size={20} />
+      {/* [AddOn] LoadingAddon_Begin */}
+      {progress != null && (
+        <div className="absolute bottom-1 left-1.5 right-1.5 h-[3px] bg-border/40 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-accent-blue progress-bar rounded-full transition-all duration-200"
+            style={{ width: `${Math.max(5, Math.min(100, progress))}%` }}
+          />
+        </div>
+      )}
+      {/* [AddOn] LoadingAddon_End */}
       {badge > 0 && (
         <div
           className={`absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center ${badgePaused ? 'bg-amber-500' : 'bg-accent-blue'}`}

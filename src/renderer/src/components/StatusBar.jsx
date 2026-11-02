@@ -14,6 +14,11 @@ import {
 } from 'lucide-react'
 import { useStatusStore } from '@/stores/useStatusStore'
 import { useDownloadStore } from '@/stores/useDownloadStore'
+// [AddOn] LoadingAddon_Begin
+import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
+import { LoadingAddon } from '@/addons/loadingAddon'
+import { FolderSync } from 'lucide-react'
+// [AddOn] LoadingAddon_End
 import { CONTENT_TYPES, formatBytes, middleTruncate } from '@/lib/utils'
 import { DEFAULT_REMOTE_PORT } from '@shared/remote-config.js'
 import { toast } from './Toast'
@@ -135,6 +140,11 @@ export default function StatusBar() {
   const { stats, scan, hubScan } = useStatusStore()
   const dlItems = useDownloadStore((s) => s.items)
   const liveProgress = useDownloadStore((s) => s.liveProgress)
+  // [AddOn] LoadingAddon_Begin
+  const movingItems = useMovingProgressStore((s) => s.items)
+  const isMovingActive = LoadingAddon.isMovingActive(movingItems)
+  const movingDetails = LoadingAddon.getActiveMovingDetails(movingItems)
+  // [AddOn] LoadingAddon_End
   const scanStart = useRef(null)
   const [showScan, setShowScan] = useState(false)
   const showScanRef = useRef(showScan)
@@ -320,6 +330,25 @@ export default function StatusBar() {
         </span>
       </StatTooltip>
       <div className="flex-1" />
+      {/* [AddOn] LoadingAddon_Begin */}
+      {isMovingActive && movingDetails.activeItem && (
+        <div className="flex items-center gap-2 text-accent-blue">
+          <FolderSync size={11} className="animate-spin shrink-0" />
+          <Progress
+            value={movingDetails.overallProgress}
+            className="w-24 h-1.5 bg-elevated"
+            indicatorClassName="progress-bar"
+          />
+          <span
+            className="w-[160px] overflow-hidden whitespace-nowrap select-text cursor-text"
+            title={movingDetails.activeItem.filename || ''}
+          >
+            {LoadingAddon.formatActionLabel(movingDetails.activeItem)}{' '}
+            {middleTruncate(movingDetails.activeItem.filename || '', 22)}
+          </span>
+        </div>
+      )}
+      {/* [AddOn] LoadingAddon_End */}
       {showScan && scan && (
         <div className="flex items-center gap-2">
           <RefreshCw size={11} className="animate-spin" />

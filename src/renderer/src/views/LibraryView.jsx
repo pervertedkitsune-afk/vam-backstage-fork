@@ -931,7 +931,6 @@ export default function LibraryView({ onNavigate, navContext }) {
 
   const orderedLibraryFilenames = useMemo(() => filtered.map((p) => p.filename), [filtered])
   const bulkActive = isBulk(selection)
-  const bulkToggleIntent = useLibraryStore((s) => s.bulkToggleIntent)
   const selectedSet = useMemo(() => new Set(selection), [selection])
   const bulkSelectedPackages = useMemo(
     () => resolveLibraryBulkPackages({ selection, packageByFilename }),
@@ -1150,35 +1149,26 @@ export default function LibraryView({ onNavigate, navContext }) {
               </>
             ) : (
               <>
+                {/* [AddOn] LoadingAddon_Begin */}
                 <button
                   type="button"
                   onClick={() => void runBulkToggleEnabled()}
-                  disabled={!!bulkToggleIntent}
-                  className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-border hover:bg-elevated text-[11px] text-text-primary disabled:cursor-progress disabled:opacity-70 disabled:hover:bg-transparent"
+                  className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 rounded cursor-pointer border border-border hover:bg-elevated text-[11px] text-text-primary"
                 >
-                  {bulkToggleIntent ? (
-                    <Loader2 size={16} className="shrink-0 animate-spin text-text-aside" />
-                  ) : (
-                    <Power
-                      size={16}
-                      className={cn(
-                        'shrink-0',
-                        bulkEnabledState.mixed
-                          ? 'text-text-aside'
-                          : bulkEnabledState.allDisabled
-                            ? 'text-error'
-                            : 'text-text-secondary',
-                      )}
-                    />
-                  )}
-                  {bulkToggleIntent === 'enable'
-                    ? 'Enabling…'
-                    : bulkToggleIntent === 'disable'
-                      ? 'Disabling…'
-                      : bulkEnabledState.mixed || bulkEnabledState.allDisabled
-                        ? 'Enable'
-                        : 'Disable'}
+                  <Power
+                    size={16}
+                    className={cn(
+                      'shrink-0',
+                      bulkEnabledState.mixed
+                        ? 'text-text-aside'
+                        : bulkEnabledState.allDisabled
+                          ? 'text-error'
+                          : 'text-text-secondary',
+                    )}
+                  />
+                  {bulkEnabledState.mixed || bulkEnabledState.allDisabled ? 'Enable' : 'Disable'}
                 </button>
+                {/* [AddOn] LoadingAddon_End */}
                 <button
                   type="button"
                   onClick={() => setBulkRemoveOpen(true)}

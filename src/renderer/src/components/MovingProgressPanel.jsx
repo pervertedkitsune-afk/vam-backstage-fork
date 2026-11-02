@@ -89,10 +89,14 @@ export default function MovingProgressPanel({ onClose }) {
     [setPanelWidth],
   )
 
-  const active = items.filter((d) => d.status === 'active')
-  const queued = items.filter((d) => d.status === 'queued')
-  const completed = items.filter((d) => d.status === 'completed')
-  const failed = items.filter((d) => d.status === 'failed')
+  // [AddOn] LoadingAddon_Begin
+  const active = items.filter((d) => d.status === 'active').sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+  const queued = items.filter((d) => d.status === 'queued').sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+  const completed = items
+    .filter((d) => d.status === 'completed')
+    .sort((a, b) => (b.completedAt || b.timestamp || 0) - (a.completedAt || a.timestamp || 0))
+  const failed = items.filter((d) => d.status === 'failed').sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+  // [AddOn] LoadingAddon_End
   const hasAny = items.length > 0
   const activeCount = MovingProgressAddon.getActiveCount(items)
 
