@@ -5,7 +5,9 @@ import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui
 import { cn } from '@/lib/utils'
 import { labelColor } from '@/lib/labels'
 import { CLARIFY_DENSE } from '@/lib/typography'
-import { sortLabelsByName } from './labelHelpers'
+// [AddOn] Tabs_Begin
+import { TabsAddon } from '@/addons/tabsAddon'
+// [AddOn] Tabs_End
 import { LabelStateCheckbox } from './LabelStateCheckbox'
 
 /**
@@ -31,7 +33,9 @@ export function LabelApplyPopover({
 
   const isBulk = stateById != null && typeof onToggle === 'function'
 
-  const sorted = useMemo(() => sortLabelsByName(labels), [labels])
+  // [AddOn] Tabs_Begin
+  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels), [labels])
+  // [AddOn] Tabs_End
 
   const visibleLabels = useMemo(() => {
     if (isBulk) return sorted

@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { labelColor } from '@/lib/labels'
 import { CLARIFY_DENSE } from '@/lib/typography'
-import { sortLabelsByName } from './labelHelpers'
+// [AddOn] Tabs_Begin
+import { TabsAddon } from '@/addons/tabsAddon'
+// [AddOn] Tabs_End
 import { LabelStateCheckbox } from './LabelStateCheckbox'
 
 /**
@@ -10,7 +12,9 @@ import { LabelStateCheckbox } from './LabelStateCheckbox'
  * No search or create (batch bar / "+" chip handle that via `LabelApplyPopover`).
  */
 export function LabelsApplyMenuItems({ labels, stateById, onToggle }) {
-  const sorted = useMemo(() => sortLabelsByName(labels), [labels])
+  // [AddOn] Tabs_Begin
+  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels), [labels])
+  // [AddOn] Tabs_End
 
   if (sorted.length === 0) {
     return <div className={`px-2 py-1.5 ${CLARIFY_DENSE}`}>No labels yet</div>
