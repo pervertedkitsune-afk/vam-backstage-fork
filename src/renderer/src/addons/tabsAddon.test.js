@@ -97,5 +97,35 @@ describe('TabsAddon', () => {
       expect(result.map((l) => l.name)).toEqual(['Item A', 'Item B'])
     })
   })
+
+  describe('getTooltipDelayMs', () => {
+    it('defaults to 3000 when window.api is undefined or setting missing', async () => {
+      const origWindow = global.window
+      try {
+        global.window = {}
+        const delay = await TabsAddon.getTooltipDelayMs()
+        expect(delay).toBe(3000)
+      } finally {
+        global.window = origWindow
+      }
+    })
+
+    it('returns parsed integer when setting is configured', async () => {
+      const origWindow = global.window
+      try {
+        global.window = {
+          api: {
+            settings: {
+              get: async (key) => (key === 'tag_tooltip_delay' ? '2000' : null),
+            },
+          },
+        }
+        const delay = await TabsAddon.getTooltipDelayMs()
+        expect(delay).toBe(2000)
+      } finally {
+        global.window = origWindow
+      }
+    })
+  })
 })
 // [AddOn] Tabs_End

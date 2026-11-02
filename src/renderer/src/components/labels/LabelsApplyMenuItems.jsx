@@ -4,6 +4,7 @@ import { labelColor } from '@/lib/labels'
 import { CLARIFY_DENSE } from '@/lib/typography'
 // [AddOn] Tabs_Begin
 import { TabsAddon } from '@/addons/tabsAddon'
+import { TagDescriptionTooltip } from './TagDescriptionTooltip'
 // [AddOn] Tabs_End
 import { LabelStateCheckbox } from './LabelStateCheckbox'
 
@@ -25,28 +26,31 @@ export function LabelsApplyMenuItems({ labels, stateById, onToggle }) {
       {sorted.map((l) => {
         const state = stateById.get(l.id) || 'none'
         return (
-          <ContextMenuItem
-            key={l.id}
-            textValue={l.name}
-            className="w-full justify-start text-left text-xs gap-2 cursor-pointer"
-            onSelect={(e) => {
-              e.preventDefault()
-              onToggle?.(l, state)
-            }}
-          >
-            <LabelStateCheckbox state={state} />
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
-            <span className="truncate flex-1 text-text-primary">{l.name}</span>
-            {/* [AddOn] TagAddon_Begin */}
-            {/* [AddOn] FolderFilter_Begin */}
-            {l.category && (
-              <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
-                {l.category}
-              </span>
-            )}
-            {/* [AddOn] FolderFilter_End */}
-            {/* [AddOn] TagAddon_End */}
-          </ContextMenuItem>
+          // [AddOn] Tabs_Begin
+          <TagDescriptionTooltip key={l.id} description={l.description}>
+            <ContextMenuItem
+              textValue={l.name}
+              className="w-full justify-start text-left text-xs gap-2 cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault()
+                onToggle?.(l, state)
+              }}
+            >
+              <LabelStateCheckbox state={state} />
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
+              <span className="truncate flex-1 text-text-primary">{l.name}</span>
+              {/* [AddOn] TagAddon_Begin */}
+              {/* [AddOn] FolderFilter_Begin */}
+              {l.category && (
+                <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
+                  {l.category}
+                </span>
+              )}
+              {/* [AddOn] FolderFilter_End */}
+              {/* [AddOn] TagAddon_End */}
+            </ContextMenuItem>
+          </TagDescriptionTooltip>
+          // [AddOn] Tabs_End
         )
       })}
     </div>

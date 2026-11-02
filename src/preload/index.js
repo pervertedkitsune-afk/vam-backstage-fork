@@ -83,8 +83,11 @@ const api = {
   labels: {
     list: () => invoke('labels:list'),
     // [AddOn] TagAddon_Begin
-    create: ({ name, category }) => invoke('labels:create', { name, category }),
-    rename: ({ id, name, category }) => invoke('labels:rename', { id, name, category }),
+    // [AddOn] Tabs_Begin
+    create: ({ name, category, description }) => invoke('labels:create', { name, category, description }),
+    rename: ({ id, name, category, description }) => invoke('labels:rename', { id, name, category, description }),
+    setDescription: ({ id, description }) => invoke('labels:set-description', { id, description }),
+    // [AddOn] Tabs_End
     setCategory: ({ id, category }) => invoke('labels:set-category', { id, category }),
     setFavorite: ({ id, isFavorite }) => invoke('labels:set-favorite', { id, isFavorite }),
     setPriority: ({ id, priority }) => invoke('labels:set-priority', { id, priority }),

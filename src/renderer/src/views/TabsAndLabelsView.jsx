@@ -16,12 +16,18 @@ export default function TabsAndLabelsView({ onNavigate }) {
   const [newLabelName, setNewLabelName] = useState('')
   const [newLabelCategory, setNewLabelCategory] = useState('')
   const [newLabelPriority, setNewLabelPriority] = useState(0)
+  // [AddOn] Tabs_Begin
+  const [newLabelDescription, setNewLabelDescription] = useState('')
+  // [AddOn] Tabs_End
   const [isCreatingLabel, setIsCreatingLabel] = useState(false)
 
   const [editingLabelId, setEditingLabelId] = useState(null)
   const [editingName, setEditingName] = useState('')
   const [editingCategory, setEditingCategory] = useState('')
   const [editingPriority, setEditingPriority] = useState(0)
+  // [AddOn] Tabs_Begin
+  const [editingDescription, setEditingDescription] = useState('')
+  // [AddOn] Tabs_End
 
   // Collapsed categories map: categoryName -> boolean
   const [collapsedCategories, setCollapsedCategories] = useState({})
@@ -109,9 +115,18 @@ export default function TabsAndLabelsView({ onNavigate }) {
     const trimmedName = newLabelName.trim()
     const trimmedCat = newLabelCategory.trim()
     const prio = parseInt(newLabelPriority, 10) || 0
+    // [AddOn] Tabs_Begin
+    const trimmedDesc = newLabelDescription.trim()
+    // [AddOn] Tabs_End
     if (!trimmedName) return
     try {
-      const res = await window.api.labels.create({ name: trimmedName, category: trimmedCat || null })
+      // [AddOn] Tabs_Begin
+      const res = await window.api.labels.create({
+        name: trimmedName,
+        category: trimmedCat || null,
+        description: trimmedDesc || null,
+      })
+      // [AddOn] Tabs_End
       if (res?.id && prio !== 0) {
         await window.api.labels.setPriority({ id: res.id, priority: prio })
       }
@@ -119,6 +134,9 @@ export default function TabsAndLabelsView({ onNavigate }) {
       setNewLabelName('')
       setNewLabelCategory('')
       setNewLabelPriority(0)
+      // [AddOn] Tabs_Begin
+      setNewLabelDescription('')
+      // [AddOn] Tabs_End
       setIsCreatingLabel(false)
     } catch (err) {
       toast(`Failed to create label: ${err.message}`, 'warning')
@@ -130,18 +148,31 @@ export default function TabsAndLabelsView({ onNavigate }) {
     setEditingName(label.name)
     setEditingCategory(label.category || '')
     setEditingPriority(label.priority || 0)
+    // [AddOn] Tabs_Begin
+    setEditingDescription(label.description || '')
+    // [AddOn] Tabs_End
   }
 
   const handleSaveRename = async (id) => {
     const trimmedName = editingName.trim()
     const trimmedCat = editingCategory.trim()
     const prio = parseInt(editingPriority, 10) || 0
+    // [AddOn] Tabs_Begin
+    const trimmedDesc = editingDescription.trim()
+    // [AddOn] Tabs_End
     if (!trimmedName) {
       setEditingLabelId(null)
       return
     }
     try {
-      await window.api.labels.rename({ id, name: trimmedName, category: trimmedCat || null })
+      // [AddOn] Tabs_Begin
+      await window.api.labels.rename({
+        id,
+        name: trimmedName,
+        category: trimmedCat || null,
+        description: trimmedDesc || null,
+      })
+      // [AddOn] Tabs_End
       await window.api.labels.setPriority({ id, priority: prio })
       toast(`Updated label "${trimmedName}"`, 'success')
     } catch (err) {
@@ -237,6 +268,16 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 className="bg-elevated border border-border rounded-md px-2 py-1.5 text-xs text-text-primary focus:outline-none w-18"
                 title="Priority (higher number displays first)"
               />
+              {/* [AddOn] Tabs_Begin */}
+              <input
+                type="text"
+                placeholder="Description (optional)..."
+                value={newLabelDescription}
+                onChange={(e) => setNewLabelDescription(e.target.value)}
+                className="bg-elevated border border-border rounded-md px-2.5 py-1.5 text-xs text-text-primary focus:outline-none w-36"
+                title="Description shown on mouse hover"
+              />
+              {/* [AddOn] Tabs_End */}
               <button
                 type="submit"
                 className="p-1.5 bg-accent-blue text-white rounded-md hover:bg-accent-blue/90 cursor-pointer"
@@ -282,6 +323,7 @@ export default function TabsAndLabelsView({ onNavigate }) {
             {/* Label Filter Dropdown (items with > 1 package) */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-text-tertiary">Filter Label (&gt;1 pkg):</label>
+              {/* [AddOn] Tabs_Begin */}
               <select
                 value={selectedLabelDropdown}
                 onChange={(e) => setSelectedLabelDropdown(e.target.value)}
@@ -290,11 +332,11 @@ export default function TabsAndLabelsView({ onNavigate }) {
                 <option value="">All Labels</option>
                 {dropdownLabels.map((lbl) => (
                   <option key={lbl.id} value={lbl.id}>
-                    {lbl.category ? `[${lbl.category}] ` : ''}
-                    {lbl.name} ({lbl.packageCount || 0})
+                    {lbl.name}
                   </option>
                 ))}
               </select>
+              {/* [AddOn] Tabs_End */}
               {selectedLabelDropdown && (
                 <button
                   onClick={() => setSelectedLabelDropdown('')}
@@ -399,6 +441,16 @@ export default function TabsAndLabelsView({ onNavigate }) {
                                           className="w-16 bg-elevated border border-border rounded px-1 py-0.5 text-[11px] text-text-primary focus:outline-none"
                                         />
                                       </div>
+                                      {/* [AddOn] Tabs_Begin */}
+                                      <input
+                                        type="text"
+                                        placeholder="Description..."
+                                        value={editingDescription}
+                                        onChange={(e) => setEditingDescription(e.target.value)}
+                                        className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                        title="Description shown on mouse hover"
+                                      />
+                                      {/* [AddOn] Tabs_End */}
                                       <div className="flex items-center gap-1 mt-0.5">
                                         <button
                                           onClick={() => handleSaveRename(label.id)}
@@ -512,18 +564,20 @@ export default function TabsAndLabelsView({ onNavigate }) {
             {/* Tag Filter Dropdown (items with > 1 package) */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-text-tertiary">Filter Tag (&gt;1 pkg):</label>
+              {/* [AddOn] Tabs_Begin */}
               <select
                 value={selectedTagDropdown}
                 onChange={(e) => setSelectedTagDropdown(e.target.value)}
                 className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
               >
                 <option value="">All Tags</option>
-                {dropdownTags.map(({ tag, count }) => (
+                {dropdownTags.map(({ tag }) => (
                   <option key={tag} value={tag}>
-                    {tag} ({count})
+                    {tag}
                   </option>
                 ))}
               </select>
+              {/* [AddOn] Tabs_End */}
               {selectedTagDropdown && (
                 <button onClick={() => setSelectedTagDropdown('')} className="text-xs text-accent-blue hover:underline">
                   Clear

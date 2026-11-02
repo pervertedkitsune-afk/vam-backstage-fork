@@ -47,5 +47,23 @@ export class TabsAddon {
 
     return result
   }
+
+  /**
+   * Fetch configured tooltip delay in milliseconds.
+   * Defaults to 3000ms (3 seconds) if not configured or invalid.
+   * @returns {Promise<number>}
+   */
+  static async getTooltipDelayMs() {
+    try {
+      const val = await window.api?.settings?.get('tag_tooltip_delay')
+      const parsed = parseInt(val, 10)
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        return parsed
+      }
+    } catch {
+      // Fallback to default
+    }
+    return 3000
+  }
 }
 // [AddOn] Tabs_End
