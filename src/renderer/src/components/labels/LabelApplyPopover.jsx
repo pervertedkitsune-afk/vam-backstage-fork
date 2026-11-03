@@ -52,18 +52,12 @@ export function LabelApplyPopover({
   /** Manual filter so list order is stable; cmdk's default sort would bury the create row. */
   // [AddOn] TagAddon_Begin
   // [AddOn] FolderFilter_Begin
+  // [AddOn] Tabs_Begin
   const filteredLabels = useMemo(() => {
     if (!q) return visibleLabels
-    const prefix = []
-    const rest = []
-    for (const l of visibleLabels) {
-      const lowerName = l.name.toLowerCase()
-      const lowerCat = (l.category || '').toLowerCase()
-      if (lowerName.startsWith(q) || lowerCat.startsWith(q)) prefix.push(l)
-      else if (lowerName.includes(q) || lowerCat.includes(q)) rest.push(l)
-    }
-    return [...prefix, ...rest]
+    return TabsAddon.filterAndSortLabelsBySearch(visibleLabels, q)
   }, [visibleLabels, q])
+  // [AddOn] Tabs_End
   // [AddOn] FolderFilter_End
   // [AddOn] TagAddon_End
 

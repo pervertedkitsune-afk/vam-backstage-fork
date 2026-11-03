@@ -5,6 +5,9 @@ import { toast } from '@/components/Toast'
 import { useLibraryStore } from '@/stores/useLibraryStore'
 import { useLabelsStore } from '@/stores/useLabelsStore'
 import { TagAddon } from '@/addons/tagAddon'
+// [AddOn] Tabs_Begin
+import { TabsAddon } from '@/addons/tabsAddon'
+// [AddOn] Tabs_End
 import { labelColor } from '@/lib/labels'
 import { LabelManageMenu } from '@/components/labels/LabelManageMenu'
 
@@ -31,6 +34,10 @@ export default function TabsAndLabelsView({ onNavigate }) {
 
   // Collapsed categories map: categoryName -> boolean
   const [collapsedCategories, setCollapsedCategories] = useState({})
+  // [AddOn] Tabs_Begin
+  const [labelsSectionCollapsed, setLabelsSectionCollapsed] = useState(false)
+  const [tagsSectionCollapsed, setTagsSectionCollapsed] = useState(false)
+  // [AddOn] Tabs_End
 
   // Dropdown filter selections (only items with >1 package appear in dropdown list)
   const [selectedTagDropdown, setSelectedTagDropdown] = useState('')
@@ -70,7 +77,9 @@ export default function TabsAndLabelsView({ onNavigate }) {
         (l) => l.name.toLowerCase().includes(q) || (l.category && l.category.toLowerCase().includes(q)),
       )
     }
-    return TagAddon.sortLabelsByPriority(list)
+    // [AddOn] Tabs_Begin
+    return TabsAddon.sortLabelsByPriorityAscName(list)
+    // [AddOn] Tabs_End
   }, [labels, selectedLabelDropdown, searchTerm])
 
   // Group labels into Folder Categories
@@ -303,239 +312,255 @@ export default function TabsAndLabelsView({ onNavigate }) {
         {/* Section 1: Labels */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-            <div>
-              <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-                <span>Labels</span>
-                <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
-                  {labels.length} total
-                </span>
-                <span className="text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
-                  <Star size={11} className="fill-amber-500" />
-                  {favoriteCount}/8 Favorites
-                </span>
-              </h2>
-              <p className="text-xs text-text-secondary">
-                User-defined label tabs. Set Priority so high priority labels show in front and their colour displays
-                first.
-              </p>
-            </div>
+            {/* [AddOn] Tabs_Begin */}
+            <button
+              type="button"
+              onClick={() => setLabelsSectionCollapsed((prev) => !prev)}
+              className="text-left cursor-pointer flex items-start gap-2.5 group"
+            >
+              <span className="mt-1 text-text-tertiary group-hover:text-text-primary transition-colors">
+                {labelsSectionCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              </span>
+              <div>
+                <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+                  <span>Labels</span>
+                  <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
+                    {labels.length} total
+                  </span>
+                  <span className="text-xs font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
+                    <Star size={11} className="fill-amber-500" />
+                    {favoriteCount}/8 Favorites
+                  </span>
+                </h2>
+                <p className="text-xs text-text-secondary">
+                  User-defined label tabs. Set Priority so high priority labels show in front and their colour displays
+                  first.
+                </p>
+              </div>
+            </button>
+            {/* [AddOn] Tabs_End */}
 
             {/* Label Filter Dropdown (items with > 1 package) */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-text-tertiary">Filter Label (&gt;1 pkg):</label>
-              {/* [AddOn] Tabs_Begin */}
-              <select
-                value={selectedLabelDropdown}
-                onChange={(e) => setSelectedLabelDropdown(e.target.value)}
-                className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
-              >
-                <option value="">All Labels</option>
-                {dropdownLabels.map((lbl) => (
-                  <option key={lbl.id} value={lbl.id}>
-                    {lbl.name}
-                  </option>
-                ))}
-              </select>
-              {/* [AddOn] Tabs_End */}
-              {selectedLabelDropdown && (
-                <button
-                  onClick={() => setSelectedLabelDropdown('')}
-                  className="text-xs text-accent-blue hover:underline"
+            {!labelsSectionCollapsed && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-text-tertiary">Filter Label (&gt;1 pkg):</label>
+                {/* [AddOn] Tabs_Begin */}
+                <select
+                  value={selectedLabelDropdown}
+                  onChange={(e) => setSelectedLabelDropdown(e.target.value)}
+                  className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
                 >
-                  Clear
-                </button>
-              )}
-            </div>
+                  <option value="">All Labels</option>
+                  {dropdownLabels.map((lbl) => (
+                    <option key={lbl.id} value={lbl.id}>
+                      {lbl.name}
+                    </option>
+                  ))}
+                </select>
+                {/* [AddOn] Tabs_End */}
+                {selectedLabelDropdown && (
+                  <button
+                    onClick={() => setSelectedLabelDropdown('')}
+                    className="text-xs text-accent-blue hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {filteredLabels.length === 0 ? (
-            <div className="p-6 text-center text-xs text-text-tertiary bg-surface/50 rounded-lg border border-border/40">
-              No labels found. Click &quot;New Label&quot; to create one.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {labelCategoryGroups.map(({ category, labels: groupLabels }) => {
-                const isCollapsed = !!collapsedCategories[category]
-                const categoryTotalPkgs = groupLabels.reduce((sum, l) => sum + (l.packageCount || 0), 0)
+          {!labelsSectionCollapsed &&
+            (filteredLabels.length === 0 ? (
+              <div className="p-6 text-center text-xs text-text-tertiary bg-surface/50 rounded-lg border border-border/40">
+                No labels found. Click &quot;New Label&quot; to create one.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {labelCategoryGroups.map(({ category, labels: groupLabels }) => {
+                  const isCollapsed = !!collapsedCategories[category]
+                  const categoryTotalPkgs = groupLabels.reduce((sum, l) => sum + (l.packageCount || 0), 0)
 
-                return (
-                  <div key={category} className="border border-border/60 rounded-xl overflow-hidden bg-surface/30">
-                    {/* Folder Category Header */}
-                    <button
-                      onClick={() => toggleCategoryCollapse(category)}
-                      className="w-full flex items-center justify-between p-3 bg-surface hover:bg-hover border-b border-border/40 text-left transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 font-semibold text-xs text-text-primary">
-                        {isCollapsed ? (
-                          <ChevronRight size={14} className="text-text-tertiary" />
-                        ) : (
-                          <ChevronDown size={14} className="text-text-tertiary" />
-                        )}
-                        <Folder size={15} className="text-accent-blue" />
-                        <span>{category}</span>
-                      </div>
+                  return (
+                    <div key={category} className="border border-border/60 rounded-xl overflow-hidden bg-surface/30">
+                      {/* Folder Category Header */}
+                      <button
+                        onClick={() => toggleCategoryCollapse(category)}
+                        className="w-full flex items-center justify-between p-3 bg-surface hover:bg-hover border-b border-border/40 text-left transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 font-semibold text-xs text-text-primary">
+                          {isCollapsed ? (
+                            <ChevronRight size={14} className="text-text-tertiary" />
+                          ) : (
+                            <ChevronDown size={14} className="text-text-tertiary" />
+                          )}
+                          <Folder size={15} className="text-accent-blue" />
+                          <span>{category}</span>
+                        </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full border border-border/40">
-                          {groupLabels.length} {groupLabels.length === 1 ? 'label' : 'labels'} ({categoryTotalPkgs}{' '}
-                          pkgs)
-                        </span>
-                      </div>
-                    </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full border border-border/40">
+                            {groupLabels.length} {groupLabels.length === 1 ? 'label' : 'labels'} ({categoryTotalPkgs}{' '}
+                            pkgs)
+                          </span>
+                        </div>
+                      </button>
 
-                    {/* Category Label Grid */}
-                    {!isCollapsed && (
-                      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {groupLabels.map((label) => {
-                          const colorHex = labelColor(label)
-                          const isEditing = editingLabelId === label.id
-                          return (
-                            <LabelManageMenu
-                              key={label.id}
-                              label={label}
-                              applicationCount={(label.packageCount || 0) + (label.contentCount || 0)}
-                              onStartRename={() => handleStartRename(label)}
-                            >
-                              <div className="flex items-center justify-between p-3 bg-surface hover:bg-hover border border-border rounded-lg transition-all group">
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                                  {/* Custom Color Wheel / Color Dot */}
-                                  <div className="relative group/color shrink-0">
-                                    <span
-                                      className="w-3.5 h-3.5 rounded-full inline-block border border-white/20 shadow-xs"
-                                      style={{ backgroundColor: colorHex }}
-                                    />
-                                    <input
-                                      type="color"
-                                      value={colorHex.startsWith('#') ? colorHex : '#ef5bed'}
-                                      onChange={(e) => handleRecolor(label.id, e.target.value)}
-                                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                      title="Change color wheel"
-                                    />
+                      {/* Category Label Grid */}
+                      {!isCollapsed && (
+                        <div className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {groupLabels.map((label) => {
+                            const colorHex = labelColor(label)
+                            const isEditing = editingLabelId === label.id
+                            return (
+                              <LabelManageMenu
+                                key={label.id}
+                                label={label}
+                                applicationCount={(label.packageCount || 0) + (label.contentCount || 0)}
+                                onStartRename={() => handleStartRename(label)}
+                              >
+                                <div className="flex items-center justify-between p-3 bg-surface hover:bg-hover border border-border rounded-lg transition-all group">
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                                    {/* Custom Color Wheel / Color Dot */}
+                                    <div className="relative group/color shrink-0">
+                                      <span
+                                        className="w-3.5 h-3.5 rounded-full inline-block border border-white/20 shadow-xs"
+                                        style={{ backgroundColor: colorHex }}
+                                      />
+                                      <input
+                                        type="color"
+                                        value={colorHex.startsWith('#') ? colorHex : '#ef5bed'}
+                                        onChange={(e) => handleRecolor(label.id, e.target.value)}
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        title="Change color wheel"
+                                      />
+                                    </div>
+
+                                    {/* Label Name, Category, Priority Edit */}
+                                    {isEditing ? (
+                                      <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                        <input
+                                          type="text"
+                                          autoFocus
+                                          placeholder="Label name..."
+                                          value={editingName}
+                                          onChange={(e) => setEditingName(e.target.value)}
+                                          className="w-full bg-elevated border border-accent-blue rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none"
+                                        />
+                                        <input
+                                          type="text"
+                                          placeholder="Category..."
+                                          value={editingCategory}
+                                          onChange={(e) => setEditingCategory(e.target.value)}
+                                          className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                        />
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] text-text-tertiary">Prio:</span>
+                                          <input
+                                            type="number"
+                                            placeholder="Priority"
+                                            value={editingPriority}
+                                            onChange={(e) => setEditingPriority(e.target.value)}
+                                            className="w-16 bg-elevated border border-border rounded px-1 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                          />
+                                        </div>
+                                        {/* [AddOn] Tabs_Begin */}
+                                        <input
+                                          type="text"
+                                          placeholder="Description..."
+                                          value={editingDescription}
+                                          onChange={(e) => setEditingDescription(e.target.value)}
+                                          className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                          title="Description shown on mouse hover"
+                                        />
+                                        {/* [AddOn] Tabs_End */}
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                          <button
+                                            onClick={() => handleSaveRename(label.id)}
+                                            className="text-xs bg-accent-blue text-white px-2 py-0.5 rounded cursor-pointer"
+                                          >
+                                            Save
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingLabelId(null)}
+                                            className="text-xs bg-surface border border-border text-text-tertiary px-2 py-0.5 rounded cursor-pointer"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleNavigateLabel(label.id)}
+                                        className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
+                                        title={`Filter Library by "${label.name}"`}
+                                      >
+                                        {label.name}
+                                      </button>
+                                    )}
                                   </div>
 
-                                  {/* Label Name, Category, Priority Edit */}
-                                  {isEditing ? (
-                                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                                      <input
-                                        type="text"
-                                        autoFocus
-                                        placeholder="Label name..."
-                                        value={editingName}
-                                        onChange={(e) => setEditingName(e.target.value)}
-                                        className="w-full bg-elevated border border-accent-blue rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none"
-                                      />
-                                      <input
-                                        type="text"
-                                        placeholder="Category..."
-                                        value={editingCategory}
-                                        onChange={(e) => setEditingCategory(e.target.value)}
-                                        className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
-                                      />
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] text-text-tertiary">Prio:</span>
+                                  {/* Actions: Priority Setter + Star Favorite + Package Count + Arrow */}
+                                  {!isEditing && (
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {/* Dedicated Priority Setter Control */}
+                                      <div
+                                        className="flex items-center gap-1 bg-elevated/70 px-1 py-0.5 rounded border border-border/50 text-[10px]"
+                                        title="Set Priority (higher number shows in front)"
+                                      >
+                                        <span className="text-text-tertiary font-medium">Prio</span>
                                         <input
                                           type="number"
-                                          placeholder="Priority"
-                                          value={editingPriority}
-                                          onChange={(e) => setEditingPriority(e.target.value)}
-                                          className="w-16 bg-elevated border border-border rounded px-1 py-0.5 text-[11px] text-text-primary focus:outline-none"
+                                          value={label.priority || 0}
+                                          onChange={(e) => handleDirectPriorityChange(label.id, e.target.value)}
+                                          className="w-9 bg-surface text-center rounded text-[11px] text-text-primary border border-border/70 focus:outline-none focus:border-accent-blue py-0.2"
                                         />
                                       </div>
-                                      {/* [AddOn] Tabs_Begin */}
-                                      <input
-                                        type="text"
-                                        placeholder="Description..."
-                                        value={editingDescription}
-                                        onChange={(e) => setEditingDescription(e.target.value)}
-                                        className="w-full bg-elevated border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none"
-                                        title="Description shown on mouse hover"
-                                      />
-                                      {/* [AddOn] Tabs_End */}
-                                      <div className="flex items-center gap-1 mt-0.5">
-                                        <button
-                                          onClick={() => handleSaveRename(label.id)}
-                                          className="text-xs bg-accent-blue text-white px-2 py-0.5 rounded cursor-pointer"
-                                        >
-                                          Save
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingLabelId(null)}
-                                          className="text-xs bg-surface border border-border text-text-tertiary px-2 py-0.5 rounded cursor-pointer"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
+
+                                      {/* Star Button to toggle Favorite */}
+                                      <button
+                                        onClick={() => handleToggleFavorite(label)}
+                                        className={`p-1 rounded hover:bg-elevated transition-colors cursor-pointer ${
+                                          label.isFavorite
+                                            ? 'text-amber-500'
+                                            : 'text-text-tertiary hover:text-amber-500'
+                                        }`}
+                                        title={
+                                          label.isFavorite
+                                            ? 'Remove from top bar quick favorites'
+                                            : 'Add to top bar quick favorites (max 8)'
+                                        }
+                                      >
+                                        <Star size={13} className={label.isFavorite ? 'fill-amber-500' : ''} />
+                                      </button>
+
+                                      <span
+                                        className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full"
+                                        title={`${label.packageCount || 0} packages, ${label.contentCount || 0} contents`}
+                                      >
+                                        {label.packageCount || 0}
+                                      </span>
+
+                                      <button
+                                        onClick={() => handleNavigateLabel(label.id)}
+                                        className="p-1 text-text-tertiary hover:text-accent-blue transition-colors cursor-pointer"
+                                        title="Open in Library"
+                                      >
+                                        <ArrowRight size={13} />
+                                      </button>
                                     </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleNavigateLabel(label.id)}
-                                      className="text-xs font-semibold text-text-primary hover:text-accent-blue truncate text-left cursor-pointer"
-                                      title={`Filter Library by "${label.name}"`}
-                                    >
-                                      {label.name}
-                                    </button>
                                   )}
                                 </div>
-
-                                {/* Actions: Priority Setter + Star Favorite + Package Count + Arrow */}
-                                {!isEditing && (
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {/* Dedicated Priority Setter Control */}
-                                    <div
-                                      className="flex items-center gap-1 bg-elevated/70 px-1 py-0.5 rounded border border-border/50 text-[10px]"
-                                      title="Set Priority (higher number shows in front)"
-                                    >
-                                      <span className="text-text-tertiary font-medium">Prio</span>
-                                      <input
-                                        type="number"
-                                        value={label.priority || 0}
-                                        onChange={(e) => handleDirectPriorityChange(label.id, e.target.value)}
-                                        className="w-9 bg-surface text-center rounded text-[11px] text-text-primary border border-border/70 focus:outline-none focus:border-accent-blue py-0.2"
-                                      />
-                                    </div>
-
-                                    {/* Star Button to toggle Favorite */}
-                                    <button
-                                      onClick={() => handleToggleFavorite(label)}
-                                      className={`p-1 rounded hover:bg-elevated transition-colors cursor-pointer ${
-                                        label.isFavorite ? 'text-amber-500' : 'text-text-tertiary hover:text-amber-500'
-                                      }`}
-                                      title={
-                                        label.isFavorite
-                                          ? 'Remove from top bar quick favorites'
-                                          : 'Add to top bar quick favorites (max 8)'
-                                      }
-                                    >
-                                      <Star size={13} className={label.isFavorite ? 'fill-amber-500' : ''} />
-                                    </button>
-
-                                    <span
-                                      className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full"
-                                      title={`${label.packageCount || 0} packages, ${label.contentCount || 0} contents`}
-                                    >
-                                      {label.packageCount || 0}
-                                    </span>
-
-                                    <button
-                                      onClick={() => handleNavigateLabel(label.id)}
-                                      className="p-1 text-text-tertiary hover:text-accent-blue transition-colors cursor-pointer"
-                                      title="Open in Library"
-                                    >
-                                      <ArrowRight size={13} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </LabelManageMenu>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                              </LabelManageMenu>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
         </section>
 
         {/* Divider between Labels and Tags */}
@@ -551,63 +576,80 @@ export default function TabsAndLabelsView({ onNavigate }) {
         {/* Section 2: Tags */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-            <div>
-              <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-                <span>Tags</span>
-                <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
-                  {allTagCounts.length} total
-                </span>
-              </h2>
-              <p className="text-xs text-text-secondary">Package hub tags extracted from package metadata.</p>
-            </div>
+            {/* [AddOn] Tabs_Begin */}
+            <button
+              type="button"
+              onClick={() => setTagsSectionCollapsed((prev) => !prev)}
+              className="text-left cursor-pointer flex items-start gap-2.5 group"
+            >
+              <span className="mt-1 text-text-tertiary group-hover:text-text-primary transition-colors">
+                {tagsSectionCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              </span>
+              <div>
+                <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+                  <span>Tags</span>
+                  <span className="text-xs font-normal text-text-tertiary px-2 py-0.5 bg-surface rounded-full border border-border/50">
+                    {allTagCounts.length} total
+                  </span>
+                </h2>
+                <p className="text-xs text-text-secondary">Package hub tags extracted from package metadata.</p>
+              </div>
+            </button>
+            {/* [AddOn] Tabs_End */}
 
             {/* Tag Filter Dropdown (items with > 1 package) */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-text-tertiary">Filter Tag (&gt;1 pkg):</label>
-              {/* [AddOn] Tabs_Begin */}
-              <select
-                value={selectedTagDropdown}
-                onChange={(e) => setSelectedTagDropdown(e.target.value)}
-                className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
-              >
-                <option value="">All Tags</option>
-                {dropdownTags.map(({ tag }) => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-              {/* [AddOn] Tabs_End */}
-              {selectedTagDropdown && (
-                <button onClick={() => setSelectedTagDropdown('')} className="text-xs text-accent-blue hover:underline">
-                  Clear
-                </button>
-              )}
-            </div>
+            {!tagsSectionCollapsed && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-text-tertiary">Filter Tag (&gt;1 pkg):</label>
+                {/* [AddOn] Tabs_Begin */}
+                <select
+                  value={selectedTagDropdown}
+                  onChange={(e) => setSelectedTagDropdown(e.target.value)}
+                  className="bg-surface border border-border text-xs rounded px-2 py-1 text-text-primary focus:outline-none focus:border-accent-blue"
+                >
+                  <option value="">All Tags</option>
+                  {dropdownTags.map(({ tag }) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+                {/* [AddOn] Tabs_End */}
+                {selectedTagDropdown && (
+                  <button
+                    onClick={() => setSelectedTagDropdown('')}
+                    className="text-xs text-accent-blue hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {filteredTags.length === 0 ? (
-            <div className="p-6 text-center text-xs text-text-tertiary bg-surface/50 rounded-lg border border-border/40">
-              No tags match the criteria.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-              {filteredTags.map(({ tag, count }) => (
-                <button
-                  key={tag}
-                  onClick={() => handleNavigateTag(tag)}
-                  className="flex items-center justify-between p-2.5 bg-surface hover:bg-hover border border-border/70 rounded-lg text-left transition-all duration-150 group cursor-pointer"
-                >
-                  <span className="text-xs font-medium text-text-primary truncate pr-2 group-hover:text-accent-blue">
-                    {tag}
-                  </span>
-                  <span className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 group-hover:bg-accent-blue/10 group-hover:text-accent-blue">
-                    {count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          {!tagsSectionCollapsed &&
+            (filteredTags.length === 0 ? (
+              <div className="p-6 text-center text-xs text-text-tertiary bg-surface/50 rounded-lg border border-border/40">
+                No tags match the criteria.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                {filteredTags.map(({ tag, count }) => (
+                  <button
+                    key={tag}
+                    onClick={() => handleNavigateTag(tag)}
+                    className="flex items-center justify-between p-2.5 bg-surface hover:bg-hover border border-border/70 rounded-lg text-left transition-all duration-150 group cursor-pointer"
+                  >
+                    <span className="text-xs font-medium text-text-primary truncate pr-2 group-hover:text-accent-blue">
+                      {tag}
+                    </span>
+                    <span className="text-[11px] font-semibold text-text-tertiary bg-elevated px-2 py-0.5 rounded-full shrink-0 group-hover:bg-accent-blue/10 group-hover:text-accent-blue">
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ))}
         </section>
       </div>
     </div>

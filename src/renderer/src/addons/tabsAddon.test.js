@@ -98,6 +98,43 @@ describe('TabsAddon', () => {
     })
   })
 
+  describe('sortLabelsByPriorityAscName & filterAndSortLabelsBySearch', () => {
+    it('sorts labels by priority descending (larger first), then name ascending', () => {
+      const labels = [
+        { id: 1, name: 'Zeta', priority: 10 },
+        { id: 2, name: 'Alpha', priority: 10 },
+        { id: 3, name: 'Delta', priority: 50 },
+        { id: 4, name: 'Beta', priority: 0 },
+        { id: 5, name: 'Apple', priority: 0 },
+      ]
+
+      const sorted = TabsAddon.sortLabelsByPriorityAscName(labels)
+      expect(sorted.map((l) => `${l.priority}:${l.name}`)).toEqual([
+        '50:Delta',
+        '10:Alpha',
+        '10:Zeta',
+        '0:Apple',
+        '0:Beta',
+      ])
+    })
+
+    it('filters by query and sorts results with larger priority first', () => {
+      const labels = [
+        { id: 1, name: 'Female Character', category: 'Actors', priority: 5 },
+        { id: 2, name: 'Male Character', category: 'Actors', priority: 20 },
+        { id: 3, name: 'Unrelated', category: 'Props', priority: 100 },
+        { id: 4, name: 'Character Anime', category: 'Anime', priority: 20 },
+      ]
+
+      const filtered = TabsAddon.filterAndSortLabelsBySearch(labels, 'character')
+      expect(filtered.map((l) => `${l.priority}:${l.name}`)).toEqual([
+        '20:Character Anime',
+        '20:Male Character',
+        '5:Female Character',
+      ])
+    })
+  })
+
   describe('getTooltipDelayMs', () => {
     it('defaults to 3000 when window.api is undefined or setting missing', async () => {
       const origWindow = global.window

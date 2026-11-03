@@ -55,18 +55,24 @@ function isSingleToken(name) {
 }
 const MULTIWORD_HINT = 'Multi-word values can’t be used in the search bar'
 
+// [AddOn] Tabs_Begin
 function rankLabelSuggestions(labels, q, limit = 20) {
   const all = labels || []
-  if (!q) return all.slice(0, limit)
-  const prefix = []
-  const rest = []
+  const sortFn = (a, b) => {
+    const pDiff = (b?.priority || 0) - (a?.priority || 0)
+    if (pDiff !== 0) return pDiff
+    return (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' })
+  }
+  if (!q) return [...all].sort(sortFn).slice(0, limit)
+  const matches = []
   for (const l of all) {
     const lower = (l.name || '').toLowerCase()
-    if (lower.startsWith(q)) prefix.push(l)
-    else if (lower.includes(q)) rest.push(l)
+    const lowerCat = (l.category || '').toLowerCase()
+    if (lower.includes(q) || lowerCat.includes(q)) matches.push(l)
   }
-  return [...prefix, ...rest].slice(0, limit)
+  return matches.sort(sortFn).slice(0, limit)
 }
+// [AddOn] Tabs_End
 
 /** Prefix-then-substring rank for a closed string list (types, flags, …). */
 function rankEnum(names, q, limit = 20) {
