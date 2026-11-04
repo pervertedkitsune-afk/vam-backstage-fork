@@ -1,5 +1,5 @@
 // [AddOn] TagAddon_Begin
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Search, Plus, Check, X, ArrowRight, Tag, Folder, ChevronDown, ChevronRight, Star } from 'lucide-react'
 import { toast } from '@/components/Toast'
 import { useLibraryStore } from '@/stores/useLibraryStore'
@@ -37,11 +37,33 @@ export default function TabsAndLabelsView({ onNavigate }) {
   // [AddOn] Tabs_Begin
   const [labelsSectionCollapsed, setLabelsSectionCollapsed] = useState(false)
   const [tagsSectionCollapsed, setTagsSectionCollapsed] = useState(false)
+  const [categoryPriorities, setCategoryPriorities] = useState({})
   // [AddOn] Tabs_End
 
   // Dropdown filter selections (only items with >1 package appear in dropdown list)
   const [selectedTagDropdown, setSelectedTagDropdown] = useState('')
   const [selectedLabelDropdown, setSelectedLabelDropdown] = useState('')
+
+  // [AddOn] Tabs_Begin
+  useEffect(() => {
+    let cancelled = false
+    TabsAddon.getCategoryPriorities().then((map) => {
+      if (!cancelled) setCategoryPriorities(map || {})
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleCategoryPriorityChange = async (category, value) => {
+    const prio = parseInt(value, 10) || 0
+    const key = (category || '').toLowerCase()
+    const next = { ...categoryPriorities, [key]: prio }
+    setCategoryPriorities(next)
+    await TabsAddon.setCategoryPriorities(next)
+    toast(`Set priority for "${category}" to ${prio}`, 'success')
+  }
+  // [AddOn] Tabs_End
 
   // Calculate tag counts across all packages
   const allTagCounts = useMemo(() => TagAddon.getTagCounts(packages), [packages])
@@ -83,7 +105,19 @@ export default function TabsAndLabelsView({ onNavigate }) {
   }, [labels, selectedLabelDropdown, searchTerm])
 
   // Group labels into Folder Categories
-  const labelCategoryGroups = useMemo(() => TagAddon.groupLabelsByCategory(filteredLabels), [filteredLabels])
+  // [AddOn] Tabs_Begin
+  const labelCategoryGroups = useMemo(() => {
+    const groups = TagAddon.groupLabelsByCategory(filteredLabels)
+    return [...groups].sort((a, b) => {
+      if (a.category === 'Uncategorized') return 1
+      if (b.category === 'Uncategorized') return -1
+      const aPrio = parseInt(categoryPriorities[a.category.toLowerCase()] ?? 0, 10) || 0
+      const bPrio = parseInt(categoryPriorities[b.category.toLowerCase()] ?? 0, 10) || 0
+      if (bPrio !== aPrio) return bPrio - aPrio
+      return a.category.localeCompare(b.category, undefined, { sensitivity: 'base' })
+    })
+  }, [filteredLabels, categoryPriorities])
+  // [AddOn] Tabs_End
 
   const toggleCategoryCollapse = (catName) => {
     setCollapsedCategories((prev) => ({
@@ -399,6 +433,23 @@ export default function TabsAndLabelsView({ onNavigate }) {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          {/* [AddOn] Tabs_Begin */}
+                          {category !== 'Uncategorized' && (
+                            <div
+                              className="flex items-center gap-1 bg-elevated/70 px-1 py-0.5 rounded border border-border/50 text-[10px]"
+                              title="Set Category Priority (higher number shows in front in dropdowns)"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="text-text-tertiary font-medium">Prio</span>
+                              <input
+                                type="number"
+                                value={categoryPriorities[category.toLowerCase()] ?? 0}
+                                onChange={(e) => handleCategoryPriorityChange(category, e.target.value)}
+                                className="w-9 bg-surface text-center rounded text-[11px] text-text-primary border border-border/70 focus:outline-none focus:border-accent-blue py-0.2"
+                              />
+                            </div>
+                          )}
+                          {/* [AddOn] Tabs_End */}
                           <span className="text-[11px] text-text-tertiary bg-elevated px-2 py-0.5 rounded-full border border-border/40">
                             {groupLabels.length} {groupLabels.length === 1 ? 'label' : 'labels'} ({categoryTotalPkgs}{' '}
                             pkgs)

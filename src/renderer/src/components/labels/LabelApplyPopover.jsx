@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -35,7 +35,19 @@ export function LabelApplyPopover({
   const isBulk = stateById != null && typeof onToggle === 'function'
 
   // [AddOn] Tabs_Begin
-  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels), [labels])
+  const [categoryPriorities, setCategoryPriorities] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    TabsAddon.getCategoryPriorities().then((map) => {
+      if (!cancelled) setCategoryPriorities(map || {})
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels, categoryPriorities), [labels, categoryPriorities])
   // [AddOn] Tabs_End
 
   const visibleLabels = useMemo(() => {

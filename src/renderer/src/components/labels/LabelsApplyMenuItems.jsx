@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { labelColor } from '@/lib/labels'
 import { CLARIFY_DENSE } from '@/lib/typography'
@@ -14,7 +14,19 @@ import { LabelStateCheckbox } from './LabelStateCheckbox'
  */
 export function LabelsApplyMenuItems({ labels, stateById, onToggle }) {
   // [AddOn] Tabs_Begin
-  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels), [labels])
+  const [categoryPriorities, setCategoryPriorities] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    TabsAddon.getCategoryPriorities().then((map) => {
+      if (!cancelled) setCategoryPriorities(map || {})
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels, categoryPriorities), [labels, categoryPriorities])
   // [AddOn] Tabs_End
 
   if (sorted.length === 0) {

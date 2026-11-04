@@ -3,18 +3,20 @@ export class TabsAddon {
   /**
    * Sort labels grouped by category:
    * - Uncategorized labels (null, undefined, or empty/whitespace category) appear first at the top.
-   * - Categories are grouped case-insensitively and sorted alphabetically.
-   * - Within each category group, labels are sorted alphabetically by name (case-insensitive).
+   * - Categories are grouped case-insensitively and sorted by category priority descending
+   *   (larger numbers first), breaking ties alphabetically.
+   * - Within each category group, labels are sorted alphabetically by name (or by priority if specified).
    * Returns a flat array of labels preserving visual layout without nesting/collapsing.
    *
    * @param {Array} labels
+   * @param {Object} [categoryPriorities={}] Map of normalized category name -> priority number
    * @returns {Array} Sorted labels array
    */
-  static sortLabelsByGroup(labels) {
+  static sortLabelsByGroup(labels, categoryPriorities = {}) {
     if (!Array.isArray(labels)) return []
 
     const uncategorized = []
-    // Map from normalized category key (lowercase) -> { displayCategory: string, items: Array }
+    // Map from normalized category key (lowercase) -> { displayCategory: string, priority: number, items: Array }
     const categoryMap = new Map()
 
     for (const label of labels) {
@@ -25,7 +27,8 @@ export class TabsAddon {
       } else {
         const key = cat.toLowerCase()
         if (!categoryMap.has(key)) {
-          categoryMap.set(key, { displayCategory: cat, items: [] })
+          const prio = parseInt(categoryPriorities?.[key] ?? categoryPriorities?.[cat] ?? 0, 10) || 0
+          categoryMap.set(key, { displayCategory: cat, priority: prio, items: [] })
         }
         categoryMap.get(key).items.push(label)
       }
@@ -35,9 +38,11 @@ export class TabsAddon {
 
     uncategorized.sort(sortByName)
 
-    const sortedGroups = Array.from(categoryMap.values()).sort((a, b) =>
-      a.displayCategory.localeCompare(b.displayCategory, undefined, { sensitivity: 'base' }),
-    )
+    const sortedGroups = Array.from(categoryMap.values()).sort((a, b) => {
+      const pDiff = (b.priority || 0) - (a.priority || 0)
+      if (pDiff !== 0) return pDiff
+      return a.displayCategory.localeCompare(b.displayCategory, undefined, { sensitivity: 'base' })
+    })
 
     const result = [...uncategorized]
     for (const group of sortedGroups) {
@@ -46,6 +51,36 @@ export class TabsAddon {
     }
 
     return result
+  }
+
+  /**
+   * Fetch category priorities object from settings.
+   * @returns {Promise<Object>}
+   */
+  static async getCategoryPriorities() {
+    try {
+      const raw = await window.api?.settings?.get('category_priorities')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object') return parsed
+      }
+    } catch {
+      // Fallback
+    }
+    return {}
+  }
+
+  /**
+   * Save category priorities object to settings.
+   * @param {Object} priorities
+   * @returns {Promise<void>}
+   */
+  static async setCategoryPriorities(priorities) {
+    try {
+      await window.api?.settings?.set('category_priorities', JSON.stringify(priorities || {}))
+    } catch {
+      // Ignore
+    }
   }
 
   /**

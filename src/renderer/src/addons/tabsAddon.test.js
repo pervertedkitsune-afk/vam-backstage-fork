@@ -51,6 +51,25 @@ describe('TabsAddon', () => {
       ])
     })
 
+    it('orders categories by category priority descending (larger numbers first), keeping uncategorized on top', () => {
+      const labels = [
+        { id: 1, name: 'Fishnet', category: 'Clothing' },
+        { id: 2, name: 'Moon', category: 'Breast Size' },
+        { id: 3, name: 'Game', category: 'Girls' },
+        { id: 4, name: 'Uncategorized 1', category: null },
+      ]
+
+      const priorities = {
+        girls: 100,
+        clothing: 50,
+        'breast size': 10,
+      }
+
+      const result = TabsAddon.sortLabelsByGroup(labels, priorities)
+
+      expect(result.map((l) => l.name)).toEqual(['Uncategorized 1', 'Game', 'Fishnet', 'Moon'])
+    })
+
     it('keeps uncategorized labels at the very top before categorized groups', () => {
       const labels = [
         { id: 1, name: 'Fishnet', category: 'Clothing' },
@@ -132,6 +151,31 @@ describe('TabsAddon', () => {
         '20:Male Character',
         '5:Female Character',
       ])
+    })
+  })
+
+  describe('category priorities storage', () => {
+    it('gets and sets category priorities correctly', async () => {
+      let stored = null
+      const origWindow = global.window
+      try {
+        global.window = {
+          api: {
+            settings: {
+              get: async () => stored,
+              set: async (key, val) => {
+                stored = val
+              },
+            },
+          },
+        }
+
+        expect(await TabsAddon.getCategoryPriorities()).toEqual({})
+        await TabsAddon.setCategoryPriorities({ clothing: 50 })
+        expect(await TabsAddon.getCategoryPriorities()).toEqual({ clothing: 50 })
+      } finally {
+        global.window = origWindow
+      }
     })
   })
 
