@@ -489,6 +489,9 @@ function buildLabels() {
       category: l.category ?? null,
       isFavorite: !!l.is_favorite,
       priority: l.priority || 0,
+      // [AddOn] Tabs_Begin
+      description: l.description ?? null,
+      // [AddOn] Tabs_End
       packageCount: 0,
       contentCount: 0,
     })
@@ -1526,6 +1529,9 @@ export function refreshLabelMeta() {
       existing.category = l.category ?? null
       existing.isFavorite = !!l.is_favorite
       existing.priority = l.priority || 0
+      // [AddOn] Tabs_Begin
+      existing.description = l.description ?? null
+      // [AddOn] Tabs_End
       // [AddOn] TagAddon_End
     } else {
       // [AddOn] TagAddon_Begin
@@ -1536,6 +1542,9 @@ export function refreshLabelMeta() {
         category: l.category ?? null,
         isFavorite: !!l.is_favorite,
         priority: l.priority || 0,
+        // [AddOn] Tabs_Begin
+        description: l.description ?? null,
+        // [AddOn] Tabs_End
         packageCount: 0,
         contentCount: 0,
       })

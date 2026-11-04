@@ -127,6 +127,9 @@ export default function SettingsView() {
   // [AddOn] MultiProgress_Begin
   const [concurrentActions, setConcurrentActions] = useState('1')
   // [AddOn] MultiProgress_End
+  // [AddOn] Tabs_Begin
+  const [tagTooltipDelay, setTagTooltipDelay] = useState('3000')
+  // [AddOn] Tabs_End
   // [AddOn] MissingDownload_Begin
   const [downloadDirectory, setDownloadDirectory] = useState('')
   // [AddOn] MissingDownload_End
@@ -227,6 +230,9 @@ export default function SettingsView() {
     // [AddOn] Multidrive_End
     // [AddOn] MultiProgress_Begin
     window.api.settings.get('concurrent_actions').then((v) => setConcurrentActions(v || '1'))
+    // [AddOn] Tabs_Begin
+    window.api.settings.get('tag_tooltip_delay').then((v) => setTagTooltipDelay(v || '3000'))
+    // [AddOn] Tabs_End
     // [AddOn] MultiProgress_End
     // [AddOn] MissingDownload_Begin
     window.api.settings.get('download_directory').then((v) => setDownloadDirectory(v || ''))
@@ -501,6 +507,12 @@ export default function SettingsView() {
     await window.api.settings.set('concurrent_actions', value)
   }, [])
   // [AddOn] MultiProgress_End
+  // [AddOn] Tabs_Begin
+  const handleTagTooltipDelayChange = useCallback(async (value) => {
+    setTagTooltipDelay(value)
+    await window.api.settings.set('tag_tooltip_delay', value)
+  }, [])
+  // [AddOn] Tabs_End
 
   useEffect(() => {
     let cancelled = false
@@ -1431,6 +1443,27 @@ export default function SettingsView() {
               </Select>
             </SettingRow>
             {/* [AddOn] MultiProgress_End */}
+            {/* [AddOn] Tabs_Begin */}
+            <SettingRow
+              as="div"
+              label="Tag Tooltip Delay"
+              description="Configure the hover delay time (in seconds or milliseconds) before tag and label description tooltips appear."
+            >
+              <Select value={tagTooltipDelay} onValueChange={handleTagTooltipDelayChange}>
+                <SelectTrigger className="shrink-0 min-w-[120px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="500">0.5s (500ms)</SelectItem>
+                  <SelectItem value="1000">1s (1000ms)</SelectItem>
+                  <SelectItem value="2000">2s (2000ms)</SelectItem>
+                  <SelectItem value="3000">3s (3000ms)</SelectItem>
+                  <SelectItem value="4000">4s (4000ms)</SelectItem>
+                  <SelectItem value="5000">5s (5000ms)</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
+            {/* [AddOn] Tabs_End */}
             <AutoHideSwitch
               settingKey="auto_hide_deps"
               label="Auto-hide dependency content"

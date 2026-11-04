@@ -1,11 +1,14 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import { labelColor } from '@/lib/labels'
 import { CLARIFY_DENSE } from '@/lib/typography'
-import { sortLabelsByName } from './labelHelpers'
+// [AddOn] Tabs_Begin
+import { TabsAddon } from '@/addons/tabsAddon'
+import { TagDescriptionTooltip } from './TagDescriptionTooltip'
+// [AddOn] Tabs_End
 import { LabelStateCheckbox } from './LabelStateCheckbox'
 
 /**
@@ -31,7 +34,21 @@ export function LabelApplyPopover({
 
   const isBulk = stateById != null && typeof onToggle === 'function'
 
-  const sorted = useMemo(() => sortLabelsByName(labels), [labels])
+  // [AddOn] Tabs_Begin
+  const [categoryPriorities, setCategoryPriorities] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    TabsAddon.getCategoryPriorities().then((map) => {
+      if (!cancelled) setCategoryPriorities(map || {})
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels, categoryPriorities), [labels, categoryPriorities])
+  // [AddOn] Tabs_End
 
   const visibleLabels = useMemo(() => {
     if (isBulk) return sorted
@@ -47,18 +64,12 @@ export function LabelApplyPopover({
   /** Manual filter so list order is stable; cmdk's default sort would bury the create row. */
   // [AddOn] TagAddon_Begin
   // [AddOn] FolderFilter_Begin
+  // [AddOn] Tabs_Begin
   const filteredLabels = useMemo(() => {
     if (!q) return visibleLabels
-    const prefix = []
-    const rest = []
-    for (const l of visibleLabels) {
-      const lowerName = l.name.toLowerCase()
-      const lowerCat = (l.category || '').toLowerCase()
-      if (lowerName.startsWith(q) || lowerCat.startsWith(q)) prefix.push(l)
-      else if (lowerName.includes(q) || lowerCat.includes(q)) rest.push(l)
-    }
-    return [...prefix, ...rest]
+    return TabsAddon.filterAndSortLabelsBySearch(visibleLabels, q)
   }, [visibleLabels, q])
+  // [AddOn] Tabs_End
   // [AddOn] FolderFilter_End
   // [AddOn] TagAddon_End
 
@@ -132,20 +143,24 @@ export function LabelApplyPopover({
                 {filteredLabels.map((l) => {
                   const state = isBulk ? stateById.get(l.id) || 'none' : null
                   return (
-                    <CommandItem key={l.id} value={l.name} onSelect={() => handleItem(l)}>
-                      {isBulk && <LabelStateCheckbox state={state} />}
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
-                      <span className="truncate flex-1 text-text-primary">{l.name}</span>
-                      {/* [AddOn] TagAddon_Begin */}
-                      {/* [AddOn] FolderFilter_Begin */}
-                      {l.category && (
-                        <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
-                          {l.category}
-                        </span>
-                      )}
-                      {/* [AddOn] FolderFilter_End */}
-                      {/* [AddOn] TagAddon_End */}
-                    </CommandItem>
+                    // [AddOn] Tabs_Begin
+                    <TagDescriptionTooltip key={l.id} description={l.description}>
+                      <CommandItem value={l.name} onSelect={() => handleItem(l)}>
+                        {isBulk && <LabelStateCheckbox state={state} />}
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
+                        <span className="truncate flex-1 text-text-primary">{l.name}</span>
+                        {/* [AddOn] TagAddon_Begin */}
+                        {/* [AddOn] FolderFilter_Begin */}
+                        {l.category && (
+                          <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
+                            {l.category}
+                          </span>
+                        )}
+                        {/* [AddOn] FolderFilter_End */}
+                        {/* [AddOn] TagAddon_End */}
+                      </CommandItem>
+                    </TagDescriptionTooltip>
+                    // [AddOn] Tabs_End
                   )
                 })}
               </>

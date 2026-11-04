@@ -1,8 +1,11 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { labelColor } from '@/lib/labels'
 import { CLARIFY_DENSE } from '@/lib/typography'
-import { sortLabelsByName } from './labelHelpers'
+// [AddOn] Tabs_Begin
+import { TabsAddon } from '@/addons/tabsAddon'
+import { TagDescriptionTooltip } from './TagDescriptionTooltip'
+// [AddOn] Tabs_End
 import { LabelStateCheckbox } from './LabelStateCheckbox'
 
 /**
@@ -10,7 +13,21 @@ import { LabelStateCheckbox } from './LabelStateCheckbox'
  * No search or create (batch bar / "+" chip handle that via `LabelApplyPopover`).
  */
 export function LabelsApplyMenuItems({ labels, stateById, onToggle }) {
-  const sorted = useMemo(() => sortLabelsByName(labels), [labels])
+  // [AddOn] Tabs_Begin
+  const [categoryPriorities, setCategoryPriorities] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    TabsAddon.getCategoryPriorities().then((map) => {
+      if (!cancelled) setCategoryPriorities(map || {})
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const sorted = useMemo(() => TabsAddon.sortLabelsByGroup(labels, categoryPriorities), [labels, categoryPriorities])
+  // [AddOn] Tabs_End
 
   if (sorted.length === 0) {
     return <div className={`px-2 py-1.5 ${CLARIFY_DENSE}`}>No labels yet</div>
@@ -21,28 +38,31 @@ export function LabelsApplyMenuItems({ labels, stateById, onToggle }) {
       {sorted.map((l) => {
         const state = stateById.get(l.id) || 'none'
         return (
-          <ContextMenuItem
-            key={l.id}
-            textValue={l.name}
-            className="w-full justify-start text-left text-xs gap-2 cursor-pointer"
-            onSelect={(e) => {
-              e.preventDefault()
-              onToggle?.(l, state)
-            }}
-          >
-            <LabelStateCheckbox state={state} />
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
-            <span className="truncate flex-1 text-text-primary">{l.name}</span>
-            {/* [AddOn] TagAddon_Begin */}
-            {/* [AddOn] FolderFilter_Begin */}
-            {l.category && (
-              <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
-                {l.category}
-              </span>
-            )}
-            {/* [AddOn] FolderFilter_End */}
-            {/* [AddOn] TagAddon_End */}
-          </ContextMenuItem>
+          // [AddOn] Tabs_Begin
+          <TagDescriptionTooltip key={l.id} description={l.description}>
+            <ContextMenuItem
+              textValue={l.name}
+              className="w-full justify-start text-left text-xs gap-2 cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault()
+                onToggle?.(l, state)
+              }}
+            >
+              <LabelStateCheckbox state={state} />
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: labelColor(l) }} />
+              <span className="truncate flex-1 text-text-primary">{l.name}</span>
+              {/* [AddOn] TagAddon_Begin */}
+              {/* [AddOn] FolderFilter_Begin */}
+              {l.category && (
+                <span className="ml-auto text-[10px] text-text-tertiary bg-surface/80 px-1.5 py-0.2 rounded border border-border/40 shrink-0">
+                  {l.category}
+                </span>
+              )}
+              {/* [AddOn] FolderFilter_End */}
+              {/* [AddOn] TagAddon_End */}
+            </ContextMenuItem>
+          </TagDescriptionTooltip>
+          // [AddOn] Tabs_End
         )
       })}
     </div>
