@@ -2,6 +2,9 @@ import { forwardRef, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isMutedLabel, labelColor } from '@/lib/labels'
+// [AddOn] Tabs_Begin
+import { TagDescriptionTooltip } from './TagDescriptionTooltip'
+// [AddOn] Tabs_End
 
 /**
  * Visual primitive for a label as it appears on detail panels, in popovers,
@@ -74,101 +77,105 @@ export const LabelChip = forwardRef(function LabelChip(
   // The outer span is the asChild trigger target — Radix's Slot clones it and
   // appears to drop inline `style` during prop merge. The visible chip lives in
   // an inner span instead so its color/border survives.
+  // [AddOn] Tabs_Begin
   return (
-    <span
-      ref={ref}
-      className={cn('inline-flex max-w-full', className)}
-      onClick={renaming ? undefined : onClick}
-      {...rest}
-    >
+    <TagDescriptionTooltip description={label.description}>
       <span
-        className={cn(
-          'inline-flex items-center gap-1 rounded leading-tight max-w-full select-none box-border',
-          // Pin to a fixed pixel height so adjacent affordances (the `+` add
-          // button, etc.) can match without depending on inherited line-height.
-          isSm ? 'h-[18px] px-1.5 text-[10px]' : 'h-5 px-2 text-[11px]',
-          !useFilled &&
-            !useOutline &&
-            (active ? 'bg-accent-blue/15 text-text-primary' : 'bg-elevated text-text-secondary'),
-          interactive &&
-            !renaming &&
-            !useFilled &&
-            !useOutline &&
-            'cursor-pointer hover:bg-hover hover:text-text-primary',
-          interactive && !renaming && (useFilled || useOutline) && 'cursor-pointer',
-          muted && !active && !useFilled && !useOutline && 'opacity-80',
-          error && 'ring-1 ring-error/60',
-        )}
-        style={colorStyle}
+        ref={ref}
+        className={cn('inline-flex max-w-full', className)}
+        onClick={renaming ? undefined : onClick}
+        {...rest}
       >
-        {!useFilled && !useOutline && !muted && (
-          <span
-            className={cn(dotPx, 'rounded-full shrink-0')}
-            style={{ backgroundColor: color, boxShadow: active ? `0 0 4px ${color}80` : undefined }}
-          />
-        )}
-        {negated && (
-          <span className="shrink-0 text-error font-medium leading-none" aria-hidden>
-            −
-          </span>
-        )}
-        {renaming ? (
-          <input
-            ref={inputRef}
-            type="text"
-            value={editValue}
-            onChange={(e) => onEditChange?.(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                onCommit?.()
-              } else if (e.key === 'Escape') {
-                e.preventDefault()
-                onCancel?.()
+        <span
+          className={cn(
+            'inline-flex items-center gap-1 rounded leading-tight max-w-full select-none box-border',
+            // Pin to a fixed pixel height so adjacent affordances (the `+` add
+            // button, etc.) can match without depending on inherited line-height.
+            isSm ? 'h-[18px] px-1.5 text-[10px]' : 'h-5 px-2 text-[11px]',
+            !useFilled &&
+              !useOutline &&
+              (active ? 'bg-accent-blue/15 text-text-primary' : 'bg-elevated text-text-secondary'),
+            interactive &&
+              !renaming &&
+              !useFilled &&
+              !useOutline &&
+              'cursor-pointer hover:bg-hover hover:text-text-primary',
+            interactive && !renaming && (useFilled || useOutline) && 'cursor-pointer',
+            muted && !active && !useFilled && !useOutline && 'opacity-80',
+            error && 'ring-1 ring-error/60',
+          )}
+          style={colorStyle}
+        >
+          {!useFilled && !useOutline && !muted && (
+            <span
+              className={cn(dotPx, 'rounded-full shrink-0')}
+              style={{ backgroundColor: color, boxShadow: active ? `0 0 4px ${color}80` : undefined }}
+            />
+          )}
+          {negated && (
+            <span className="shrink-0 text-error font-medium leading-none" aria-hidden>
+              −
+            </span>
+          )}
+          {renaming ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => onEditChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  onCommit?.()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  onCancel?.()
+                }
+                e.stopPropagation()
+              }}
+              onBlur={() => onCommit?.()}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-transparent outline-none border-0 p-0 m-0 max-w-full min-w-[2ch] text-text-primary field-sizing-content"
+            />
+          ) : (
+            <span
+              className="min-w-0 truncate"
+              onDoubleClick={
+                onNameDoubleClick
+                  ? (e) => {
+                      e.stopPropagation()
+                      onNameDoubleClick()
+                    }
+                  : undefined
               }
-              e.stopPropagation()
-            }}
-            onBlur={() => onCommit?.()}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-transparent outline-none border-0 p-0 m-0 max-w-full min-w-[2ch] text-text-primary field-sizing-content"
-          />
-        ) : (
-          <span
-            className="min-w-0 truncate"
-            onDoubleClick={
-              onNameDoubleClick
-                ? (e) => {
-                    e.stopPropagation()
-                    onNameDoubleClick()
-                  }
-                : undefined
-            }
-          >
-            {label.name}
-          </span>
-        )}
-        {onRemove && (
-          <button
-            type="button"
-            tabIndex={renaming ? -1 : undefined}
-            aria-hidden={renaming}
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemove()
-            }}
-            className={cn(
-              'shrink-0 cursor-pointer -mr-0.5 relative top-[0.5px]',
-              renaming && 'invisible pointer-events-none',
-              useFilled || useOutline
-                ? 'text-current opacity-70 hover:opacity-100'
-                : 'text-text-aside hover:text-text-primary',
-            )}
-            aria-label={`Remove ${label.name}`}
-          >
-            <X size={isSm ? 9 : 10} />
-          </button>
-        )}
+            >
+              {label.name}
+            </span>
+          )}
+          {onRemove && (
+            <button
+              type="button"
+              tabIndex={renaming ? -1 : undefined}
+              aria-hidden={renaming}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove()
+              }}
+              className={cn(
+                'shrink-0 cursor-pointer -mr-0.5 relative top-[0.5px]',
+                renaming && 'invisible pointer-events-none',
+                useFilled || useOutline
+                  ? 'text-current opacity-70 hover:opacity-100'
+                  : 'text-text-aside hover:text-text-primary',
+              )}
+              aria-label={`Remove ${label.name}`}
+            >
+              <X size={isSm ? 9 : 10} />
+            </button>
+          )}
+        </span>
       </span>
-    </span>
+    </TagDescriptionTooltip>
   )
+  // [AddOn] Tabs_End
 })

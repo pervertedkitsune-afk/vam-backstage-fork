@@ -13,6 +13,9 @@ import { useCombobox } from './useCombobox'
 import { ChipRow, ComboboxField, ComboboxLabel, ComboboxPopup, ComboboxRow } from './Combobox'
 import { TagAddon } from '@/addons/tagAddon'
 import { NoLabelsAddon } from '@/addons/noLabelsAddon'
+// [AddOn] Tabs_Begin
+import { TabsAddon } from '@/addons/tabsAddon'
+// [AddOn] Tabs_End
 
 export function LabelsAutocomplete({
   value = [],
@@ -47,16 +50,10 @@ export function LabelsAutocomplete({
   const matches = useMemo(() => {
     const allCandidates = [noLabelItem, ...labels]
     const all = allCandidates.filter((l) => !selectedSet.has(l.id))
-    if (!q) return all
-    const prefix = []
-    const rest = []
-    for (const l of all) {
-      const lowerName = l.name.toLowerCase()
-      const lowerCat = (l.category || '').toLowerCase()
-      if (lowerName.startsWith(q) || lowerCat.startsWith(q)) prefix.push(l)
-      else if (lowerName.includes(q) || lowerCat.includes(q)) rest.push(l)
-    }
-    return [...prefix, ...rest]
+    if (!q) return TabsAddon.sortLabelsByPriorityAscName(all)
+    // [AddOn] Tabs_Begin
+    return TabsAddon.filterAndSortLabelsBySearch(all, q)
+    // [AddOn] Tabs_End
   }, [labels, noLabelItem, selectedSet, q])
 
   // Group candidate matches into Folder Categories

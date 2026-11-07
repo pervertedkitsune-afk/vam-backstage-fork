@@ -6,7 +6,7 @@ import { LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME } from '@shared/loca
 
 // [AddOn] DependencySort_notagfilter_Begin
 // [AddOn] TagAddon_Begin
-export const SCHEMA_VERSION = 35
+export const SCHEMA_VERSION = 36
 // [AddOn] TagAddon_End
 // [AddOn] DependencySort_notagfilter_End
 
@@ -164,6 +164,9 @@ export const MIGRATIONS = [
   [34, applyV34],
   [35, applyV35],
   // [AddOn] TagAddon_End
+  // [AddOn] Tabs_Begin
+  [36, applyV36],
+  // [AddOn] Tabs_End
 ]
 
 function migrate() {
@@ -604,6 +607,21 @@ function applyV35() {
 }
 // [AddOn] TagAddon_End
 
+// [AddOn] Tabs_Begin
+/**
+ * v36 — Label description support for hover tooltips.
+ */
+function applyV36() {
+  const cols = db
+    .prepare(`PRAGMA table_info(labels)`)
+    .all()
+    .map((c) => c.name)
+  if (!cols.includes('description')) {
+    db.exec('ALTER TABLE labels ADD COLUMN description TEXT')
+  }
+}
+// [AddOn] Tabs_End
+
 /**
  * Ensure the synthetic "local content" package row exists. Loose files under
  * `vamDir/Saves` and `vamDir/Custom` are stored as `contents` rows that point
@@ -743,6 +761,7 @@ function createSchema() {
       category TEXT,
       is_favorite INTEGER NOT NULL DEFAULT 0,
       priority INTEGER NOT NULL DEFAULT 0,
+      description TEXT,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
@@ -1783,18 +1802,35 @@ export function transact(fn) {
  * Newly-created labels start with `color = -1` (Auto — derive from id hash).
  */
 // [AddOn] TagAddon_Begin
-export function findOrCreateLabel(name, category = null, priority = 0) {
-  const existing = stmt('SELECT id, name, color, category, is_favorite, priority FROM labels WHERE name = ?').get(name)
+export function findOrCreateLabel(name, category = null, priority = 0, description = null) {
+  const existing = stmt(
+    'SELECT id, name, color, category, is_favorite, priority, description FROM labels WHERE name = ?',
+  ).get(name)
   if (existing) return { ...existing, created: false }
   const cat = category != null && String(category).trim() !== '' ? String(category).trim() : null
   const prio = parseInt(priority, 10) || 0
-  const r = stmt('INSERT INTO labels (name, color, category, priority) VALUES (?, -1, ?, ?)').run(name, cat, prio)
-  return { id: r.lastInsertRowid, name, color: -1, category: cat, is_favorite: 0, priority: prio, created: true }
+  const desc = description != null && String(description).trim() !== '' ? String(description).trim() : null
+  const r = stmt('INSERT INTO labels (name, color, category, priority, description) VALUES (?, -1, ?, ?, ?)').run(
+    name,
+    cat,
+    prio,
+    desc,
+  )
+  return {
+    id: r.lastInsertRowid,
+    name,
+    color: -1,
+    category: cat,
+    is_favorite: 0,
+    priority: prio,
+    description: desc,
+    created: true,
+  }
 }
 
 export function getAllLabels() {
   return stmt(
-    'SELECT id, name, color, category, is_favorite, priority, created_at FROM labels ORDER BY priority DESC, name DESC',
+    'SELECT id, name, color, category, is_favorite, priority, description, created_at FROM labels ORDER BY priority DESC, name DESC',
   ).all()
 }
 
@@ -1807,13 +1843,13 @@ export function getAllLabelContents() {
 }
 
 export function getLabelById(id) {
-  return stmt('SELECT id, name, color, category, is_favorite, priority FROM labels WHERE id = ?').get(id)
+  return stmt('SELECT id, name, color, category, is_favorite, priority, description FROM labels WHERE id = ?').get(id)
 }
 
 /**
- * Rename a label and optionally update category. Throws on case-insensitive collision.
+ * Rename a label and optionally update category/description. Throws on case-insensitive collision.
  */
-export function renameLabel(id, name, category = undefined) {
+export function renameLabel(id, name, category = undefined, description = undefined) {
   const trimmed = String(name ?? '').trim()
   if (!trimmed) throw new Error('Label name cannot be empty')
   const existing = stmt('SELECT id FROM labels WHERE name = ? AND id != ?').get(trimmed, id)
@@ -1822,12 +1858,20 @@ export function renameLabel(id, name, category = undefined) {
     err.code = 'LABEL_NAME_EXISTS'
     throw err
   }
-  if (category !== undefined) {
-    const cat = category != null && String(category).trim() !== '' ? String(category).trim() : null
-    stmt('UPDATE labels SET name = ?, category = ? WHERE id = ?').run(trimmed, cat, id)
-  } else {
-    stmt('UPDATE labels SET name = ? WHERE id = ?').run(trimmed, id)
-  }
+  const current = getLabelById(id)
+  const cat =
+    category !== undefined
+      ? category != null && String(category).trim() !== ''
+        ? String(category).trim()
+        : null
+      : current?.category
+  const desc =
+    description !== undefined
+      ? description != null && String(description).trim() !== ''
+        ? String(description).trim()
+        : null
+      : current?.description
+  stmt('UPDATE labels SET name = ?, category = ?, description = ? WHERE id = ?').run(trimmed, cat, desc, id)
   return getLabelById(id)
 }
 
@@ -1855,6 +1899,13 @@ export function setLabelPriority(id, priority) {
   return getLabelById(id)
 }
 // [AddOn] TagAddon_End
+// [AddOn] Tabs_Begin
+export function setLabelDescription(id, description) {
+  const desc = description != null && String(description).trim() !== '' ? String(description).trim() : null
+  stmt('UPDATE labels SET description = ? WHERE id = ?').run(desc, id)
+  return getLabelById(id)
+}
+// [AddOn] Tabs_End
 
 /** `color = -1` means Auto (derive from id hash); `null` means None (muted); else palette index. */
 export function recolorLabel(id, color) {

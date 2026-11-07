@@ -8,6 +8,9 @@ import {
   setLabelFavorite,
   setLabelPriority,
   // [AddOn] TagAddon_End
+  // [AddOn] Tabs_Begin
+  setLabelDescription,
+  // [AddOn] Tabs_End
   deleteLabel as dbDeleteLabel,
   applyLabelToPackages as dbApplyLabelToPackages,
   removeLabelFromPackages as dbRemoveLabelFromPackages,
@@ -34,10 +37,11 @@ export function registerLabelHandlers() {
   })
 
   // [AddOn] TagAddon_Begin
-  ipcMain.handle('labels:create', (_, { name, category }) => {
+  // [AddOn] Tabs_Begin
+  ipcMain.handle('labels:create', (_, { name, category, description }) => {
     const trimmed = String(name ?? '').trim()
     if (!trimmed) throw new Error('Label name cannot be empty')
-    const result = findOrCreateLabel(trimmed, category)
+    const result = findOrCreateLabel(trimmed, category, 0, description)
     if (result.created) {
       refreshLabelMeta()
       notify('labels:updated')
@@ -45,12 +49,22 @@ export function registerLabelHandlers() {
     return result
   })
 
-  ipcMain.handle('labels:rename', (_, { id, name, category }) => {
-    const updated = renameLabel(id, name, category)
+  ipcMain.handle('labels:rename', (_, { id, name, category, description }) => {
+    const updated = renameLabel(id, name, category, description)
     refreshLabelMeta()
     notify('labels:updated')
     return updated
   })
+  // [AddOn] Tabs_End
+
+  // [AddOn] Tabs_Begin
+  ipcMain.handle('labels:set-description', (_, { id, description }) => {
+    const updated = setLabelDescription(id, description)
+    refreshLabelMeta()
+    notify('labels:updated')
+    return updated
+  })
+  // [AddOn] Tabs_End
 
   ipcMain.handle('labels:set-category', (_, { id, category }) => {
     const updated = setLabelCategory(id, category)
