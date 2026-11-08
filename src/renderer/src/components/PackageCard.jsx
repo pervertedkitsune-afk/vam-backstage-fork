@@ -50,6 +50,9 @@ import { useWishlistStore } from '@/stores/useWishlistStore'
 import { LabelDots } from '@/components/labels/LabelDots'
 import { useLabelObjects } from '@/components/labels/useLabelObjects'
 import { MONO_DENSE, CLARIFY_DENSE, META_DENSE, META_COMPACT } from '@/lib/typography'
+// [AddOn] LagFix_Begin
+import { LagFixAddon } from '@/addons/lagFixAddon'
+// [AddOn] LagFix_End
 
 /**
  * Derive the "inactive package" visual state (`disabled` or `offloaded`) and
@@ -207,7 +210,8 @@ function RowCheckedBadge() {
  * Insertion-order LRU (same shape as the main-process caches) — a deep browse touches far
  * too many cards to hold them all, and the useful window is the last few screens.
  */
-const MAX_RETAINED_THUMBS = 400
+// [AddOn] LagFix_Begin
+const MAX_RETAINED_THUMBS = LagFixAddon.RETAINED_THUMBS_LIMIT
 const retainedThumbs = new Map()
 
 function retainThumb(url) {
@@ -222,8 +226,16 @@ function retainThumb(url) {
   const img = new Image()
   img.src = url
   retainedThumbs.set(url, img)
-  if (retainedThumbs.size > MAX_RETAINED_THUMBS) retainedThumbs.delete(retainedThumbs.keys().next().value)
+  if (retainedThumbs.size > MAX_RETAINED_THUMBS) {
+    const oldestKey = retainedThumbs.keys().next().value
+    const evicted = retainedThumbs.get(oldestKey)
+    if (evicted) {
+      evicted.src = ''
+    }
+    retainedThumbs.delete(oldestKey)
+  }
 }
+// [AddOn] LagFix_End
 
 export function AuthorAvatar({ author, userId, size = 18 }) {
   const avatarUrl = useAvatar(userId)

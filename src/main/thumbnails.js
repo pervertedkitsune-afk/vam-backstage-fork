@@ -11,7 +11,10 @@ import { getPackageIndex } from './store.js'
 import { pLimit } from './p-limit.js'
 import { pkgVarPath, resolveContentPath } from './library-dirs.js'
 
-const MAX_ENTRIES = 3000
+// [AddOn] LagFix_Begin
+// Lower maximum in-memory cached thumbnail buffers to keep main process RAM well below 1GB
+const MAX_ENTRIES = 1200
+// [AddOn] LagFix_End
 // Bounded concurrency for thumbnail jobs (companion-jpg reads, loose ct: reads,
 // yauzl `.var` opens). 2× the default libuv worker pool (4) gives burst
 // headroom without queue padding; sequential awaits on a 50-card cold batch
@@ -35,10 +38,12 @@ function touchLru(key) {
 }
 
 function evict() {
+  // [AddOn] LagFix_Begin
   if (cache.size <= MAX_ENTRIES) return
-  const toDelete = Math.floor(MAX_ENTRIES * 0.2)
+  const toDelete = Math.floor(MAX_ENTRIES * 0.25)
   const iter = cache.keys()
   for (let i = 0; i < toDelete; i++) cache.delete(iter.next().value)
+  // [AddOn] LagFix_End
 }
 
 export function getThumbCacheDir() {
