@@ -202,12 +202,20 @@ export default function DuplicatePackagesView() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent focus:outline-none cursor-pointer"
+              className="bg-surface text-text-primary focus:outline-none cursor-pointer"
             >
-              <option value="packageName">Package Name</option>
-              <option value="sizeBytes">File Size</option>
-              <option value="creator">Creator</option>
-              <option value="count">Copies Count</option>
+              <option value="packageName" className="bg-surface text-text-primary">
+                Package Name
+              </option>
+              <option value="sizeBytes" className="bg-surface text-text-primary">
+                File Size
+              </option>
+              <option value="creator" className="bg-surface text-text-primary">
+                Creator
+              </option>
+              <option value="count" className="bg-surface text-text-primary">
+                Copies Count
+              </option>
             </select>
             <button
               onClick={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
