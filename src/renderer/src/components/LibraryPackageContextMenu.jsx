@@ -15,6 +15,9 @@ import {
   Plus,
   Minus,
   Shapes,
+  // [AddOn] DupeTab_Begin
+  ShieldCheck,
+  // [AddOn] DupeTab_End
   Tag,
   Trash2,
 } from 'lucide-react'
@@ -329,6 +332,22 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
       toast(`Redownload failed: ${err.message}`)
     }
   }
+  // [AddOn] DupeTab_Begin
+  const handleVerifyIntegrity = async () => {
+    const targetFilename = p?.filename || pkg.filename
+    try {
+      toast(`Verifying integrity of ${targetFilename}…`, 'info')
+      const res = await window.api.integrity.checkSingle(targetFilename)
+      if (res?.ok) {
+        toast(`Integrity check passed: ${targetFilename}`, 'success')
+      } else {
+        toast(`Integrity check failed: ${res?.error || 'Corrupted archive'}`, 'error')
+      }
+    } catch (err) {
+      toast(`Verification error: ${err.message}`, 'error')
+    }
+  }
+  // [AddOn] DupeTab_End
   const handleArchive = async (archiveDirId, depMode) => {
     setArchiveOpen(false)
     try {
@@ -902,6 +921,12 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
                 <FolderTree size={12} className="shrink-0" />
                 Browse package files
               </ContextMenuItem>
+              {/* [AddOn] DupeTab_Begin */}
+              <ContextMenuItem onSelect={() => void handleVerifyIntegrity()}>
+                <ShieldCheck size={12} className="shrink-0 text-accent-blue" />
+                Verify Integrity
+              </ContextMenuItem>
+              {/* [AddOn] DupeTab_End */}
               <ContextMenuSub>
                 <ContextMenuSubTrigger>
                   <Tag size={12} className="shrink-0" />

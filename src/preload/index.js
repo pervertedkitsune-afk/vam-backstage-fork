@@ -159,9 +159,15 @@ const api = {
     // [AddOn] ArchiveUniquePackages_Begin
     cleanupDatabase: () => invoke('scan:cleanup-database'),
     // [AddOn] ArchiveUniquePackages_End
+    // [AddOn] DupeTab_Begin
+    checkConflicts: () => invoke('scan:check-conflicts'),
+    // [AddOn] DupeTab_End
   },
   integrity: {
     check: () => invoke('integrity:check'),
+    // [AddOn] DupeTab_Begin
+    checkSingle: (filename) => invoke('integrity:check-single', filename),
+    // [AddOn] DupeTab_End
   },
   startup: {
     consumeUnreadable: () => invoke('startup:consume-unreadable'),

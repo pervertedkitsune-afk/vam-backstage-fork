@@ -137,6 +137,9 @@ export default function SettingsView() {
   const [nonHubDirectory, setNonHubDirectory] = useState('')
   const [cleaningDb, setCleaningDb] = useState(false)
   // [AddOn] ArchiveUniquePackages_End
+  // [AddOn] DupeTab_Begin
+  const [checkingConflicts, setCheckingConflicts] = useState(false)
+  // [AddOn] DupeTab_End
   // [AddOn] DependencyFix_Begin
   const [focusedDependencyFolder, setFocusedDependencyFolder] = useState('')
   // [AddOn] DependencyFix_End
@@ -414,6 +417,35 @@ export default function SettingsView() {
       setCleaningDb(false)
     }
   }, [cleaningDb, scanning, hubScanning, verifying, fetchStats])
+
+  // [AddOn] DupeTab_Begin
+  const handleCheckConflicts = useCallback(async () => {
+    if (checkingConflicts || scanning || hubScanning || verifying) return
+    setCheckingConflicts(true)
+    setScanResult(null)
+    try {
+      const result = await window.api.scan.checkConflicts()
+      if (result.conflictCount > 0) {
+        const details = result.conflicts.slice(0, 10).map((c) => `${c.path} (in ${c.packages.join(', ')})`)
+        if (result.conflicts.length > 10) {
+          details.push(`...and ${result.conflicts.length - 10} more (see ${result.logPath})`)
+        }
+        setScanResult({
+          error: `Found ${result.conflictCount} conflicting virtual file paths across ${result.checkedCount} enabled packages. Details exported to ${result.logPath}.`,
+          warnings: details,
+        })
+      } else {
+        setScanResult({
+          success: `No conflicts detected across all ${result.checkedCount} enabled packages!`,
+        })
+      }
+    } catch (err) {
+      setScanResult({ error: `Conflict check failed: ${err.message}` })
+    } finally {
+      setCheckingConflicts(false)
+    }
+  }, [checkingConflicts, scanning, hubScanning, verifying])
+  // [AddOn] DupeTab_End
   // [AddOn] ArchiveUniquePackages_End
 
   const dismissOffloadSuggestion = useCallback((id) => {
@@ -1341,6 +1373,28 @@ export default function SettingsView() {
                 </TooltipContent>
               </Tooltip>
               {/* [AddOn] ArchiveUniquePackages_End */}
+              {/* [AddOn] DupeTab_Begin */}
+              <Tooltip delayDuration={350}>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={handleCheckConflicts}
+                      disabled={checkingConflicts || scanning || verifying || hubScanning || !vamDir}
+                      className="text-xs"
+                    >
+                      {checkingConflicts ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
+                      {checkingConflicts ? 'Checking conflicts…' : 'Check Package Conflicts'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" prose>
+                  Check all enabled packages to identify overlapping file paths that can cause VaM&apos;s
+                  RegisterPackage ArgumentException error on refresh.
+                </TooltipContent>
+              </Tooltip>
+              {/* [AddOn] DupeTab_End */}
             </div>
             {hubScanning && hubScanProgress && (
               <div className={META_DENSE}>
