@@ -80,6 +80,12 @@ const api = {
     setHiddenBatch: (payload) => invoke('contents:set-hidden-batch', payload),
     setFavoriteBatch: (payload) => invoke('contents:set-favorite-batch', payload),
   },
+  // [AddOn] DupeTab_Begin
+  duplicates: {
+    list: () => invoke('duplicates:list'),
+    remove: (filePath) => invoke('duplicates:remove', filePath),
+  },
+  // [AddOn] DupeTab_End
   labels: {
     list: () => invoke('labels:list'),
     // [AddOn] TagAddon_Begin
@@ -245,6 +251,9 @@ const api = {
   onWishlistImportProgress: (cb) => transport.on('wishlist:import-progress', (data) => cb(data)),
   onContentsUpdated: (cb) => transport.on('contents:updated', () => cb()),
   onLabelsUpdated: (cb) => transport.on('labels:updated', () => cb()),
+  // [AddOn] DupeTab_Begin
+  onDuplicatesUpdated: (cb) => transport.on('duplicates:updated', () => cb()),
+  // [AddOn] DupeTab_End
   onDownloadsUpdated: (cb) => transport.on('downloads:updated', () => cb()),
   onDownloadsPauseChanged: (cb) => transport.on('downloads:pause-changed', (paused) => cb(paused)),
   onDownloadProgress: (cb) => transport.on('download:progress', (data) => cb(data)),
