@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
+// [AddOn] LagFix_Begin
+import { LagFixAddon } from '../addons/lagFixAddon'
+// [AddOn] LagFix_End
 
 /**
  * Factory for batched blob-URL cache hooks (thumbnails, avatars, etc.).
  * Each call creates an independent cache + pending queue + invalidation channel.
  */
-export function createBlobCacheHook(apiGetter, eventName) {
-  const urlCache = new Map()
+// [AddOn] LagFix_Begin
+export function createBlobCacheHook(apiGetter, eventName, options = {}) {
+  const maxEntries = options.maxEntries ?? LagFixAddon.THUMBNAIL_CACHE_LIMIT
+  const urlCache = LagFixAddon.createBoundedBlobCache({ maxEntries })
+  // [AddOn] LagFix_End
   let pendingKeys = new Set()
   let pendingCallbacks = new Map()
   let flushTimer = null
@@ -113,8 +119,14 @@ export function createBlobCacheHook(apiGetter, eventName) {
   }
 }
 
+// [AddOn] LagFix_Begin
 /** Fetch a cached package/content thumbnail by key. Returns a blob URL or null. */
-export const useThumbnail = createBlobCacheHook((keys) => window.api.thumbnails.get(keys), 'thumbnails:updated')
+export const useThumbnail = createBlobCacheHook((keys) => window.api.thumbnails.get(keys), 'thumbnails:updated', {
+  maxEntries: LagFixAddon.THUMBNAIL_CACHE_LIMIT,
+})
 
 /** Fetch a cached avatar by Hub user_id (string). Returns a blob URL or null. */
-export const useAvatar = createBlobCacheHook((keys) => window.api.avatars.get(keys), 'avatars:updated')
+export const useAvatar = createBlobCacheHook((keys) => window.api.avatars.get(keys), 'avatars:updated', {
+  maxEntries: LagFixAddon.AVATAR_CACHE_LIMIT,
+})
+// [AddOn] LagFix_End
