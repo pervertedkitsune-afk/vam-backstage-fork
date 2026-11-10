@@ -91,5 +91,35 @@ describe('DupeTabAddon', () => {
     expect(grouped[0].count).toBe(2)
     expect(grouped[0].items).toHaveLength(2)
   })
+
+  it('identifies offloaded duplicates when an enabled copy exists', () => {
+    const files = [
+      {
+        filename: 'CreatorA.Item.1.var',
+        fullPath: '/vam/AddonPackages/CreatorA.Item.1.var',
+        size: 1024,
+        mtime: 2000,
+        storageState: 'enabled',
+        libraryDirId: null,
+        subpath: '',
+      },
+      {
+        filename: 'CreatorA.Item.1.var',
+        fullPath: '/storage/Offload/CreatorA.Item.1.var',
+        size: 1024,
+        mtime: 2000,
+        storageState: 'offloaded',
+        libraryDirId: 2,
+        subpath: '',
+      },
+    ]
+
+    const dupes = DupeTabAddon.findDuplicates(files)
+    DupeTabAddon.syncDuplicates(dupes)
+
+    const offloadedToRemove = DupeTabAddon.getOffloadedDuplicatesWithEnabledCopy()
+    expect(offloadedToRemove).toHaveLength(1)
+    expect(offloadedToRemove[0].file_path).toBe('/storage/Offload/CreatorA.Item.1.var')
+  })
 })
 // [AddOn] DupeTab_End

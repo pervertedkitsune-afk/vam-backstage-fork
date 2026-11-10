@@ -125,5 +125,52 @@ export class DupeTabAddon {
       throw err
     }
   }
+
+  /**
+   * Find all duplicate records that are "offloaded" where the group already has an "enabled" copy.
+   *
+   * @returns {Array<object>} list of items eligible for auto removal
+   */
+  static getOffloadedDuplicatesWithEnabledCopy() {
+    const grouped = this.getGroupedDuplicates()
+    const toRemove = []
+
+    for (const group of grouped) {
+      const hasEnabled = group.items.some((item) => item.storage_state === 'enabled')
+      if (hasEnabled) {
+        for (const item of group.items) {
+          if (item.storage_state === 'offloaded') {
+            toRemove.push(item)
+          }
+        }
+      }
+    }
+    return toRemove
+  }
+
+  /**
+   * Auto remove all duplicate files in "offloaded" state when an "enabled" copy exists in the same group.
+   *
+   * @returns {Promise<{ ok: boolean, count: number, removedFiles: string[] }>}
+   */
+  static async autoRemoveOffloadedDuplicates() {
+    const toRemove = this.getOffloadedDuplicatesWithEnabledCopy()
+    const removedFiles = []
+
+    for (const item of toRemove) {
+      try {
+        await this.removeDuplicateFile(item.file_path)
+        removedFiles.push(item.file_path)
+      } catch (err) {
+        console.warn(`[DupeTab] Auto remove failed for ${item.file_path}:`, err.message)
+      }
+    }
+
+    return {
+      ok: true,
+      count: removedFiles.length,
+      removedFiles,
+    }
+  }
 }
 // [AddOn] DupeTab_End

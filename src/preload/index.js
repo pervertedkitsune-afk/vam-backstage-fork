@@ -84,6 +84,7 @@ const api = {
   duplicates: {
     list: () => invoke('duplicates:list'),
     remove: (filePath) => invoke('duplicates:remove', filePath),
+    autoRemoveOffloaded: () => invoke('duplicates:auto-remove-offloaded'),
   },
   // [AddOn] DupeTab_End
   labels: {

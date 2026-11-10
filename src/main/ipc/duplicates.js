@@ -14,5 +14,12 @@ export function registerDuplicateHandlers() {
     notify('packages:updated')
     return result
   })
+
+  ipcMain.handle('duplicates:auto-remove-offloaded', async () => {
+    const result = await DupeTabAddon.autoRemoveOffloadedDuplicates()
+    notify('duplicates:updated')
+    notify('packages:updated')
+    return result
+  })
 }
 // [AddOn] DupeTab_End

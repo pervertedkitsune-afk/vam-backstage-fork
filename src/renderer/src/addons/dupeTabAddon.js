@@ -93,5 +93,25 @@ export class DupeTabRendererAddon {
     result.splice(toIndex, 0, removed)
     return result
   }
+
+  /**
+   * Calculate how many offloaded items can be auto-removed because an enabled copy exists.
+   *
+   * @param {Array<object>} groups
+   * @returns {number}
+   */
+  static countRemovableOffloaded(groups) {
+    if (!Array.isArray(groups)) return 0
+    let count = 0
+    for (const group of groups) {
+      const hasEnabled = group.items?.some((it) => it.storage_state === 'enabled')
+      if (hasEnabled) {
+        for (const it of group.items || []) {
+          if (it.storage_state === 'offloaded') count++
+        }
+      }
+    }
+    return count
+  }
 }
 // [AddOn] DupeTab_End

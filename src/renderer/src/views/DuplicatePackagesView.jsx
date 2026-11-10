@@ -40,6 +40,8 @@ export default function DuplicatePackagesView() {
   const [showColumnConfig, setShowColumnConfig] = useState(false)
   const [removingItem, setRemovingItem] = useState(null)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [showAutoRemoveConfirm, setShowAutoRemoveConfirm] = useState(false)
+  const [isAutoRemoving, setIsAutoRemoving] = useState(false)
 
   // Column order & visibility
   const [columnsOrder, setColumnsOrder] = useState(() => DUPE_TAB_COLUMNS.map((c) => c.id))
@@ -113,6 +115,24 @@ export default function DuplicatePackagesView() {
       return acc + extraCopies * (g.sizeBytes || 0)
     }, 0)
   }, [duplicateGroups])
+
+  const autoRemovableCount = useMemo(() => {
+    return DupeTabRendererAddon.countRemovableOffloaded(duplicateGroups)
+  }, [duplicateGroups])
+
+  const handleConfirmAutoRemove = async () => {
+    try {
+      setIsAutoRemoving(true)
+      const res = await window.api.duplicates.autoRemoveOffloaded()
+      toast(`Successfully removed ${res?.count || 0} offloaded duplicate packages`, 'success')
+      setShowAutoRemoveConfirm(false)
+      await fetchDuplicates()
+    } catch (err) {
+      toast(`Failed to auto-remove offloaded duplicates: ${err.message}`, 'error')
+    } finally {
+      setIsAutoRemoving(false)
+    }
+  }
 
   const handleConfirmRemove = async () => {
     if (!removingItem) return
@@ -305,6 +325,21 @@ export default function DuplicatePackagesView() {
             )}
           </div>
 
+          {/* Auto remove offloaded button */}
+          <button
+            onClick={() => setShowAutoRemoveConfirm(true)}
+            disabled={autoRemovableCount === 0 || loading}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 rounded-md text-xs font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            title={
+              autoRemovableCount > 0
+                ? `Auto remove ${autoRemovableCount} offloaded copies where an enabled copy exists`
+                : 'No offloaded duplicates found with an enabled copy'
+            }
+          >
+            <Trash2 size={13} />
+            <span>Auto Remove Offloaded ({autoRemovableCount})</span>
+          </button>
+
           {/* Refresh button */}
           <button
             onClick={fetchDuplicates}
@@ -412,6 +447,41 @@ export default function DuplicatePackagesView() {
           })
         )}
       </div>
+
+      {/* Confirmation Dialog for auto-removing offloaded duplicates */}
+      {showAutoRemoveConfirm && (
+        <AlertDialog open={showAutoRemoveConfirm} onOpenChange={(open) => !open && setShowAutoRemoveConfirm(false)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-amber-400">
+                <AlertTriangle size={18} />
+                Auto Remove Offloaded Duplicates
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2 text-xs">
+                <p>
+                  This action will find all <strong className="text-text-primary">{autoRemovableCount}</strong>{' '}
+                  duplicate packages in <span className="font-semibold text-text-primary">Offloaded</span> state where
+                  an <span className="font-semibold text-emerald-400">Enabled</span> copy already exists in your
+                  library, and move them to your system Recycling Bin.
+                </p>
+                <p className="text-text-secondary">
+                  Your enabled packages will remain completely untouched. Are you sure you want to proceed?
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isAutoRemoving}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmAutoRemove}
+                disabled={isAutoRemoving}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {isAutoRemoving ? 'Removing...' : 'Auto Remove'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {/* Confirmation Dialog for removing duplicate */}
       {removingItem && (
