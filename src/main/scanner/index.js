@@ -44,6 +44,9 @@ import { DependencyFix } from '../addons/dependency-fix.js'
 // [AddOn] HidingSubscenes_Begin
 import { HidingSubscenesAddon } from '../addons/hidingSubscenesAddon.js'
 // [AddOn] HidingSubscenes_End
+// [AddOn] DupeTab_Begin
+import { DupeTabAddon } from '../addons/dupeTabAddon.js'
+// [AddOn] DupeTab_End
 
 /**
  * Run a full library scan across the main dir and every registered aux dir.
@@ -59,6 +62,9 @@ export async function runScan(vamDir, onProgress = () => {}) {
   // Phase 1: Index .var files on disk
   onProgress({ phase: 'indexing', step: 0, total: 0, message: 'Indexing .var files…' })
   const varFiles = []
+  // [AddOn] DupeTab_Begin
+  const allVarCandidates = []
+  // [AddOn] DupeTab_End
   // Cross-dir collision policy: main wins, then offload dirs by created_at ascending.
   // `dirs` is already in that order, so dedup-by-first-seen implements the policy.
   // The shadowed copies are byte-identical (.var is content-addressed and immutable),
@@ -75,11 +81,24 @@ export async function runScan(vamDir, onProgress = () => {}) {
     }
     reachableDirIds.add(dir.id ?? null)
     for (const r of results) {
+      // [AddOn] DupeTab_Begin
+      allVarCandidates.push(r)
+      // [AddOn] DupeTab_End
       if (seenFilenames.has(r.filename)) continue
       seenFilenames.add(r.filename)
       varFiles.push(r)
     }
   }
+
+  // [AddOn] DupeTab_Begin
+  try {
+    const duplicates = DupeTabAddon.findDuplicates(allVarCandidates)
+    DupeTabAddon.syncDuplicates(duplicates)
+  } catch (err) {
+    console.warn('[DupeTab] Failed to sync duplicate packages:', err.message)
+  }
+  // [AddOn] DupeTab_End
+
   const offlineCount = dirs.length - reachableDirIds.size
   onProgress({
     phase: 'indexing',

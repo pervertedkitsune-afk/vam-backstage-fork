@@ -10,7 +10,14 @@ import { DependencyFix } from '../addons/dependency-fix.js'
 // [AddOn] ArchiveUniquePackages_Begin
 import { ArchiveUniquePackagesAddon } from '../addons/archiveUniquePackagesAddon.js'
 // [AddOn] ArchiveUniquePackages_End
+// [AddOn] DupeTab_Begin
+import { ConflictCheckAddon } from '../addons/conflictCheckAddon.js'
+// [AddOn] DupeTab_End
 import { runIntegrityCheck } from '../scanner/integrity.js'
+// [AddOn] DupeTab_Begin
+import { verifySinglePackage } from '../scanner/integrity.js'
+import { setPackageCorrupted } from '../db.js'
+// [AddOn] DupeTab_End
 import { buildFromDb } from '../store.js'
 import { startWatcher } from '../watcher.js'
 import { resolvePackageThumbnails } from '../thumb-resolver.js'
@@ -72,6 +79,13 @@ export function registerScanHandlers() {
   })
   // [AddOn] ArchiveUniquePackages_End
 
+  // [AddOn] DupeTab_Begin
+  ipcMain.handle('scan:check-conflicts', async () => {
+    const vamDir = getSetting('vam_dir')
+    return await ConflictCheckAddon.checkConflicts(vamDir || process.cwd())
+  })
+  // [AddOn] DupeTab_End
+
   ipcMain.handle('scan:remove-auto-hide', async (_e, ruleId) => {
     const vamDir = getSetting('vam_dir')
     if (!vamDir) throw new Error('VaM directory not configured')
@@ -110,6 +124,25 @@ export function registerScanHandlers() {
 
     return { checked: result.checked, corrupted: result.corrupted, corruptedFiles: result.corruptedFiles }
   })
+
+  // [AddOn] DupeTab_Begin
+  ipcMain.handle('integrity:check-single', async (_, filename) => {
+    const res = await verifySinglePackage(filename)
+    const isCorrupted = !res.ok
+    setPackageCorrupted(filename, isCorrupted)
+    if (isCorrupted && res.error) {
+      await DependencyFix.exportScanErrorLog([
+        {
+          filename,
+          error: `Single package integrity verification failed: ${res.error}`,
+        },
+      ])
+    }
+    buildFromDb()
+    notify('packages:updated')
+    return { ok: res.ok, error: res.error }
+  })
+  // [AddOn] DupeTab_End
 
   ipcMain.handle('wizard:enrich-hub', async () => {
     return await scanHubDetails((data) => notify('hub-scan:progress', data))

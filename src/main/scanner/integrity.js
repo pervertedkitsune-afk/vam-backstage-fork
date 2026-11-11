@@ -88,3 +88,25 @@ export async function runIntegrityCheck(_vamDir, onProgress = () => {}) {
   onProgress({ step: targets.length, total: targets.length, filename: '', status: 'done' })
   return { checked: targets.length, corrupted: corruptedFiles.length, corruptedFiles }
 }
+
+// [AddOn] DupeTab_Begin
+/**
+ * Verify integrity for a single package.
+ *
+ * @param {string} filename
+ * @returns {Promise<{ ok: boolean, error?: string }>}
+ */
+export async function verifySinglePackage(filename) {
+  const pkg = getPackageIndex().get(filename)
+  if (!pkg) throw new Error(`Package not found: ${filename}`)
+  const fullPath = await resolveContentPath(pkg)
+  if (!fullPath) throw new Error(`Package file path not found: ${filename}`)
+
+  try {
+    await verifyPackageFull(fullPath)
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err.message }
+  }
+}
+// [AddOn] DupeTab_End
