@@ -130,6 +130,14 @@ export function registerScanHandlers() {
     const res = await verifySinglePackage(filename)
     const isCorrupted = !res.ok
     setPackageCorrupted(filename, isCorrupted)
+    if (isCorrupted && res.error) {
+      await DependencyFix.exportScanErrorLog([
+        {
+          filename,
+          error: `Single package integrity verification failed: ${res.error}`,
+        },
+      ])
+    }
     buildFromDb()
     notify('packages:updated')
     return { ok: res.ok, error: res.error }

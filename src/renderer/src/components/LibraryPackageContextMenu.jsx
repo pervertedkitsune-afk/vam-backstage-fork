@@ -337,14 +337,27 @@ export function LibraryPackageContextMenu({ pkg, updateInfo, onNavigate, scope =
     const targetFilename = p?.filename || pkg.filename
     try {
       toast(`Verifying integrity of ${targetFilename}…`, 'info')
-      const res = await window.api.integrity.checkSingle(targetFilename)
+      const res = await MovingProgressAddon.trackOperation(
+        {
+          filename: targetFilename,
+          type: 'verify',
+          step: 'Verifying integrity…',
+          sizeBytes: p?.sizeBytes || pkg?.sizeBytes || 0,
+          opFn: async () => {
+            const checkRes = await window.api.integrity.checkSingle(targetFilename)
+            if (!checkRes?.ok) {
+              throw new Error(checkRes?.error || 'Integrity check failed: Corrupted archive')
+            }
+            return checkRes
+          },
+        },
+        useMovingProgressStore.getState(),
+      )
       if (res?.ok) {
         toast(`Integrity check passed: ${targetFilename}`, 'success')
-      } else {
-        toast(`Integrity check failed: ${res?.error || 'Corrupted archive'}`, 'error')
       }
     } catch (err) {
-      toast(`Verification error: ${err.message}`, 'error')
+      toast(`Integrity check failed: ${err.message}`, 'error')
     }
   }
   // [AddOn] DupeTab_End
