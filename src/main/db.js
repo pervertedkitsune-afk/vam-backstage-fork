@@ -6,7 +6,9 @@ import { LOCAL_PACKAGE_FILENAME, LOCAL_PACKAGE_DISPLAY_NAME } from '@shared/loca
 
 // [AddOn] DependencySort_notagfilter_Begin
 // [AddOn] TagAddon_Begin
-export const SCHEMA_VERSION = 36
+// [AddOn] DupeTab_Begin
+export const SCHEMA_VERSION = 37
+// [AddOn] DupeTab_End
 // [AddOn] TagAddon_End
 // [AddOn] DependencySort_notagfilter_End
 
@@ -167,6 +169,9 @@ export const MIGRATIONS = [
   // [AddOn] Tabs_Begin
   [36, applyV36],
   // [AddOn] Tabs_End
+  // [AddOn] DupeTab_Begin
+  [37, applyV37],
+  // [AddOn] DupeTab_End
 ]
 
 function migrate() {
@@ -622,6 +627,32 @@ function applyV36() {
 }
 // [AddOn] Tabs_End
 
+// [AddOn] DupeTab_Begin
+/**
+ * v37 — Duplicate packages tracking table.
+ */
+function applyV37() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS package_duplicates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL UNIQUE,
+      filename TEXT NOT NULL,
+      package_name TEXT NOT NULL,
+      creator TEXT NOT NULL,
+      version TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      file_mtime REAL NOT NULL,
+      library_dir_id INTEGER NULL,
+      subpath TEXT NOT NULL DEFAULT '',
+      storage_state TEXT NOT NULL DEFAULT 'enabled',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_package_duplicates_lookup ON package_duplicates(package_name, version, creator, size_bytes);
+    CREATE INDEX IF NOT EXISTS idx_package_duplicates_filename ON package_duplicates(filename);
+  `)
+}
+// [AddOn] DupeTab_End
+
 /**
  * Ensure the synthetic "local content" package row exists. Loose files under
  * `vamDir/Saves` and `vamDir/Custom` are stored as `contents` rows that point
@@ -779,6 +810,25 @@ function createSchema() {
       PRIMARY KEY (label_id, package_filename, internal_path)
     );
     CREATE INDEX IF NOT EXISTS idx_label_contents_pkgpath ON label_contents(package_filename, internal_path);
+
+    -- [AddOn] DupeTab_Begin
+    CREATE TABLE IF NOT EXISTS package_duplicates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL UNIQUE,
+      filename TEXT NOT NULL,
+      package_name TEXT NOT NULL,
+      creator TEXT NOT NULL,
+      version TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      file_mtime REAL NOT NULL,
+      library_dir_id INTEGER NULL,
+      subpath TEXT NOT NULL DEFAULT '',
+      storage_state TEXT NOT NULL DEFAULT 'enabled',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_package_duplicates_lookup ON package_duplicates(package_name, version, creator, size_bytes);
+    CREATE INDEX IF NOT EXISTS idx_package_duplicates_filename ON package_duplicates(filename);
+    -- [AddOn] DupeTab_End
   `)
 }
 
@@ -2000,3 +2050,81 @@ export function gcOrphanLabels() {
     .run()
   return r.changes
 }
+
+// [AddOn] DupeTab_Begin
+// --- Duplicate Packages Helpers ---
+
+export function clearDuplicatePackages() {
+  stmt('DELETE FROM package_duplicates').run()
+}
+
+export function insertDuplicatePackage(entry) {
+  return stmt(`
+    INSERT INTO package_duplicates (
+      file_path, filename, package_name, creator, version, size_bytes, file_mtime, library_dir_id, subpath, storage_state
+    ) VALUES (
+      @filePath, @filename, @packageName, @creator, @version, @sizeBytes, @fileMtime, @libraryDirId, @subpath, @storageState
+    )
+    ON CONFLICT(file_path) DO UPDATE SET
+      filename = excluded.filename,
+      package_name = excluded.package_name,
+      creator = excluded.creator,
+      version = excluded.version,
+      size_bytes = excluded.size_bytes,
+      file_mtime = excluded.file_mtime,
+      library_dir_id = excluded.library_dir_id,
+      subpath = excluded.subpath,
+      storage_state = excluded.storage_state
+  `).run({
+    subpath: '',
+    storageState: 'enabled',
+    libraryDirId: null,
+    ...entry,
+  })
+}
+
+export function batchInsertDuplicatePackages(entries) {
+  if (!entries || entries.length === 0) return
+  const ins = stmt(`
+    INSERT INTO package_duplicates (
+      file_path, filename, package_name, creator, version, size_bytes, file_mtime, library_dir_id, subpath, storage_state
+    ) VALUES (
+      @filePath, @filename, @packageName, @creator, @version, @sizeBytes, @fileMtime, @libraryDirId, @subpath, @storageState
+    )
+    ON CONFLICT(file_path) DO UPDATE SET
+      filename = excluded.filename,
+      package_name = excluded.package_name,
+      creator = excluded.creator,
+      version = excluded.version,
+      size_bytes = excluded.size_bytes,
+      file_mtime = excluded.file_mtime,
+      library_dir_id = excluded.library_dir_id,
+      subpath = excluded.subpath,
+      storage_state = excluded.storage_state
+  `)
+  const tx = db.transaction((items) => {
+    for (const item of items) {
+      ins.run({
+        subpath: '',
+        storageState: 'enabled',
+        libraryDirId: null,
+        ...item,
+      })
+    }
+  })
+  tx(entries)
+}
+
+export function deleteDuplicatePackageByPath(filePath) {
+  return stmt('DELETE FROM package_duplicates WHERE file_path = ?').run(filePath).changes
+}
+
+export function getAllDuplicatePackages() {
+  return stmt(`
+    SELECT pd.*, ld.path AS library_dir_path
+    FROM package_duplicates pd
+    LEFT JOIN library_dirs ld ON ld.id = pd.library_dir_id
+    ORDER BY pd.package_name ASC, pd.version ASC, pd.created_at ASC
+  `).all()
+}
+// [AddOn] DupeTab_End

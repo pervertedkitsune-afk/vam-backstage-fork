@@ -50,6 +50,10 @@ import SettingsView from '@/views/SettingsView'
 import TabsAndLabelsView from '@/views/TabsAndLabelsView'
 import { Tag } from 'lucide-react'
 // [AddOn] TagAddon_End
+// [AddOn] DupeTab_Begin
+import DuplicatePackagesView from '@/views/DuplicatePackagesView'
+import { Copy } from 'lucide-react'
+// [AddOn] DupeTab_End
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useDownloadStore } from '@/stores/useDownloadStore'
@@ -68,6 +72,9 @@ const NAV_ITEMS = [
   // [AddOn] TagAddon_Begin
   { id: 'tabs', icon: Tag, label: 'Tabs and Labels' },
   // [AddOn] TagAddon_End
+  // [AddOn] DupeTab_Begin
+  { id: 'duplicates', icon: Copy, label: 'Duplicate Packages' },
+  // [AddOn] DupeTab_End
   { id: 'graph', icon: Network, label: 'Graph' },
 ]
 export default function App() {
@@ -370,6 +377,13 @@ export default function App() {
                 </Activity>
               )}
               {/* [AddOn] TagAddon_End */}
+              {/* [AddOn] DupeTab_Begin */}
+              {seenViews.current.has('duplicates') && (
+                <Activity mode={view === 'duplicates' ? 'visible' : 'hidden'}>
+                  <DuplicatePackagesView />
+                </Activity>
+              )}
+              {/* [AddOn] DupeTab_End */}
               {seenViews.current.has('graph') && (
                 <Activity mode={view === 'graph' ? 'visible' : 'hidden'}>
                   <DependencyGraphView />

@@ -12,6 +12,9 @@ import {
   Power,
   PowerOff,
   Boxes,
+  // [AddOn] DupeTab_Begin
+  ShieldCheck,
+  // [AddOn] DupeTab_End
 } from 'lucide-react'
 import { useMovingProgressStore } from '@/stores/useMovingProgressStore'
 import { MovingProgressAddon } from '@/addons/movingProgressAddon'
@@ -57,6 +60,17 @@ function getTypeIndicator(type) {
           </span>
         </span>
       )
+    // [AddOn] DupeTab_Begin
+    case 'verify':
+      return (
+        <span className="flex items-center gap-1 shrink-0">
+          <ShieldCheck size={12} className="text-accent-blue shrink-0" />
+          <span className="text-[10px] font-semibold text-accent-blue bg-accent-blue/15 px-1.5 py-0.2 rounded shrink-0">
+            Verify
+          </span>
+        </span>
+      )
+    // [AddOn] DupeTab_End
     case 'move':
     default:
       return (
