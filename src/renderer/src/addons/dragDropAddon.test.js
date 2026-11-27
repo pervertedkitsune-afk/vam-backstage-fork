@@ -63,8 +63,8 @@ describe('DragDropAddon (Renderer)', () => {
     })
   })
 
-  describe('2-second hold trigger', () => {
-    it('does not trigger drag if mouse is released before 2 seconds', () => {
+  describe('1-second hold trigger', () => {
+    it('does not trigger drag if mouse is released before 1 second', () => {
       const pkg = { filename: 'PkgA.1.var' }
       const e = { button: 0, clientX: 100, clientY: 100 }
 
@@ -72,19 +72,19 @@ describe('DragDropAddon (Renderer)', () => {
 
       expect(DragDropAddon.isDragging()).toBe(false)
 
-      // Advance by 1 second
-      vi.advanceTimersByTime(1000)
+      // Advance by 500ms
+      vi.advanceTimersByTime(500)
       expect(DragDropAddon.isDragging()).toBe(false)
 
-      // Mouse up before 2s
+      // Mouse up before 1s
       listenersMap.get('mouseup')?.forEach((cb) => cb({ clientX: 100, clientY: 100 }))
 
-      // Advance past 2s
-      vi.advanceTimersByTime(1500)
+      // Advance past 1s
+      vi.advanceTimersByTime(1000)
       expect(DragDropAddon.isDragging()).toBe(false)
     })
 
-    it('cancels drag if mouse moves > 8px before 2 seconds', () => {
+    it('cancels drag if mouse moves > 8px before 1 second', () => {
       const pkg = { filename: 'PkgA.1.var' }
       const e = { button: 0, clientX: 100, clientY: 100 }
 
@@ -96,12 +96,12 @@ describe('DragDropAddon (Renderer)', () => {
       // Move mouse by 20px
       listenersMap.get('mousemove')?.forEach((cb) => cb({ clientX: 120, clientY: 100 }))
 
-      // Advance past 2s
-      vi.advanceTimersByTime(2000)
+      // Advance past 1s
+      vi.advanceTimersByTime(1000)
       expect(DragDropAddon.isDragging()).toBe(false)
     })
 
-    it('triggers drag if mouse is held down for 2 seconds', () => {
+    it('triggers drag if mouse is held down for 1 second', () => {
       const pkg = { filename: 'PkgA.1.var' }
       const e = { button: 0, clientX: 100, clientY: 100 }
 
@@ -109,8 +109,8 @@ describe('DragDropAddon (Renderer)', () => {
 
       expect(DragDropAddon.isDragging()).toBe(false)
 
-      // Advance timer by exactly 2000ms
-      vi.advanceTimersByTime(2000)
+      // Advance timer by exactly 1000ms
+      vi.advanceTimersByTime(1000)
 
       expect(DragDropAddon.isDragging()).toBe(true)
     })
@@ -121,7 +121,7 @@ describe('DragDropAddon (Renderer)', () => {
       const e = { button: 0, clientX: 100, clientY: 100 }
 
       DragDropAddon.handleMouseDown(pkg, e, { selectedFilenames: selected })
-      vi.advanceTimersByTime(2000)
+      vi.advanceTimersByTime(1000)
 
       expect(DragDropAddon.isDragging()).toBe(true)
     })
@@ -132,7 +132,7 @@ describe('DragDropAddon (Renderer)', () => {
       const e = { button: 0, clientX: 100, clientY: 100 }
 
       DragDropAddon.handleMouseDown(pkg, e, { selectedFilenames: selected })
-      vi.advanceTimersByTime(2000)
+      vi.advanceTimersByTime(1000)
 
       expect(DragDropAddon.isDragging()).toBe(true)
     })
@@ -144,7 +144,7 @@ describe('DragDropAddon (Renderer)', () => {
       const e = { button: 0, clientX: 200, clientY: 150 }
 
       DragDropAddon.handleMouseDown(pkg, e, { selectedFilenames: selected })
-      vi.advanceTimersByTime(2000)
+      vi.advanceTimersByTime(1000)
 
       expect(DragDropAddon.isDragging()).toBe(true)
       const st = DragDropAddon.getState()
@@ -161,7 +161,7 @@ describe('DragDropAddon (Renderer)', () => {
       const e = { button: 0, clientX: 120, clientY: 140 }
 
       DragDropAddon.handleMouseDown(pkg, e, { selectedFilenames: selected })
-      vi.advanceTimersByTime(2000)
+      vi.advanceTimersByTime(1000)
 
       expect(DragDropAddon.getFirstDraggedPackage()).toBe('PkgA.1.var')
 

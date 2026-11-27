@@ -39,7 +39,7 @@ export function useDragDropState() {
  * AddOn class to handle hold-to-drag packages into folders listed under Locations.
  */
 export class DragDropAddon {
-  static HOLD_DURATION = 2000 // 2 seconds hold threshold
+  static HOLD_DURATION = 1000 // 1 second hold threshold
 
   /**
    * Check if a target location string is a valid drop destination under Locations.
@@ -152,7 +152,7 @@ export class DragDropAddon {
   }
 
   /**
-   * Handle mousedown on a package card or row to trigger hold-for-2s drag.
+   * Handle mousedown on a package card or row to trigger hold-for-1s drag.
    * @param {object} pkg - Package data object.
    * @param {MouseEvent} e - Mouse down event.
    * @param {object} options - Options containing selectedFilenames, toast, onMoveComplete.
@@ -178,7 +178,7 @@ export class DragDropAddon {
     const onMove = (moveEvt) => {
       const dist = Math.hypot(moveEvt.clientX - startX, moveEvt.clientY - startY)
       if (dist > 8) {
-        // Cancel timer if user moved mouse more than threshold before 2 seconds
+        // Cancel timer if user moved mouse more than threshold before 1 second
         if (state.activeTimer) {
           clearTimeout(state.activeTimer)
           state.activeTimer = null
@@ -189,7 +189,7 @@ export class DragDropAddon {
     }
 
     const onUp = () => {
-      // Mouse released before 2s - cancel timer
+      // Mouse released before 1s - cancel timer
       if (state.activeTimer) {
         clearTimeout(state.activeTimer)
         state.activeTimer = null
@@ -201,7 +201,7 @@ export class DragDropAddon {
     win.addEventListener('mousemove', onMove)
     win.addEventListener('mouseup', onUp)
 
-    // Trigger drag only if mouse held for 2 seconds
+    // Trigger drag only if mouse held for 1 second
     state.activeTimer = setTimeout(() => {
       state.activeTimer = null
       win.removeEventListener('mousemove', onMove)
