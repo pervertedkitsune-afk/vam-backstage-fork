@@ -136,6 +136,23 @@ describe('DragDropAddon (Renderer)', () => {
 
       expect(DragDropAddon.isDragging()).toBe(true)
     })
+
+    // [AddOn] DragnDrop_Begin
+    it('sets drag count and position accurately for the number badge', () => {
+      const pkg = { filename: 'PkgA.1.var' }
+      const selected = ['PkgA.1.var', 'PkgB.1.var', 'PkgC.1.var']
+      const e = { button: 0, clientX: 200, clientY: 150 }
+
+      DragDropAddon.handleMouseDown(pkg, e, { selectedFilenames: selected })
+      vi.advanceTimersByTime(2000)
+
+      expect(DragDropAddon.isDragging()).toBe(true)
+      const st = DragDropAddon.getState()
+      expect(st.draggedPackages).toEqual(['PkgA.1.var', 'PkgB.1.var', 'PkgC.1.var'])
+      expect(st.draggedPackages.length).toBe(3)
+      expect(st.mousePosition).toEqual({ x: 200, y: 150 })
+    })
+    // [AddOn] DragnDrop_End
   })
 
   describe('executeMove & handleDrop', () => {

@@ -4,9 +4,10 @@ import { FolderDown } from 'lucide-react'
 
 /**
  * Floating drag preview overlay element.
+ * Displays a number badge beside the mouse cursor indicating how many files are being dragged/moved.
  */
 export function DragDropOverlay() {
-  const { isDragging, draggedPackages, hoveredLocation, mousePosition, previewPkg } = useDragDropState()
+  const { isDragging, draggedPackages, hoveredLocation, mousePosition } = useDragDropState()
 
   if (!isDragging || draggedPackages.length === 0) return null
 
@@ -15,19 +16,20 @@ export function DragDropOverlay() {
 
   return (
     <div
-      className="fixed pointer-events-none z-[9999] flex items-center gap-2 px-3 py-2 rounded-lg bg-surface/95 border-2 border-accent-blue shadow-2xl backdrop-blur-md text-xs font-medium text-text-primary select-none -translate-x-1/2 -translate-y-1/2"
-      style={{ left: mousePosition.x, top: mousePosition.y }}
+      data-drag-count-badge
+      className="fixed pointer-events-none z-[9999] flex items-center gap-1.5 select-none"
+      style={{ left: mousePosition.x + 14, top: mousePosition.y + 10 }}
     >
-      <FolderDown size={16} className="text-accent-blue shrink-0 animate-bounce" />
-      <span>{count === 1 ? `Moving "${previewPkg?.filename || draggedPackages[0]}"` : `Moving ${count} packages`}</span>
+      {/* Number badge beside the mouse indicating how many files are being dragged/moved */}
+      <span className="flex items-center justify-center min-w-6 h-6 px-1.5 text-xs font-bold rounded-full bg-accent-blue text-white shadow-xl ring-2 ring-surface shrink-0">
+        {count}
+      </span>
       {folderName ? (
-        <span className="text-accent-blue font-bold ml-1 flex items-center gap-1">
-          <span>→</span>
-          <span>{folderName}</span>
+        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface/95 border border-accent-blue/40 text-text-primary text-xs shadow-md backdrop-blur-sm">
+          <FolderDown size={12} className="text-accent-blue shrink-0" />
+          <span className="font-semibold text-accent-blue truncate max-w-[200px]">→ {folderName}</span>
         </span>
-      ) : (
-        <span className="text-text-tertiary text-[11px] ml-1">(Drop on a folder under Locations)</span>
-      )}
+      ) : null}
     </div>
   )
 }

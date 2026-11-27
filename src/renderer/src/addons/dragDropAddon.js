@@ -89,6 +89,16 @@ export class DragDropAddon {
     return state.isDragging
   }
 
+  // [AddOn] DragnDrop_Begin
+  /**
+   * Get current drag state.
+   * @returns {object}
+   */
+  static getState() {
+    return { ...state }
+  }
+  // [AddOn] DragnDrop_End
+
   /**
    * Set the currently hovered location folder target.
    * @param {string} targetLocation
