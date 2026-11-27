@@ -59,6 +59,9 @@ const api = {
     promote: (filename, hubResourceId) => invoke('packages:promote', filename, hubResourceId),
     demote: (filename) => invoke('packages:demote', filename),
     forceRemove: (filename) => invoke('packages:force-remove', filename),
+    // [AddOn] DragnDrop_Begin
+    moveToLocation: (filenames, targetLocation) => invoke('packages:move-to-location', { filenames, targetLocation }),
+    // [AddOn] DragnDrop_End
     toggleEnabled: (filename) => invoke('packages:toggle-enabled', filename),
     setEnabled: (filenames, enabled) => invoke('packages:set-enabled', { filenames, enabled }),
     enableDeps: (filename) => invoke('packages:enable-deps', filename),

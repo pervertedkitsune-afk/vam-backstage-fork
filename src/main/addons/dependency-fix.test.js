@@ -1,5 +1,8 @@
 // [AddOn] DependencyFix_Begin
 import { describe, it, expect, vi } from 'vitest'
+// [AddOn] DragnDrop_Begin
+import { join } from 'path'
+// [AddOn] DragnDrop_End
 import { DependencyFix } from './dependency-fix.js'
 
 vi.mock('../db.js', () => ({
@@ -104,7 +107,9 @@ describe('DependencyFix AddOn', () => {
       'corrupted2.var',
     ]
     const logPath = await DependencyFix.exportScanErrorLog(errors, '/tmp')
-    expect(logPath).toBe('/tmp/scan_errors.log')
+    // [AddOn] DragnDrop_Begin
+    expect(logPath).toBe(join('/tmp', 'scan_errors.log'))
+    // [AddOn] DragnDrop_End
   })
 
   it('returns null when exportScanErrorLog receives no errors', async () => {

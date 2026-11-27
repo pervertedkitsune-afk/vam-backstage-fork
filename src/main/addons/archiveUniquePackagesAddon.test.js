@@ -2,6 +2,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ArchiveUniquePackagesAddon } from './archiveUniquePackagesAddon.js'
 import { getSetting, setStorageState, setPackageDirect, forgetDeletedData } from '../db.js'
+// [AddOn] DragnDrop_Begin
+import { join } from 'path'
+// [AddOn] DragnDrop_End
 import { pkgVarPath } from '../library-dirs.js'
 import { runLocalScan } from '../scanner/local.js'
 import { buildFromDb } from '../store.js'
@@ -104,7 +107,9 @@ describe('ArchiveUniquePackagesAddon', () => {
       const res = await ArchiveUniquePackagesAddon.relocateNonHubPackage(pkg, 'Unique.1.var', '/non_hub')
 
       expect(res.ok).toBe(true)
-      expect(res.movedTo).toBe('/non_hub/Unique.1.var')
+      // [AddOn] DragnDrop_Begin
+      expect(res.movedTo).toBe(join('/non_hub', 'Unique.1.var'))
+      // [AddOn] DragnDrop_End
       expect(setPackageDirect).toHaveBeenCalledWith('Unique.1.var', false)
       expect(setStorageState).toHaveBeenCalledWith('Unique.1.var', 'disabled', null, '/non_hub')
     })
