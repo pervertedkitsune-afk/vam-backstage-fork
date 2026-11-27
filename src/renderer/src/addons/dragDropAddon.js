@@ -13,7 +13,10 @@ const state = {
   activeTimer: null,
 }
 
+let snapshot = { ...state }
+
 function emitChange() {
+  snapshot = { ...state }
   for (const listener of listeners) {
     listener()
   }
@@ -28,7 +31,7 @@ export function useDragDropState() {
       listeners.add(cb)
       return () => listeners.delete(cb)
     },
-    () => state,
+    () => snapshot,
   )
 }
 
@@ -96,6 +99,15 @@ export class DragDropAddon {
    */
   static getState() {
     return { ...state }
+  }
+
+  /**
+   * Get the filename of the first package being dragged (used for the echo preview image).
+   * @returns {string|null}
+   */
+  static getFirstDraggedPackage() {
+    if (!state.isDragging || state.draggedPackages.length === 0) return null
+    return state.draggedPackages[0] || state.previewPkg?.filename || null
   }
   // [AddOn] DragnDrop_End
 

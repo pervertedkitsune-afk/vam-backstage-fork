@@ -152,6 +152,22 @@ describe('DragDropAddon (Renderer)', () => {
       expect(st.draggedPackages.length).toBe(3)
       expect(st.mousePosition).toEqual({ x: 200, y: 150 })
     })
+
+    it('returns the first dragged package filename for the echo preview image', () => {
+      expect(DragDropAddon.getFirstDraggedPackage()).toBeNull()
+
+      const pkg = { filename: 'PkgB.1.var' }
+      const selected = ['PkgA.1.var', 'PkgB.1.var', 'PkgC.1.var']
+      const e = { button: 0, clientX: 120, clientY: 140 }
+
+      DragDropAddon.handleMouseDown(pkg, e, { selectedFilenames: selected })
+      vi.advanceTimersByTime(2000)
+
+      expect(DragDropAddon.getFirstDraggedPackage()).toBe('PkgA.1.var')
+
+      DragDropAddon.resetState()
+      expect(DragDropAddon.getFirstDraggedPackage()).toBeNull()
+    })
     // [AddOn] DragnDrop_End
   })
 
