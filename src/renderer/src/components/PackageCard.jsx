@@ -658,6 +658,9 @@ export function LibraryCard({
   bulkActive = false,
   focused = false,
   dimmed = false,
+  // [AddOn] DragnDrop_Begin
+  onMouseDown,
+  // [AddOn] DragnDrop_End
 }) {
   const checked = selected && bulkActive
   const minimal = mode === 'minimal'
@@ -676,6 +679,10 @@ export function LibraryCard({
     <button
       type="button"
       data-grid-card
+      // [AddOn] DragnDrop_Begin
+      data-package-card={pkg.filename}
+      onMouseDown={(e) => onMouseDown?.(pkg, e)}
+      // [AddOn] DragnDrop_End
       tabIndex={-1}
       onClick={(e) => onClick?.(pkg, e)}
       className={`relative @container w-full bg-surface card-edge rounded-lg overflow-hidden text-left ${SELECT_TRANSITION} card-glow cursor-pointer shrink-0 group outline-none
@@ -893,6 +900,9 @@ export function LibraryTableRow({
   bulkActive = false,
   focused = false,
   dimmed = false,
+  // [AddOn] DragnDrop_Begin
+  onMouseDown,
+  // [AddOn] DragnDrop_End
 }) {
   const checked = selected && bulkActive
   const typeColor = libraryTypeBadgeColor(pkg.type)
@@ -909,6 +919,10 @@ export function LibraryTableRow({
   return (
     <div
       onClick={(e) => onClick?.(pkg, e)}
+      // [AddOn] DragnDrop_Begin
+      data-package-row={pkg.filename}
+      onMouseDown={(e) => onMouseDown?.(pkg, e)}
+      // [AddOn] DragnDrop_End
       className={`relative flex items-center cursor-pointer ${SELECT_TRANSITION} border-b border-border h-full outline-none ${rowChrome({ selected, focused, bulkActive })} ${dim ? '*:opacity-60 hover:*:opacity-90' : ''}`}
     >
       {checked && <RowCheckedBadge />}

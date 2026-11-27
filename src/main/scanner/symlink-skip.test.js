@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+// [AddOn] DragnDrop_Begin
+import { join } from 'path'
+// [AddOn] DragnDrop_End
 
 // ── Synthetic-dirent unit test for collectVarCandidates ───────────────────────
 //
@@ -77,12 +80,15 @@ describe('collectVarCandidates — symlink skip', () => {
 
   it('recurses into a real subdirectory (not a symlink)', async () => {
     readdir.mockImplementation(async (dir) => {
-      if (dir === '/root') {
+      // [AddOn] DragnDrop_Begin
+      const normDir = dir.replace(/\\/g, '/')
+      if (normDir === '/root') {
         return [dirent({ name: 'sub', isDir: true, isFile: false, isSymlink: false })]
       }
-      if (dir === '/root/sub') {
+      if (normDir === '/root/sub') {
         return [dirent({ name: 'Nest.Author.1.var', isFile: true })]
       }
+      // [AddOn] DragnDrop_End
       throw new Error(`Unexpected ${dir}`)
     })
     const out = []
@@ -128,8 +134,10 @@ describe('collectVarCandidates — symlink skip', () => {
     await collectVarCandidates('/root', out, true)
     expect(out).toHaveLength(1)
     expect(out[0].canonical).toBe('A.B.1.var')
-    expect(out[0].barePath).toBe('/root/A.B.1.var')
-    expect(out[0].disabledPath).toBe('/root/A.B.1.var.disabled')
+    // [AddOn] DragnDrop_Begin
+    expect(out[0].barePath).toBe(join('/root', 'A.B.1.var'))
+    expect(out[0].disabledPath).toBe(join('/root', 'A.B.1.var.disabled'))
+    // [AddOn] DragnDrop_End
   })
 
   it('does not dedup across different dirs — both canonical copies appear', async () => {

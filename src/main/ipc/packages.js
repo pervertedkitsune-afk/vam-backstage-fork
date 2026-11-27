@@ -80,6 +80,9 @@ import { DependencyFix } from '../addons/dependency-fix.js'
 // [AddOn] ArchiveUniquePackages_Begin
 import { ArchiveUniquePackagesAddon } from '../addons/archiveUniquePackagesAddon.js'
 // [AddOn] ArchiveUniquePackages_End
+// [AddOn] DragnDrop_Begin
+import { DragDropAddon } from '../addons/dragDropAddon.js'
+// [AddOn] DragnDrop_End
 import { buildHomeSubpathMapForIndex, buildHomeSubpathMapFor } from '../home-subpath.js'
 import {
   enqueueInstall,
@@ -1427,4 +1430,10 @@ export function registerPackageHandlers() {
       throw err
     }
   })
+
+  // [AddOn] DragnDrop_Begin
+  ipcMain.handle('packages:move-to-location', async (_, { filenames, targetLocation }) => {
+    return await DragDropAddon.movePackagesToLocation(filenames, targetLocation)
+  })
+  // [AddOn] DragnDrop_End
 }

@@ -3,6 +3,9 @@ import { Search, X, ChevronDown, ChevronRight, Check } from 'lucide-react'
 // [AddOn] FolderFilter_Begin
 import { FolderFilterAddon, useFolderCollapsedState } from '@/addons/folderFilterAddon'
 // [AddOn] FolderFilter_End
+// [AddOn] DragnDrop_Begin
+import { DragDropAddon, useDragDropState } from '@/addons/dragDropAddon'
+// [AddOn] DragnDrop_End
 import { usePersistedPanelWidth } from '@/hooks/usePersistedPanelWidth'
 import ResizeHandle from './ResizeHandle'
 import { Input } from '@/components/ui/input'
@@ -392,6 +395,10 @@ const LIST_COLLAPSE_THRESHOLD = 6
 function ListSection({ section }) {
   const [expanded, setExpanded] = useState(false)
   const collapsedVersion = useFolderCollapsedState()
+  // [AddOn] DragnDrop_Begin
+  const { isDragging, hoveredLocation } = useDragDropState()
+  const isLocationSection = section.key === 'location'
+  // [AddOn] DragnDrop_End
 
   const processedItems = useMemo(() => {
     // Reference collapsedVersion so useMemo recomputes when folder collapse state changes
@@ -409,6 +416,10 @@ function ListSection({ section }) {
       {section.topControls}
       {visible.map((item) => {
         const isCollapsed = item.hasChildren ? FolderFilterAddon.isFolderCollapsed(item.value, true) : false
+        // [AddOn] DragnDrop_Begin
+        const isDropTarget =
+          isLocationSection && isDragging && hoveredLocation === item.value && DragDropAddon.isValidTarget(item.value)
+        // [AddOn] DragnDrop_End
         return (
           <Fragment key={item.value}>
             {item.dividerBefore && <div className="my-1.5 border-t border-border" aria-hidden="true" />}
@@ -416,9 +427,15 @@ function ListSection({ section }) {
               type="button"
               title={item.title}
               onClick={() => section.onChange(item.value)}
+              // [AddOn] DragnDrop_Begin
+              data-location-folder={isLocationSection ? item.value : undefined}
+              onMouseEnter={isLocationSection ? () => DragDropAddon.setHoveredTarget(item.value) : undefined}
+              onMouseLeave={isLocationSection ? () => DragDropAddon.clearHoveredTarget(item.value) : undefined}
+              onMouseUp={isLocationSection ? (e) => DragDropAddon.handleDrop(item.value, e) : undefined}
+              // [AddOn] DragnDrop_End
               style={item.level ? { paddingLeft: `${8 + item.level * 12}px` } : undefined}
               className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors cursor-pointer
-                ${section.value === item.value ? 'bg-hover text-text-primary' : 'text-text-secondary hover:bg-elevated hover:text-text-primary'}`}
+                ${isDropTarget ? 'ring-2 ring-accent-blue bg-accent-blue/25 text-accent-blue font-semibold scale-[1.02] shadow-md transition-all' : section.value === item.value ? 'bg-hover text-text-primary' : 'text-text-secondary hover:bg-elevated hover:text-text-primary'}`}
             >
               {item.hasChildren ? (
                 <span
@@ -445,7 +462,16 @@ function ListSection({ section }) {
               {item.color && <div className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />}
               {item.icon && <item.icon size={12} className={item.iconClass || ''} />}
               <span className="truncate">{item.label}</span>
-              {item.count != null && <span className={`${META_DENSE} ml-auto shrink-0`}>{item.count}</span>}
+              {/* [AddOn] DragnDrop_Begin */}
+              {isDropTarget && (
+                <span className="ml-auto text-[10px] uppercase font-bold tracking-wider text-accent-blue bg-accent-blue/20 px-1 py-0.5 rounded animate-pulse shrink-0">
+                  Drop to Move
+                </span>
+              )}
+              {/* [AddOn] DragnDrop_End */}
+              {item.count != null && !isDropTarget && (
+                <span className={`${META_DENSE} ml-auto shrink-0`}>{item.count}</span>
+              )}
             </button>
           </Fragment>
         )

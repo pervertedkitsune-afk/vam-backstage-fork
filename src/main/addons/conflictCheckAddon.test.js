@@ -1,5 +1,8 @@
 // [AddOn] DupeTab_Begin
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+// [AddOn] DragnDrop_Begin
+import { join } from 'path'
+// [AddOn] DragnDrop_End
 import { ConflictCheckAddon } from './conflictCheckAddon.js'
 
 vi.mock('../store.js', () => ({
@@ -59,7 +62,9 @@ describe('ConflictCheckAddon', () => {
     expect(res.conflictCount).toBe(1)
     expect(res.conflicts[0].packages).toContain('PkgA.1.var')
     expect(res.conflicts[0].packages).toContain('PkgB.1.var')
-    expect(res.logPath).toBe('/tmp/package_conflicts.log')
+    // [AddOn] DragnDrop_Begin
+    expect(res.logPath).toBe(join('/tmp', 'package_conflicts.log'))
+    // [AddOn] DragnDrop_End
   })
 
   it('reports no conflicts when virtual paths are unique across enabled packages', async () => {

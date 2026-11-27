@@ -287,12 +287,20 @@ export async function applyStorageState(filename, target, opts = {}) {
   // flowing into the restore sidecar means the package restores to its co-located
   // home — the same intended "restore follows structure" as the non-BA mirror.
   if (target.libraryDirId != null) {
-    let homeSubpath = opts.homeSubpath
-    if (homeSubpath === undefined) {
-      const sizeBytes = pkg.size_bytes
-      homeSubpath = sizeBytes != null ? await findHomeSubpathInDir(targetDir, filename, sizeBytes) : ''
+    // [AddOn] DragnDrop_Begin
+    if (opts.targetSubpath !== undefined) {
+      originalFolder = opts.targetSubpath
+    } else {
+      // [AddOn] DragnDrop_End
+      let homeSubpath = opts.homeSubpath
+      if (homeSubpath === undefined) {
+        const sizeBytes = pkg.size_bytes
+        homeSubpath = sizeBytes != null ? await findHomeSubpathInDir(targetDir, filename, sizeBytes) : ''
+      }
+      if (homeSubpath) originalFolder = homeSubpath
+      // [AddOn] DragnDrop_Begin
     }
-    if (homeSubpath) originalFolder = homeSubpath
+    // [AddOn] DragnDrop_End
   }
 
   // Preserve the subfolder across the move: a `.var` organized under

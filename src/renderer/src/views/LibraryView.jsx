@@ -93,6 +93,10 @@ import { GroupHeading } from '@/components/GroupHeading'
 import { ASIDE_COMPACT, BODY, CLARIFY_DENSE, META_DENSE, MONO_DENSE, SECTION_LABEL } from '@/lib/typography'
 import { ThumbnailSizeSlider } from '@/components/ThumbnailSizeSlider'
 import { SelectionHint } from '@/components/SelectionHint'
+// [AddOn] DragnDrop_Begin
+import { DragDropAddon } from '@/addons/dragDropAddon'
+import { DragDropOverlay } from '@/components/DragDropOverlay'
+// [AddOn] DragnDrop_End
 import { useSelectionKeyboard } from '@/hooks/useSelectionKeyboard'
 import { usePersistedPanelWidth } from '@/hooks/usePersistedPanelWidth'
 import { useLibraryUpdateState } from '@/hooks/useLibraryUpdateState'
@@ -1000,6 +1004,21 @@ export default function LibraryView({ onNavigate, navContext }) {
     [selection, orderedLibraryFilenames, selectRange, toggleSelected, runSelectPackage],
   )
 
+  // [AddOn] DragnDrop_Begin
+  const handlePackageMouseDown = useCallback(
+    (pkg, e) => {
+      DragDropAddon.handleMouseDown(pkg, e, {
+        selectedFilenames: Array.from(selectedSet),
+        toast,
+        onMoveComplete: () => {
+          useLibraryStore.getState().fetchPackages()
+        },
+      })
+    },
+    [selectedSet],
+  )
+  // [AddOn] DragnDrop_End
+
   const bulkEnabledState = useMemo(() => libraryBulkEnabledState(bulkSelectedPackages), [bulkSelectedPackages])
 
   const [bulkRemoveOpen, setBulkRemoveOpen] = useState(false)
@@ -1436,6 +1455,9 @@ export default function LibraryView({ onNavigate, navContext }) {
                     <LibraryCard
                       pkg={pkg}
                       onClick={handleLibraryClick}
+                      // [AddOn] DragnDrop_Begin
+                      onMouseDown={handlePackageMouseDown}
+                      // [AddOn] DragnDrop_End
                       selected={selectedSet.has(pkg.filename)}
                       bulkActive={bulkActive}
                       focused={focusFilename === pkg.filename}
@@ -1496,6 +1518,9 @@ export default function LibraryView({ onNavigate, navContext }) {
                       <LibraryTableRow
                         pkg={pkg}
                         onClick={handleLibraryClick}
+                        // [AddOn] DragnDrop_Begin
+                        onMouseDown={handlePackageMouseDown}
+                        // [AddOn] DragnDrop_End
                         selected={selectedSet.has(pkg.filename)}
                         bulkActive={bulkActive}
                         focused={focusFilename === pkg.filename}
@@ -1557,6 +1582,9 @@ export default function LibraryView({ onNavigate, navContext }) {
           />
         ) : null}
       </AlertDialog>
+      {/* [AddOn] DragnDrop_Begin */}
+      <DragDropOverlay />
+      {/* [AddOn] DragnDrop_End */}
     </div>
   )
 }
